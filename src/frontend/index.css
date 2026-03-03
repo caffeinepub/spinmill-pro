@@ -1,0 +1,195 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Bricolage Grotesque - Display/Headings */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/assets/fonts/BricolageGrotesque-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Outfit - Body */
+@font-face {
+  font-family: "Outfit";
+  src: url("/assets/fonts/Outfit-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Geist Mono - Code/Numbers */
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/assets/fonts/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+
+    /* Light mode — industrial steel palette */
+    --background: 0.97 0.005 240;
+    --foreground: 0.18 0.02 250;
+
+    --card: 1 0 0;
+    --card-foreground: 0.18 0.02 250;
+
+    --popover: 1 0 0;
+    --popover-foreground: 0.18 0.02 250;
+
+    /* Steel blue primary */
+    --primary: 0.42 0.12 240;
+    --primary-foreground: 0.98 0 0;
+
+    --secondary: 0.93 0.01 240;
+    --secondary-foreground: 0.25 0.04 240;
+
+    --muted: 0.93 0.008 240;
+    --muted-foreground: 0.52 0.02 240;
+
+    --accent: 0.56 0.15 240;
+    --accent-foreground: 0.98 0 0;
+
+    --destructive: 0.57 0.22 25;
+    --destructive-foreground: 0.98 0 0;
+
+    --border: 0.88 0.01 240;
+    --input: 0.88 0.01 240;
+    --ring: 0.42 0.12 240;
+
+    /* Status colors */
+    --status-running: 0.58 0.18 145;
+    --status-idle: 0.72 0.16 70;
+    --status-maintenance: 0.57 0.22 25;
+    --status-pending: 0.55 0.14 240;
+    --status-inprogress: 0.52 0.18 295;
+    --status-completed: 0.58 0.18 145;
+    --status-cancelled: 0.52 0.02 240;
+
+    /* Chart colors */
+    --chart-1: 0.42 0.12 240;
+    --chart-2: 0.58 0.18 145;
+    --chart-3: 0.72 0.16 70;
+    --chart-4: 0.52 0.18 295;
+    --chart-5: 0.57 0.22 25;
+
+    /* Sidebar — dark navy */
+    --sidebar: 0.18 0.04 250;
+    --sidebar-foreground: 0.82 0.02 240;
+    --sidebar-primary: 0.56 0.16 240;
+    --sidebar-primary-foreground: 0.98 0 0;
+    --sidebar-accent: 0.26 0.04 250;
+    --sidebar-accent-foreground: 0.88 0.02 240;
+    --sidebar-border: 0.26 0.04 250;
+    --sidebar-ring: 0.42 0.12 240;
+  }
+
+  .dark {
+    --background: 0.14 0.03 250;
+    --foreground: 0.92 0.01 240;
+
+    --card: 0.18 0.03 250;
+    --card-foreground: 0.92 0.01 240;
+
+    --popover: 0.22 0.03 250;
+    --popover-foreground: 0.92 0.01 240;
+
+    --primary: 0.62 0.18 240;
+    --primary-foreground: 0.12 0.03 250;
+
+    --secondary: 0.24 0.03 250;
+    --secondary-foreground: 0.88 0.01 240;
+
+    --muted: 0.22 0.03 250;
+    --muted-foreground: 0.58 0.02 240;
+
+    --accent: 0.62 0.18 240;
+    --accent-foreground: 0.12 0.03 250;
+
+    --destructive: 0.65 0.22 25;
+    --destructive-foreground: 0.12 0.03 250;
+
+    --border: 0.28 0.03 250;
+    --input: 0.28 0.03 250;
+    --ring: 0.62 0.18 240;
+
+    --chart-1: 0.62 0.18 240;
+    --chart-2: 0.62 0.18 145;
+    --chart-3: 0.75 0.16 70;
+    --chart-4: 0.58 0.18 295;
+    --chart-5: 0.62 0.22 25;
+
+    --sidebar: 0.12 0.03 250;
+    --sidebar-foreground: 0.82 0.02 240;
+    --sidebar-primary: 0.62 0.18 240;
+    --sidebar-primary-foreground: 0.12 0.03 250;
+    --sidebar-accent: 0.18 0.03 250;
+    --sidebar-accent-foreground: 0.88 0.01 240;
+    --sidebar-border: 0.22 0.03 250;
+    --sidebar-ring: 0.42 0.12 240;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: light dark;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+@layer utilities {
+  .status-running {
+    background-color: oklch(var(--status-running) / 0.15);
+    color: oklch(var(--status-running));
+    border-color: oklch(var(--status-running) / 0.3);
+  }
+  .status-idle {
+    background-color: oklch(var(--status-idle) / 0.15);
+    color: oklch(var(--status-idle));
+    border-color: oklch(var(--status-idle) / 0.3);
+  }
+  .status-maintenance {
+    background-color: oklch(var(--status-maintenance) / 0.15);
+    color: oklch(var(--status-maintenance));
+    border-color: oklch(var(--status-maintenance) / 0.3);
+  }
+  .status-pending {
+    background-color: oklch(var(--status-pending) / 0.15);
+    color: oklch(var(--status-pending));
+    border-color: oklch(var(--status-pending) / 0.3);
+  }
+  .status-inprogress {
+    background-color: oklch(var(--status-inprogress) / 0.15);
+    color: oklch(var(--status-inprogress));
+    border-color: oklch(var(--status-inprogress) / 0.3);
+  }
+  .status-completed {
+    background-color: oklch(var(--status-completed) / 0.15);
+    color: oklch(var(--status-completed));
+    border-color: oklch(var(--status-completed) / 0.3);
+  }
+  .status-cancelled {
+    background-color: oklch(var(--status-cancelled) / 0.15);
+    color: oklch(var(--status-cancelled));
+    border-color: oklch(var(--status-cancelled) / 0.3);
+  }
+  .font-mono-nums {
+    font-family: "Geist Mono", monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
