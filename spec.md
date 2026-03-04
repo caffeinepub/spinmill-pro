@@ -1,34 +1,24 @@
 # SpinMill Pro
 
 ## Current State
-Production Orders have:
-- Product Type: Carded / Combed (enum: `carded`, `combed`)
-- Type field (twistDirection): OE / RS (`s` = OE, `z` = RS)
-- No "Unit" field
-- No "End Use" field
+Yarn Inventory page shows a table with columns: Lot #, Count (Ne), Unit, Product Type, End Use, Weight (kg), Status, Actions. Unit/Product Type/End Use are looked up from matching Production Orders. No filters exist on this page.
 
 ## Requested Changes (Diff)
 
 ### Add
-- **Unit** field on ProductionOrder: options `Openend` / `Ring Spinning`
-- **Product Type** options extended: add `Polyester`, `Bamboo`, `Viscose`, `LT` (in addition to existing Carded / Combed)
-- **End Use** field on ProductionOrder: options `Warp`, `Weft`, `Pile`, `Ground`, `TFO`
+- Filter dropdowns above the Yarn Inventory table: Unit (Openend / Ring Spinning), Product Type (Carded, Combed, Polyester, Bamboo, Viscose, LT), End Use (Warp, Weft, Pile, Ground, TFO)
+- "Clear Filters" button that appears when any filter is active
+- Filter options populate dynamically from the actual data present in inventory
 
 ### Modify
-- Backend: extend `ProductType` enum with `polyester`, `bamboo`, `viscose`, `lt`
-- Backend: add new `SpinningUnit` enum with `openend`, `ringSpinning`
-- Backend: add new `EndUse` enum with `warp`, `weft`, `pile`, `ground`, `tfo`
-- Backend: add `spinningUnit: SpinningUnit` and `endUse: EndUse` fields to `ProductionOrder`
-- Backend: update `createProductionOrder` and `updateProductionOrder` to accept the two new fields
-- Frontend ProductionOrders.tsx: add Unit select (Openend / Ring Spinning) and End Use select (Warp/Weft/Pile/Ground/TFO) in the form
-- Frontend ProductionOrders.tsx: add Unit and End Use columns to the table
-- Frontend ProductionOrders.tsx: update Product Type options to show all 6 options
+- Yarn Inventory table to filter rows based on selected filter values
 
 ### Remove
-- Nothing removed
+- Nothing
 
 ## Implementation Plan
-1. Regenerate Motoko backend with extended enums and fields
-2. Update `backend.d.ts` with new types
-3. Update `ProductionOrders.tsx` form, table, and default values
-4. Update any other pages that read/display production orders (ProductionLogs, YarnInventory) if needed
+1. In YarnInventory.tsx, add three filter state variables: filterUnit, filterProductType, filterEndUse
+2. Build filtered inventory list by cross-referencing each item's matched production order
+3. Add filter dropdowns row above the table, using Select components
+4. Show "Clear Filters" button when any filter is active
+5. Apply filtering logic to the displayed rows

@@ -1,5 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -9,33 +16,78 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Boxes, Info, Package2, Trash2 } from "lucide-react";
+import { FilterX, Info, Package2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { InventoryStatus } from "../backend.d";
+import {
+  EndUse as EU,
+  InventoryStatus,
+  ProductType as PT,
+  SpinningUnit as SU,
+} from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { useDeleteYarnInventory, useYarnInventory } from "../hooks/useQueries";
+import {
+  useDeleteYarnInventory,
+  useProductionOrders,
+  useYarnInventory,
+} from "../hooks/useQueries";
+
+function getUnit(su: SU): string {
+  return su === SU.openend ? "Openend" : "Ring Spinning";
+}
+
+function getProductType(pt: PT): string {
+  return pt === PT.lt ? "LT" : pt.charAt(0).toUpperCase() + pt.slice(1);
+}
+
+function getEndUse(eu: EU): string {
+  return eu === EU.tfo ? "TFO" : eu.charAt(0).toUpperCase() + eu.slice(1);
+}
 
 export default function YarnInventory() {
   const { identity } = useInternetIdentity();
   const isLoggedIn = !!identity;
   const { data: inventory = [], isLoading } = useYarnInventory();
+  const { data: productionOrders = [] } = useProductionOrders();
   const deleteMutation = useDeleteYarnInventory();
 
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
+  const [filterUnit, setFilterUnit] = useState<SU | "">("");
+  const [filterProductType, setFilterProductType] = useState<PT | "">("");
+  const [filterEndUse, setFilterEndUse] = useState<EU | "">("");
+
+  function matchOrder(lotNumber: string, yarnCountNe: bigint) {
+    return (
+      productionOrders.find(
+        (o) =>
+          o.lotNumber === lotNumber &&
+          Number(o.yarnCountNe) === Number(yarnCountNe),
+      ) ?? null
+    );
+  }
+
+  const hasActiveFilters =
+    filterUnit !== "" || filterProductType !== "" || filterEndUse !== "";
+
+  const filteredInventory = inventory.filter((item) => {
+    if (!hasActiveFilters) return true;
+    const order = matchOrder(item.lotNumber, item.yarnCountNe);
+    if (!order) return false;
+    if (filterUnit !== "" && order.spinningUnit !== filterUnit) return false;
+    if (filterProductType !== "" && order.productType !== filterProductType)
+      return false;
+    if (filterEndUse !== "" && order.endUse !== filterEndUse) return false;
+    return true;
+  });
 
   const totalWeight = inventory.reduce((sum, i) => sum + Number(i.weightKg), 0);
   const inStockCount = inventory.filter(
     (i) => i.status === InventoryStatus.inStock,
   ).length;
-  const totalCones = inventory.reduce(
-    (sum, i) => sum + Number(i.quantityCones),
-    0,
-  );
 
   async function handleDelete() {
     if (!deleteId) return;
@@ -58,7 +110,7 @@ export default function YarnInventory() {
 
       {/* Summary Cards */}
       {!isLoading && inventory.length > 0 && (
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-2 gap-4 mb-6">
           <Card className="border-border/60 shadow-card">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center">
@@ -71,19 +123,6 @@ export default function YarnInventory() {
                 <p className="text-xs text-muted-foreground">
                   Total Weight (kg)
                 </p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-border/60 shadow-card">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-green-500/15 flex items-center justify-center">
-                <Boxes className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold font-display">
-                  {totalCones.toLocaleString()}
-                </p>
-                <p className="text-xs text-muted-foreground">Total Cones</p>
               </div>
             </CardContent>
           </Card>
@@ -112,6 +151,75 @@ export default function YarnInventory() {
         </p>
       </div>
 
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <Select
+          value={filterUnit}
+          onValueChange={(val) => setFilterUnit(val as SU | "")}
+        >
+          <SelectTrigger className="w-44" data-ocid="yarn.unit_filter">
+            <SelectValue placeholder="Unit: All" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">All Units</SelectItem>
+            <SelectItem value={SU.openend}>Openend</SelectItem>
+            <SelectItem value={SU.ringSpinning}>Ring Spinning</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={filterProductType}
+          onValueChange={(val) => setFilterProductType(val as PT | "")}
+        >
+          <SelectTrigger className="w-48" data-ocid="yarn.product_type_filter">
+            <SelectValue placeholder="Product Type: All" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">All Product Types</SelectItem>
+            <SelectItem value={PT.carded}>Carded</SelectItem>
+            <SelectItem value={PT.combed}>Combed</SelectItem>
+            <SelectItem value={PT.polyester}>Polyester</SelectItem>
+            <SelectItem value={PT.bamboo}>Bamboo</SelectItem>
+            <SelectItem value={PT.viscose}>Viscose</SelectItem>
+            <SelectItem value={PT.lt}>LT</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={filterEndUse}
+          onValueChange={(val) => setFilterEndUse(val as EU | "")}
+        >
+          <SelectTrigger className="w-44" data-ocid="yarn.end_use_filter">
+            <SelectValue placeholder="End Use: All" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">All End Uses</SelectItem>
+            <SelectItem value={EU.warp}>Warp</SelectItem>
+            <SelectItem value={EU.weft}>Weft</SelectItem>
+            <SelectItem value={EU.pile}>Pile</SelectItem>
+            <SelectItem value={EU.ground}>Ground</SelectItem>
+            <SelectItem value={EU.tfo}>TFO</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {hasActiveFilters && (
+          <Button
+            variant="outline"
+            size="sm"
+            data-ocid="yarn.clear_filters_button"
+            onClick={() => {
+              setFilterUnit("");
+              setFilterProductType("");
+              setFilterEndUse("");
+            }}
+            className="flex items-center gap-1.5 text-muted-foreground"
+          >
+            <FilterX className="w-3.5 h-3.5" />
+            Clear Filters
+          </Button>
+        )}
+      </div>
+
       <div className="rounded-lg border border-border/60 bg-card shadow-card overflow-hidden">
         {isLoading ? (
           <div className="p-4 space-y-3">
@@ -126,6 +234,13 @@ export default function YarnInventory() {
             title="No yarn inventory"
             description="Yarn inventory will appear here automatically as production logs are recorded."
           />
+        ) : filteredInventory.length === 0 ? (
+          <EmptyState
+            data-ocid="yarn.empty_state"
+            icon={<Package2 className="w-7 h-7" />}
+            title="No matching records"
+            description="No yarn lots match the selected filters. Try clearing some filters."
+          />
         ) : (
           <Table>
             <TableHeader>
@@ -137,10 +252,13 @@ export default function YarnInventory() {
                   Count (Ne)
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">
-                  Twist
+                  Unit
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">
-                  Cones
+                  Product Type
+                </TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                  End Use
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">
                   Weight (kg)
@@ -154,43 +272,67 @@ export default function YarnInventory() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {inventory.map((item, idx) => (
-                <TableRow
-                  key={String(item.id)}
-                  data-ocid={`yarn.item.${idx + 1}`}
-                  className="border-border/40 hover:bg-muted/40 transition-colors"
-                >
-                  <TableCell className="font-mono-nums font-medium">
-                    {item.lotNumber}
-                  </TableCell>
-                  <TableCell className="font-mono-nums">
-                    {Number(item.yarnCountNe)}
-                  </TableCell>
-                  <TableCell className="uppercase font-mono-nums font-medium">
-                    {item.twistDirection}-Twist
-                  </TableCell>
-                  <TableCell className="font-mono-nums">
-                    {Number(item.quantityCones).toLocaleString()}
-                  </TableCell>
-                  <TableCell className="font-mono-nums">
-                    {Number(item.weightKg).toLocaleString()}
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={item.status} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      data-ocid={`yarn.delete_button.${idx + 1}`}
-                      onClick={() => setDeleteId(item.id)}
-                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filteredInventory.map((item, idx) => {
+                const order = matchOrder(item.lotNumber, item.yarnCountNe);
+                return (
+                  <TableRow
+                    key={String(item.id)}
+                    data-ocid={`yarn.item.${idx + 1}`}
+                    className="border-border/40 hover:bg-muted/40 transition-colors"
+                  >
+                    <TableCell className="font-mono-nums font-medium">
+                      {item.lotNumber}
+                    </TableCell>
+                    <TableCell className="font-mono-nums">
+                      {Number(item.yarnCountNe)}
+                    </TableCell>
+                    <TableCell>
+                      {order ? (
+                        <span className="text-sm">
+                          {getUnit(order.spinningUnit)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {order ? (
+                        <span className="text-sm">
+                          {getProductType(order.productType)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {order ? (
+                        <span className="text-sm">
+                          {getEndUse(order.endUse)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-mono-nums">
+                      {Number(item.weightKg).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={item.status} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        data-ocid={`yarn.delete_button.${idx + 1}`}
+                        onClick={() => setDeleteId(item.id)}
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}
