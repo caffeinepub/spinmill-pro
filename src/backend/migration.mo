@@ -5,7 +5,11 @@ module {
   type OldProductionOrder = {
     id : Nat;
     orderNumber : Text;
-    productType : { #carded; #combed };
+    lotNumber : Text;
+    productType : {
+      #carded;
+      #combed;
+    };
     yarnCountNe : Nat;
     twistDirection : { #s; #z };
     quantityKg : Nat;
@@ -21,7 +25,25 @@ module {
     id : Nat;
     orderNumber : Text;
     lotNumber : Text;
-    productType : { #carded; #combed };
+    productType : {
+      #carded;
+      #combed;
+      #polyester;
+      #bamboo;
+      #viscose;
+      #lt;
+    };
+    spinningUnit : {
+      #openend;
+      #ringSpinning;
+    };
+    endUse : {
+      #warp;
+      #weft;
+      #pile;
+      #ground;
+      #tfo;
+    };
     yarnCountNe : Nat;
     twistDirection : { #s; #z };
     quantityKg : Nat;
@@ -35,8 +57,12 @@ module {
 
   public func run(old : OldActor) : NewActor {
     let newProductionOrders = old.productionOrders.map<Nat, OldProductionOrder, NewProductionOrder>(
-      func(_id, oldOrder) {
-        { oldOrder with lotNumber = "UNKNOWN" };
+      func(_, oldOrder) {
+        {
+          oldOrder with
+          spinningUnit = #ringSpinning;
+          endUse = #warp;
+        };
       }
     );
     { productionOrders = newProductionOrders };

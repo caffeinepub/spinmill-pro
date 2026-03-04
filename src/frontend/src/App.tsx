@@ -7,7 +7,6 @@ import {
   ClipboardList,
   Factory,
   FileText,
-  Layers,
   LayoutDashboard,
   LogIn,
   LogOut,
@@ -22,7 +21,6 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
-import BatchTracking from "./pages/BatchTracking";
 import Dashboard from "./pages/Dashboard";
 import InwardEntry from "./pages/InwardEntry";
 import Machines from "./pages/Machines";
@@ -41,7 +39,6 @@ type PageId =
   | "inward"
   | "production-orders"
   | "machines"
-  | "batch-tracking"
   | "quality-control"
   | "production-logs"
   | "yarn-inventory"
@@ -91,12 +88,6 @@ const navItems: NavItem[] = [
     group: "Production",
   },
   {
-    id: "batch-tracking",
-    label: "Batch Tracking",
-    icon: <Layers className="w-4 h-4" />,
-    group: "Production",
-  },
-  {
     id: "quality-control",
     label: "Quality Control",
     icon: <ShieldCheck className="w-4 h-4" />,
@@ -129,7 +120,6 @@ const pageComponents: Record<PageId, React.ReactNode> = {
   inward: <InwardEntry />,
   "production-orders": <ProductionOrders />,
   machines: <Machines />,
-  "batch-tracking": <BatchTracking />,
   "quality-control": <QualityControl />,
   "production-logs": <ProductionLogs />,
   "yarn-inventory": <YarnInventory />,

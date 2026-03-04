@@ -31,6 +31,11 @@ export interface DashboardStats {
   'totalMachinesRunning' : bigint,
   'totalInwardTodayKg' : bigint,
 }
+export type EndUse = { 'tfo' : null } |
+  { 'ground' : null } |
+  { 'pile' : null } |
+  { 'warp' : null } |
+  { 'weft' : null };
 export type InventoryStatus = { 'inStock' : null } |
   { 'dispatched' : null };
 export interface InwardEntry {
@@ -47,8 +52,12 @@ export interface InwardEntry {
 export interface Machine {
   'id' : bigint,
   'status' : MachineStatus,
+  'maintenanceStartTime' : [] | [Time],
+  'runningLotNumber' : [] | [string],
   'name' : string,
   'currentOrderId' : [] | [bigint],
+  'totalMaintenanceDurationMins' : bigint,
+  'runningCount' : [] | [bigint],
   'machineNumber' : string,
   'machineType' : MachineType,
 }
@@ -56,6 +65,7 @@ export type MachineStatus = { 'idle' : null } |
   { 'maintenance' : null } |
   { 'running' : null };
 export type MachineType = { 'ringFrame' : null } |
+  { 'autocoro' : null } |
   { 'combing' : null } |
   { 'blowroom' : null } |
   { 'carding' : null } |
@@ -66,6 +76,11 @@ export type OrderStatus = { 'cancelled' : null } |
   { 'pending' : null } |
   { 'completed' : null } |
   { 'inProgress' : null };
+export interface POBalance {
+  'receivedQty' : bigint,
+  'orderedQty' : bigint,
+  'balanceQty' : bigint,
+}
 export type ProcessStage = { 'qualityCheck' : null } |
   { 'combing' : null } |
   { 'finished' : null } |
@@ -75,7 +90,11 @@ export type ProcessStage = { 'qualityCheck' : null } |
   { 'winding' : null } |
   { 'ringSpinning' : null } |
   { 'drawing' : null };
-export type ProductType = { 'carded' : null } |
+export type ProductType = { 'lt' : null } |
+  { 'bamboo' : null } |
+  { 'polyester' : null } |
+  { 'viscose' : null } |
+  { 'carded' : null } |
   { 'combed' : null };
 export interface ProductionLog {
   'id' : bigint,
@@ -93,9 +112,18 @@ export interface ProductionOrder {
   'twistDirection' : TwistDirection,
   'productType' : ProductType,
   'lotNumber' : string,
+  'spinningUnit' : SpinningUnit,
   'targetDate' : Time,
   'orderNumber' : string,
   'quantityKg' : bigint,
+  'endUse' : EndUse,
+}
+export interface ProductionOrderBalance {
+  'isFulfilled' : boolean,
+  'orderId' : bigint,
+  'balanceQty' : bigint,
+  'orderQty' : bigint,
+  'producedQty' : bigint,
 }
 export interface PurchaseOrder {
   'id' : bigint,
@@ -139,6 +167,8 @@ export type RawMaterialStatus = { 'available' : null } |
 export type Shift = { 'morning' : null } |
   { 'night' : null } |
   { 'afternoon' : null };
+export type SpinningUnit = { 'openend' : null } |
+  { 'ringSpinning' : null };
 export type Time = bigint;
 export type TwistDirection = { 's' : null } |
   { 'z' : null };
@@ -198,6 +228,8 @@ export interface _SERVICE {
       string,
       string,
       ProductType,
+      SpinningUnit,
+      EndUse,
       bigint,
       TwistDirection,
       bigint,
@@ -236,8 +268,15 @@ export interface _SERVICE {
   'getInwardEntriesByPO' : ActorMethod<[bigint], Array<InwardEntry>>,
   'getInwardEntry' : ActorMethod<[bigint], [] | [InwardEntry]>,
   'getMachine' : ActorMethod<[bigint], [] | [Machine]>,
+  'getNextInwardNumber' : ActorMethod<[], string>,
+  'getNextPONumber' : ActorMethod<[], string>,
+  'getPOBalance' : ActorMethod<[bigint], [] | [POBalance]>,
   'getProductionLog' : ActorMethod<[bigint], [] | [ProductionLog]>,
   'getProductionOrder' : ActorMethod<[bigint], [] | [ProductionOrder]>,
+  'getProductionOrderBalance' : ActorMethod<
+    [bigint, string],
+    [] | [ProductionOrderBalance]
+  >,
   'getPurchaseOrder' : ActorMethod<[bigint], [] | [PurchaseOrder]>,
   'getQualityTest' : ActorMethod<[bigint], [] | [QualityTest]>,
   'getRawMaterial' : ActorMethod<[bigint], [] | [RawMaterial]>,
@@ -245,7 +284,15 @@ export interface _SERVICE {
   'getYarnInventory' : ActorMethod<[bigint], [] | [YarnInventory]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'registerMachine' : ActorMethod<
-    [string, MachineType, string, MachineStatus, [] | [bigint]],
+    [
+      string,
+      MachineType,
+      string,
+      MachineStatus,
+      [] | [bigint],
+      [] | [bigint],
+      [] | [string],
+    ],
     bigint
   >,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
@@ -254,7 +301,16 @@ export interface _SERVICE {
     undefined
   >,
   'updateMachine' : ActorMethod<
-    [bigint, string, MachineType, string, MachineStatus, [] | [bigint]],
+    [
+      bigint,
+      string,
+      MachineType,
+      string,
+      MachineStatus,
+      [] | [bigint],
+      [] | [bigint],
+      [] | [string],
+    ],
     undefined
   >,
   'updateProductionLog' : ActorMethod<
@@ -267,6 +323,8 @@ export interface _SERVICE {
       string,
       string,
       ProductType,
+      SpinningUnit,
+      EndUse,
       bigint,
       TwistDirection,
       bigint,

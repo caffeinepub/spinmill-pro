@@ -68,6 +68,18 @@ export default function RawMaterials() {
   const [warehouseFilter, setWarehouseFilter] = useState<string>("all");
   const [monthFilter, setMonthFilter] = useState<string>("all");
 
+  // Grade-wise total stock summary
+  const gradeStock = useMemo(() => {
+    return materials.reduce(
+      (acc, m) => {
+        const key = m.grade;
+        acc[key] = (acc[key] || 0) + Number(m.weightKg);
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+  }, [materials]);
+
   // Derive unique filter options from the data
   const supplierOptions = useMemo(() => {
     const unique = Array.from(
@@ -150,6 +162,38 @@ export default function RawMaterials() {
         title="Raw Materials"
         description="Stock is automatically updated when inward entries are recorded against a purchase order"
       />
+
+      {/* Grade-wise Stock Summary */}
+      {materials.length > 0 && (
+        <div className="mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Stock by Grade
+            </span>
+          </div>
+          <div
+            className="flex flex-wrap gap-2"
+            data-ocid="rawmaterials.section"
+          >
+            {Object.entries(gradeStock)
+              .sort((a, b) => a[0].localeCompare(b[0]))
+              .map(([grade, totalKg]) => (
+                <div
+                  key={grade}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border/60 bg-card shadow-sm hover:bg-muted/40 transition-colors"
+                >
+                  <span className="text-xs font-semibold text-foreground">
+                    {grade}
+                  </span>
+                  <span className="text-muted-foreground/50 text-xs">—</span>
+                  <span className="text-xs font-bold text-primary tabular-nums">
+                    {totalKg.toLocaleString()} kg
+                  </span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
 
       {/* Filter Bar */}
       <div className="flex flex-wrap items-center gap-3 mb-4 p-4 rounded-lg border border-border/60 bg-card shadow-sm">

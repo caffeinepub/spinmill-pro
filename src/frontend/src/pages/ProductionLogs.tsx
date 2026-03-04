@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,7 +26,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { FileText, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  FileText,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { ProductionLog, Shift } from "../backend.d";
@@ -33,13 +43,13 @@ import { Shift as SH } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
-import { StatusBadge } from "../components/StatusBadge";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAddProductionLog,
   useDeleteProductionLog,
   useMachines,
   useProductionLogs,
+  useProductionOrderBalance,
   useUpdateProductionLog,
 } from "../hooks/useQueries";
 
@@ -78,6 +88,39 @@ export default function ProductionLogs() {
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [form, setForm] = useState(defaultForm);
 
+  // Derive selected machine and its running count/lot
+  const selectedMachine = form.machineId
+    ? machines.find((m) => String(Number(m.id)) === form.machineId)
+    : undefined;
+
+  const machineRunningCount =
+    selectedMachine?.runningCount != null ? selectedMachine.runningCount : null;
+  const machineRunningLot =
+    selectedMachine?.runningLotNumber != null
+      ? selectedMachine.runningLotNumber
+      : null;
+  const hasMachineCountLot =
+    machineRunningCount !== null && machineRunningLot !== null;
+
+  // Fetch production order balance based on machine's count + lot
+  const {
+    data: orderBalance,
+    isLoading: isBalanceLoading,
+    isError: isBalanceError,
+  } = useProductionOrderBalance(machineRunningCount, machineRunningLot);
+
+  const enteredQty = form.quantityKg ? Number(form.quantityKg) : 0;
+  const balanceQty = orderBalance ? Number(orderBalance.balanceQty) : null;
+
+  // Determine if submission should be blocked
+  const isOrderFulfilled = orderBalance?.isFulfilled === true;
+  const isExceedingBalance =
+    balanceQty !== null && enteredQty > 0 && enteredQty > balanceQty;
+  const isSubmitBlocked =
+    hasMachineCountLot && orderBalance !== undefined && orderBalance !== null
+      ? isOrderFulfilled || isExceedingBalance
+      : false;
+
   function openAdd() {
     setEditItem(null);
     setForm(defaultForm);
@@ -100,6 +143,7 @@ export default function ProductionLogs() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isSubmitBlocked) return;
     const dateTs = BigInt(new Date(form.date).getTime() * 1_000_000);
     try {
       const args = {
@@ -269,13 +313,14 @@ export default function ProductionLogs() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent data-ocid="logs.dialog" className="sm:max-w-md">
+        <DialogContent data-ocid="logs.dialog" className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
               {editItem ? "Edit Log Entry" : "Add Production Log"}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Date & Shift */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="lg-date">Date</Label>
@@ -309,12 +354,18 @@ export default function ProductionLogs() {
                 </Select>
               </div>
             </div>
+
+            {/* Machine */}
             <div className="space-y-1.5">
               <Label htmlFor="lg-machine">Machine</Label>
               <Select
                 value={form.machineId || "none"}
                 onValueChange={(v) =>
-                  setForm((p) => ({ ...p, machineId: v === "none" ? "" : v }))
+                  setForm((p) => ({
+                    ...p,
+                    machineId: v === "none" ? "" : v,
+                    quantityKg: "",
+                  }))
                 }
               >
                 <SelectTrigger id="lg-machine">
@@ -329,6 +380,37 @@ export default function ProductionLogs() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Auto-populated Count (Ne) and Lot Number */}
+            {hasMachineCountLot && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    Count (Ne)
+                  </Label>
+                  <div className="flex items-center h-9 px-3 rounded-md border border-border/60 bg-muted/40">
+                    <Badge
+                      variant="secondary"
+                      className="text-sm font-semibold font-mono-nums bg-primary/10 text-primary border-primary/20"
+                    >
+                      Ne {String(machineRunningCount)}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    Lot Number
+                  </Label>
+                  <div className="flex items-center h-9 px-3 rounded-md border border-border/60 bg-muted/40">
+                    <span className="text-sm font-medium text-foreground">
+                      {machineRunningLot}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Operator */}
             <div className="space-y-1.5">
               <Label htmlFor="lg-operator">Operator Name</Label>
               <Input
@@ -341,6 +423,8 @@ export default function ProductionLogs() {
                 required
               />
             </div>
+
+            {/* Qty + Efficiency */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="lg-qty">Quantity (kg)</Label>
@@ -375,6 +459,131 @@ export default function ProductionLogs() {
                 />
               </div>
             </div>
+
+            {/* Production Order Balance Panel */}
+            {hasMachineCountLot && (
+              <div
+                data-ocid="logs.panel"
+                className={`rounded-md border p-3 space-y-2 text-sm transition-colors ${
+                  isOrderFulfilled
+                    ? "bg-destructive/5 border-destructive/30"
+                    : isExceedingBalance
+                      ? "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/40"
+                      : "bg-muted/40 border-border/60"
+                }`}
+              >
+                {isBalanceLoading ? (
+                  <div
+                    data-ocid="logs.loading_state"
+                    className="flex items-center gap-2 text-muted-foreground"
+                  >
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span className="text-xs">
+                      Fetching production order balance…
+                    </span>
+                  </div>
+                ) : isBalanceError || orderBalance === undefined ? (
+                  <div
+                    data-ocid="logs.error_state"
+                    className="flex items-center gap-2 text-muted-foreground"
+                  >
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span className="text-xs">
+                      Unable to fetch balance. Please try again.
+                    </span>
+                  </div>
+                ) : orderBalance === null ? (
+                  <div
+                    data-ocid="logs.error_state"
+                    className="flex items-center gap-2 text-amber-600 dark:text-amber-400"
+                  >
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="text-xs">
+                      No matching production order found for Count Ne&nbsp;
+                      <strong>{String(machineRunningCount)}</strong> / Lot&nbsp;
+                      <strong>{machineRunningLot}</strong>.
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    {/* Balance summary */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="text-center">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
+                          Order Qty
+                        </p>
+                        <p className="font-semibold font-mono-nums text-foreground">
+                          {Number(orderBalance.orderQty)}&nbsp;kg
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
+                          Produced
+                        </p>
+                        <p className="font-semibold font-mono-nums text-foreground">
+                          {Number(orderBalance.producedQty)}&nbsp;kg
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
+                          Balance
+                        </p>
+                        <p
+                          className={`font-semibold font-mono-nums ${
+                            orderBalance.isFulfilled
+                              ? "text-destructive"
+                              : "text-emerald-600 dark:text-emerald-400"
+                          }`}
+                        >
+                          {Number(orderBalance.balanceQty)}&nbsp;kg
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Warning / Blocked state */}
+                    {isOrderFulfilled && (
+                      <div
+                        data-ocid="logs.error_state"
+                        className="flex items-start gap-2 pt-1 border-t border-destructive/20"
+                      >
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 text-destructive mt-0.5" />
+                        <p className="text-xs text-destructive">
+                          Production order for this Count / Lot is already
+                          complete. No further entries can be added.
+                        </p>
+                      </div>
+                    )}
+                    {!isOrderFulfilled && isExceedingBalance && (
+                      <div
+                        data-ocid="logs.error_state"
+                        className="flex items-start gap-2 pt-1 border-t border-amber-200 dark:border-amber-800/40"
+                      >
+                        <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                        <p className="text-xs text-amber-700 dark:text-amber-400">
+                          Entered quantity ({enteredQty} kg) exceeds the balance
+                          ({Number(orderBalance.balanceQty)} kg). Please reduce
+                          the quantity.
+                        </p>
+                      </div>
+                    )}
+                    {!isOrderFulfilled &&
+                      !isExceedingBalance &&
+                      enteredQty > 0 && (
+                        <div className="flex items-center gap-2 pt-1 border-t border-border/40">
+                          <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+                          <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                            Remaining after this entry:{" "}
+                            <strong>
+                              {Number(orderBalance.balanceQty) - enteredQty} kg
+                            </strong>
+                          </p>
+                        </div>
+                      )}
+                  </>
+                )}
+              </div>
+            )}
+
             <DialogFooter>
               <Button
                 type="button"
@@ -387,7 +596,7 @@ export default function ProductionLogs() {
               <Button
                 type="submit"
                 data-ocid="logs.submit_button"
-                disabled={isPending || !form.machineId}
+                disabled={isPending || !form.machineId || isSubmitBlocked}
               >
                 {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 {editItem ? "Update" : "Add Log"}

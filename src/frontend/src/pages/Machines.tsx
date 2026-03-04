@@ -60,6 +60,7 @@ const machineTypeLabels: Record<string, string> = {
   roving: "Roving",
   ringFrame: "Ring Frame",
   winding: "Winding",
+  autocoro: "Autocoro",
 };
 
 const defaultForm = {
@@ -68,6 +69,8 @@ const defaultForm = {
   machineNumber: "",
   status: MS.idle as MachineStatus,
   currentOrderId: "",
+  runningCount: "",
+  runningLotNumber: "",
 };
 
 export default function Machines() {
@@ -106,6 +109,11 @@ export default function Machines() {
       currentOrderId: item.currentOrderId
         ? String(Number(item.currentOrderId))
         : "",
+      runningCount:
+        item.runningCount !== undefined
+          ? String(Number(item.runningCount))
+          : "",
+      runningLotNumber: item.runningLotNumber ?? "",
     });
     setDialogOpen(true);
   }
@@ -113,6 +121,11 @@ export default function Machines() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const orderId = form.currentOrderId ? BigInt(form.currentOrderId) : null;
+    const isRunning = form.status === MS.running;
+    const runningCount =
+      isRunning && form.runningCount ? BigInt(form.runningCount) : null;
+    const runningLotNumber =
+      isRunning && form.runningLotNumber ? form.runningLotNumber : null;
     try {
       if (editItem) {
         await updateMutation.mutateAsync({
@@ -122,6 +135,8 @@ export default function Machines() {
           machineNumber: form.machineNumber,
           status: form.status,
           currentOrderId: orderId,
+          runningCount,
+          runningLotNumber,
         });
         toast.success("Machine updated");
       } else {
@@ -131,6 +146,8 @@ export default function Machines() {
           machineNumber: form.machineNumber,
           status: form.status,
           currentOrderId: orderId,
+          runningCount,
+          runningLotNumber,
         });
         toast.success("Machine registered");
       }
@@ -245,6 +262,12 @@ export default function Machines() {
                   Status
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                  Count (Ne)
+                </TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                  Lot #
+                </TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">
                   Current Order
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider text-right">
@@ -275,6 +298,32 @@ export default function Machines() {
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={machine.status} />
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {machine.status === MS.running &&
+                      machine.runningCount !== undefined ? (
+                        <span className="font-medium">
+                          {String(Number(machine.runningCount))}
+                        </span>
+                      ) : machine.status === MS.maintenance ? (
+                        <span className="inline-flex items-center bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded font-medium whitespace-nowrap">
+                          {Number(machine.totalMaintenanceDurationMins) >= 60
+                            ? `${Math.floor(Number(machine.totalMaintenanceDurationMins) / 60)}h ${Number(machine.totalMaintenanceDurationMins) % 60}m`
+                            : `${Number(machine.totalMaintenanceDurationMins)}m`}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {machine.status === MS.running &&
+                      machine.runningLotNumber ? (
+                        <span className="font-medium font-mono-nums">
+                          {machine.runningLotNumber}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {currentOrder ? currentOrder.orderNumber : "—"}
@@ -370,7 +419,13 @@ export default function Machines() {
                 <Select
                   value={form.status}
                   onValueChange={(v) =>
-                    setForm((p) => ({ ...p, status: v as MachineStatus }))
+                    setForm((p) => ({
+                      ...p,
+                      status: v as MachineStatus,
+                      ...(v !== MS.running
+                        ? { runningCount: "", runningLotNumber: "" }
+                        : {}),
+                    }))
                   }
                 >
                   <SelectTrigger id="mc-status">
@@ -411,6 +466,40 @@ export default function Machines() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+            {form.status === MS.running && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="mc-count">Count (Ne) (optional)</Label>
+                  <Input
+                    id="mc-count"
+                    type="number"
+                    min="1"
+                    data-ocid="machines.input"
+                    value={form.runningCount}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, runningCount: e.target.value }))
+                    }
+                    placeholder="e.g. 30"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="mc-lot">Running Lot # (optional)</Label>
+                  <Input
+                    id="mc-lot"
+                    type="text"
+                    data-ocid="machines.input"
+                    value={form.runningLotNumber}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        runningLotNumber: e.target.value,
+                      }))
+                    }
+                    placeholder="e.g. LOT-2026-001"
+                  />
+                </div>
               </div>
             )}
             <DialogFooter>

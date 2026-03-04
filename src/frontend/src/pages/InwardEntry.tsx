@@ -39,6 +39,8 @@ import {
   useAddInwardEntry,
   useDeleteInwardEntry,
   useInwardEntries,
+  useNextInwardNumber,
+  usePOBalance,
   usePurchaseOrders,
 } from "../hooks/useQueries";
 
@@ -118,6 +120,23 @@ export default function InwardEntry() {
   // Build a map from PO id -> PO for quick lookups
   const poMap = new Map(purchaseOrders.map((po) => [String(po.id), po]));
 
+  // Fetch next inward number whenever dialog is open
+  const { data: nextInwardData } = useNextInwardNumber(dialogOpen);
+
+  // Pre-fill inward number when it arrives
+  useEffect(() => {
+    if (nextInwardData && dialogOpen) {
+      setForm((p) => ({ ...p, inwardNumber: nextInwardData }));
+    }
+  }, [nextInwardData, dialogOpen]);
+
+  // Fetch PO balance when a PO is selected
+  const selectedPoId = form.purchaseOrderId
+    ? BigInt(form.purchaseOrderId)
+    : null;
+  const { data: poBalanceData } = usePOBalance(selectedPoId);
+  const poBalance = poBalanceData ?? null;
+
   // Auto-fill material name when PO is selected
   useEffect(() => {
     if (form.purchaseOrderId) {
@@ -143,6 +162,13 @@ export default function InwardEntry() {
     }
     if (!form.purchaseOrderId) {
       toast.error("Please select a purchase order");
+      return;
+    }
+    // Validate quantity against PO balance
+    if (poBalance && Number(form.receivedQty) > Number(poBalance.balanceQty)) {
+      toast.error(
+        `Cannot exceed balance qty (${Number(poBalance.balanceQty)} kg)`,
+      );
       return;
     }
     try {
@@ -311,15 +337,19 @@ export default function InwardEntry() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="iw-number">Inward Number</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="iw-number">Inward Number</Label>
+                  <span className="text-xs text-muted-foreground italic">
+                    (auto-generated)
+                  </span>
+                </div>
                 <Input
                   id="iw-number"
                   data-ocid="inward.input"
                   value={form.inwardNumber}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, inwardNumber: e.target.value }))
-                  }
-                  placeholder="IW-2024-001"
+                  readOnly
+                  placeholder="Generating…"
+                  className="bg-muted/60 text-muted-foreground cursor-default select-none"
                   required
                 />
               </div>
@@ -363,6 +393,37 @@ export default function InwardEntry() {
                   )}
                 </SelectContent>
               </Select>
+              {/* PO Balance info row */}
+              {form.purchaseOrderId && poBalance && (
+                <div className="mt-2 flex items-center gap-3 px-3 py-2 rounded-md bg-muted/50 border border-border/50 text-sm">
+                  <span className="text-muted-foreground">
+                    Ordered:{" "}
+                    <span className="font-semibold text-foreground">
+                      {Number(poBalance.orderedQty).toLocaleString()} kg
+                    </span>
+                  </span>
+                  <span className="text-muted-foreground/50">|</span>
+                  <span className="text-muted-foreground">
+                    Received:{" "}
+                    <span className="font-semibold text-foreground">
+                      {Number(poBalance.receivedQty).toLocaleString()} kg
+                    </span>
+                  </span>
+                  <span className="text-muted-foreground/50">|</span>
+                  <span className="text-muted-foreground">
+                    Balance:{" "}
+                    <span
+                      className={`font-bold ${
+                        Number(poBalance.balanceQty) > 0
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-destructive"
+                      }`}
+                    >
+                      {Number(poBalance.balanceQty).toLocaleString()} kg
+                    </span>
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -387,6 +448,7 @@ export default function InwardEntry() {
                   type="number"
                   min="1"
                   step="1"
+                  max={poBalance ? Number(poBalance.balanceQty) : undefined}
                   data-ocid="inward.input"
                   value={form.receivedQty}
                   onChange={(e) =>

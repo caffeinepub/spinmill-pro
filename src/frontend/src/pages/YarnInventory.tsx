@@ -1,21 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -25,100 +9,33 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Boxes, Loader2, Package2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Boxes, Info, Package2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type {
-  InventoryStatus,
-  TwistDirection,
-  YarnInventory as YarnInventoryType,
-} from "../backend.d";
-import { InventoryStatus as IS, TwistDirection as TD } from "../backend.d";
+import { InventoryStatus } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import {
-  useAddYarnInventory,
-  useDeleteYarnInventory,
-  useUpdateYarnInventory,
-  useYarnInventory,
-} from "../hooks/useQueries";
-
-const defaultForm = {
-  lotNumber: "",
-  yarnCountNe: "",
-  twistDirection: TD.z as TwistDirection,
-  quantityCones: "",
-  weightKg: "",
-  status: IS.inStock as InventoryStatus,
-};
+import { useDeleteYarnInventory, useYarnInventory } from "../hooks/useQueries";
 
 export default function YarnInventory() {
   const { identity } = useInternetIdentity();
   const isLoggedIn = !!identity;
   const { data: inventory = [], isLoading } = useYarnInventory();
-  const addMutation = useAddYarnInventory();
-  const updateMutation = useUpdateYarnInventory();
   const deleteMutation = useDeleteYarnInventory();
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editItem, setEditItem] = useState<YarnInventoryType | null>(null);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
-  const [form, setForm] = useState(defaultForm);
 
   const totalWeight = inventory.reduce((sum, i) => sum + Number(i.weightKg), 0);
-  const inStockCount = inventory.filter((i) => i.status === IS.inStock).length;
+  const inStockCount = inventory.filter(
+    (i) => i.status === InventoryStatus.inStock,
+  ).length;
   const totalCones = inventory.reduce(
     (sum, i) => sum + Number(i.quantityCones),
     0,
   );
-
-  function openAdd() {
-    setEditItem(null);
-    setForm(defaultForm);
-    setDialogOpen(true);
-  }
-
-  function openEdit(item: YarnInventoryType) {
-    setEditItem(item);
-    setForm({
-      lotNumber: item.lotNumber,
-      yarnCountNe: String(Number(item.yarnCountNe)),
-      twistDirection: item.twistDirection,
-      quantityCones: String(Number(item.quantityCones)),
-      weightKg: String(Number(item.weightKg)),
-      status: item.status,
-    });
-    setDialogOpen(true);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    try {
-      const args = {
-        lotNumber: form.lotNumber,
-        yarnCountNe: BigInt(Math.round(Number(form.yarnCountNe))),
-        twistDirection: form.twistDirection,
-        quantityCones: BigInt(Math.round(Number(form.quantityCones))),
-        weightKg: BigInt(Math.round(Number(form.weightKg))),
-        status: form.status,
-      };
-      if (editItem) {
-        await updateMutation.mutateAsync({ id: editItem.id, ...args });
-        toast.success("Yarn inventory updated");
-      } else {
-        await addMutation.mutateAsync(args);
-        toast.success("Yarn lot added to inventory");
-      }
-      setDialogOpen(false);
-    } catch {
-      toast.error(
-        isLoggedIn ? "Operation failed" : "Please sign in to save data",
-      );
-    }
-  }
 
   async function handleDelete() {
     if (!deleteId) return;
@@ -132,23 +49,11 @@ export default function YarnInventory() {
     }
   }
 
-  const isPending = addMutation.isPending || updateMutation.isPending;
-
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <PageHeader
         title="Yarn Inventory"
-        description="Manage finished yarn stock and dispatch records"
-        action={
-          <Button
-            data-ocid="yarn.primary_button"
-            onClick={openAdd}
-            className="gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Yarn Lot
-          </Button>
-        }
+        description="Finished yarn stock auto-populated from production logs"
       />
 
       {/* Summary Cards */}
@@ -198,6 +103,15 @@ export default function YarnInventory() {
         </div>
       )}
 
+      {/* Info Banner */}
+      <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 mb-4 text-blue-700">
+        <Info className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-500" />
+        <p className="text-sm">
+          Yarn stock is automatically updated when production logs are added. No
+          manual entry is required.
+        </p>
+      </div>
+
       <div className="rounded-lg border border-border/60 bg-card shadow-card overflow-hidden">
         {isLoading ? (
           <div className="p-4 space-y-3">
@@ -210,9 +124,7 @@ export default function YarnInventory() {
             data-ocid="yarn.empty_state"
             icon={<Package2 className="w-7 h-7" />}
             title="No yarn inventory"
-            description="Add your first finished yarn lot to start managing your inventory."
-            actionLabel="Add Yarn Lot"
-            onAction={openAdd}
+            description="Yarn inventory will appear here automatically as production logs are recorded."
           />
         ) : (
           <Table>
@@ -267,26 +179,15 @@ export default function YarnInventory() {
                     <StatusBadge status={item.status} />
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        data-ocid={`yarn.edit_button.${idx + 1}`}
-                        onClick={() => openEdit(item)}
-                        className="h-8 w-8"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        data-ocid={`yarn.delete_button.${idx + 1}`}
-                        onClick={() => setDeleteId(item.id)}
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      data-ocid={`yarn.delete_button.${idx + 1}`}
+                      onClick={() => setDeleteId(item.id)}
+                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -294,132 +195,6 @@ export default function YarnInventory() {
           </Table>
         )}
       </div>
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent data-ocid="yarn.dialog" className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {editItem ? "Edit Yarn Lot" : "Add Yarn Lot"}
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="yr-lot">Lot Number</Label>
-              <Input
-                id="yr-lot"
-                data-ocid="yarn.input"
-                value={form.lotNumber}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, lotNumber: e.target.value }))
-                }
-                placeholder="YRN-2024-001"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="yr-ne">Yarn Count (Ne)</Label>
-                <Input
-                  id="yr-ne"
-                  type="number"
-                  min="1"
-                  value={form.yarnCountNe}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, yarnCountNe: e.target.value }))
-                  }
-                  placeholder="30"
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="yr-twist">Twist Direction</Label>
-                <Select
-                  value={form.twistDirection}
-                  onValueChange={(v) =>
-                    setForm((p) => ({
-                      ...p,
-                      twistDirection: v as TwistDirection,
-                    }))
-                  }
-                >
-                  <SelectTrigger id="yr-twist" data-ocid="yarn.select">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={TD.s}>S-Twist</SelectItem>
-                    <SelectItem value={TD.z}>Z-Twist</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="yr-cones">Quantity (Cones)</Label>
-                <Input
-                  id="yr-cones"
-                  type="number"
-                  min="0"
-                  value={form.quantityCones}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, quantityCones: e.target.value }))
-                  }
-                  placeholder="500"
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="yr-weight">Weight (kg)</Label>
-                <Input
-                  id="yr-weight"
-                  type="number"
-                  min="0"
-                  value={form.weightKg}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, weightKg: e.target.value }))
-                  }
-                  placeholder="250"
-                  required
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="yr-status">Status</Label>
-              <Select
-                value={form.status}
-                onValueChange={(v) =>
-                  setForm((p) => ({ ...p, status: v as InventoryStatus }))
-                }
-              >
-                <SelectTrigger id="yr-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={IS.inStock}>In Stock</SelectItem>
-                  <SelectItem value={IS.dispatched}>Dispatched</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                data-ocid="yarn.cancel_button"
-                onClick={() => setDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                data-ocid="yarn.submit_button"
-                disabled={isPending}
-              >
-                {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {editItem ? "Update" : "Add Lot"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       <ConfirmDialog
         open={!!deleteId}

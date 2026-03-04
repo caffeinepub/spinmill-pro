@@ -40,8 +40,23 @@ export const UserRole = IDL.Variant({
   'guest' : IDL.Null,
 });
 export const ProductType = IDL.Variant({
+  'lt' : IDL.Null,
+  'bamboo' : IDL.Null,
+  'polyester' : IDL.Null,
+  'viscose' : IDL.Null,
   'carded' : IDL.Null,
   'combed' : IDL.Null,
+});
+export const SpinningUnit = IDL.Variant({
+  'openend' : IDL.Null,
+  'ringSpinning' : IDL.Null,
+});
+export const EndUse = IDL.Variant({
+  'tfo' : IDL.Null,
+  'ground' : IDL.Null,
+  'pile' : IDL.Null,
+  'warp' : IDL.Null,
+  'weft' : IDL.Null,
 });
 export const OrderStatus = IDL.Variant({
   'cancelled' : IDL.Null,
@@ -78,6 +93,7 @@ export const MachineStatus = IDL.Variant({
 });
 export const MachineType = IDL.Variant({
   'ringFrame' : IDL.Null,
+  'autocoro' : IDL.Null,
   'combing' : IDL.Null,
   'blowroom' : IDL.Null,
   'carding' : IDL.Null,
@@ -88,8 +104,12 @@ export const MachineType = IDL.Variant({
 export const Machine = IDL.Record({
   'id' : IDL.Nat,
   'status' : MachineStatus,
+  'maintenanceStartTime' : IDL.Opt(Time),
+  'runningLotNumber' : IDL.Opt(IDL.Text),
   'name' : IDL.Text,
   'currentOrderId' : IDL.Opt(IDL.Nat),
+  'totalMaintenanceDurationMins' : IDL.Nat,
+  'runningCount' : IDL.Opt(IDL.Nat),
   'machineNumber' : IDL.Text,
   'machineType' : MachineType,
 });
@@ -109,9 +129,11 @@ export const ProductionOrder = IDL.Record({
   'twistDirection' : TwistDirection,
   'productType' : ProductType,
   'lotNumber' : IDL.Text,
+  'spinningUnit' : SpinningUnit,
   'targetDate' : Time,
   'orderNumber' : IDL.Text,
   'quantityKg' : IDL.Nat,
+  'endUse' : EndUse,
 });
 export const PurchaseOrderStatus = IDL.Variant({
   'closed' : IDL.Null,
@@ -185,6 +207,18 @@ export const DashboardStats = IDL.Record({
   'totalMachinesRunning' : IDL.Nat,
   'totalInwardTodayKg' : IDL.Nat,
 });
+export const POBalance = IDL.Record({
+  'receivedQty' : IDL.Nat,
+  'orderedQty' : IDL.Nat,
+  'balanceQty' : IDL.Nat,
+});
+export const ProductionOrderBalance = IDL.Record({
+  'isFulfilled' : IDL.Bool,
+  'orderId' : IDL.Nat,
+  'balanceQty' : IDL.Int,
+  'orderQty' : IDL.Nat,
+  'producedQty' : IDL.Nat,
+});
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
@@ -243,6 +277,8 @@ export const idlService = IDL.Service({
         IDL.Text,
         IDL.Text,
         ProductType,
+        SpinningUnit,
+        EndUse,
         IDL.Nat,
         TwistDirection,
         IDL.Nat,
@@ -291,10 +327,18 @@ export const idlService = IDL.Service({
     ),
   'getInwardEntry' : IDL.Func([IDL.Nat], [IDL.Opt(InwardEntry)], ['query']),
   'getMachine' : IDL.Func([IDL.Nat], [IDL.Opt(Machine)], ['query']),
+  'getNextInwardNumber' : IDL.Func([], [IDL.Text], ['query']),
+  'getNextPONumber' : IDL.Func([], [IDL.Text], ['query']),
+  'getPOBalance' : IDL.Func([IDL.Nat], [IDL.Opt(POBalance)], ['query']),
   'getProductionLog' : IDL.Func([IDL.Nat], [IDL.Opt(ProductionLog)], ['query']),
   'getProductionOrder' : IDL.Func(
       [IDL.Nat],
       [IDL.Opt(ProductionOrder)],
+      ['query'],
+    ),
+  'getProductionOrderBalance' : IDL.Func(
+      [IDL.Nat, IDL.Text],
+      [IDL.Opt(ProductionOrderBalance)],
       ['query'],
     ),
   'getPurchaseOrder' : IDL.Func([IDL.Nat], [IDL.Opt(PurchaseOrder)], ['query']),
@@ -308,7 +352,15 @@ export const idlService = IDL.Service({
   'getYarnInventory' : IDL.Func([IDL.Nat], [IDL.Opt(YarnInventory)], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'registerMachine' : IDL.Func(
-      [IDL.Text, MachineType, IDL.Text, MachineStatus, IDL.Opt(IDL.Nat)],
+      [
+        IDL.Text,
+        MachineType,
+        IDL.Text,
+        MachineStatus,
+        IDL.Opt(IDL.Nat),
+        IDL.Opt(IDL.Nat),
+        IDL.Opt(IDL.Text),
+      ],
       [IDL.Nat],
       [],
     ),
@@ -336,6 +388,8 @@ export const idlService = IDL.Service({
         IDL.Text,
         MachineStatus,
         IDL.Opt(IDL.Nat),
+        IDL.Opt(IDL.Nat),
+        IDL.Opt(IDL.Text),
       ],
       [],
       [],
@@ -351,6 +405,8 @@ export const idlService = IDL.Service({
         IDL.Text,
         IDL.Text,
         ProductType,
+        SpinningUnit,
+        EndUse,
         IDL.Nat,
         TwistDirection,
         IDL.Nat,
@@ -443,7 +499,25 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
-  const ProductType = IDL.Variant({ 'carded' : IDL.Null, 'combed' : IDL.Null });
+  const ProductType = IDL.Variant({
+    'lt' : IDL.Null,
+    'bamboo' : IDL.Null,
+    'polyester' : IDL.Null,
+    'viscose' : IDL.Null,
+    'carded' : IDL.Null,
+    'combed' : IDL.Null,
+  });
+  const SpinningUnit = IDL.Variant({
+    'openend' : IDL.Null,
+    'ringSpinning' : IDL.Null,
+  });
+  const EndUse = IDL.Variant({
+    'tfo' : IDL.Null,
+    'ground' : IDL.Null,
+    'pile' : IDL.Null,
+    'warp' : IDL.Null,
+    'weft' : IDL.Null,
+  });
   const OrderStatus = IDL.Variant({
     'cancelled' : IDL.Null,
     'pending' : IDL.Null,
@@ -479,6 +553,7 @@ export const idlFactory = ({ IDL }) => {
   });
   const MachineType = IDL.Variant({
     'ringFrame' : IDL.Null,
+    'autocoro' : IDL.Null,
     'combing' : IDL.Null,
     'blowroom' : IDL.Null,
     'carding' : IDL.Null,
@@ -489,8 +564,12 @@ export const idlFactory = ({ IDL }) => {
   const Machine = IDL.Record({
     'id' : IDL.Nat,
     'status' : MachineStatus,
+    'maintenanceStartTime' : IDL.Opt(Time),
+    'runningLotNumber' : IDL.Opt(IDL.Text),
     'name' : IDL.Text,
     'currentOrderId' : IDL.Opt(IDL.Nat),
+    'totalMaintenanceDurationMins' : IDL.Nat,
+    'runningCount' : IDL.Opt(IDL.Nat),
     'machineNumber' : IDL.Text,
     'machineType' : MachineType,
   });
@@ -510,9 +589,11 @@ export const idlFactory = ({ IDL }) => {
     'twistDirection' : TwistDirection,
     'productType' : ProductType,
     'lotNumber' : IDL.Text,
+    'spinningUnit' : SpinningUnit,
     'targetDate' : Time,
     'orderNumber' : IDL.Text,
     'quantityKg' : IDL.Nat,
+    'endUse' : EndUse,
   });
   const PurchaseOrderStatus = IDL.Variant({
     'closed' : IDL.Null,
@@ -586,6 +667,18 @@ export const idlFactory = ({ IDL }) => {
     'totalMachinesRunning' : IDL.Nat,
     'totalInwardTodayKg' : IDL.Nat,
   });
+  const POBalance = IDL.Record({
+    'receivedQty' : IDL.Nat,
+    'orderedQty' : IDL.Nat,
+    'balanceQty' : IDL.Nat,
+  });
+  const ProductionOrderBalance = IDL.Record({
+    'isFulfilled' : IDL.Bool,
+    'orderId' : IDL.Nat,
+    'balanceQty' : IDL.Int,
+    'orderQty' : IDL.Nat,
+    'producedQty' : IDL.Nat,
+  });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
@@ -653,6 +746,8 @@ export const idlFactory = ({ IDL }) => {
           IDL.Text,
           IDL.Text,
           ProductType,
+          SpinningUnit,
+          EndUse,
           IDL.Nat,
           TwistDirection,
           IDL.Nat,
@@ -701,6 +796,9 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getInwardEntry' : IDL.Func([IDL.Nat], [IDL.Opt(InwardEntry)], ['query']),
     'getMachine' : IDL.Func([IDL.Nat], [IDL.Opt(Machine)], ['query']),
+    'getNextInwardNumber' : IDL.Func([], [IDL.Text], ['query']),
+    'getNextPONumber' : IDL.Func([], [IDL.Text], ['query']),
+    'getPOBalance' : IDL.Func([IDL.Nat], [IDL.Opt(POBalance)], ['query']),
     'getProductionLog' : IDL.Func(
         [IDL.Nat],
         [IDL.Opt(ProductionLog)],
@@ -709,6 +807,11 @@ export const idlFactory = ({ IDL }) => {
     'getProductionOrder' : IDL.Func(
         [IDL.Nat],
         [IDL.Opt(ProductionOrder)],
+        ['query'],
+      ),
+    'getProductionOrderBalance' : IDL.Func(
+        [IDL.Nat, IDL.Text],
+        [IDL.Opt(ProductionOrderBalance)],
         ['query'],
       ),
     'getPurchaseOrder' : IDL.Func(
@@ -730,7 +833,15 @@ export const idlFactory = ({ IDL }) => {
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'registerMachine' : IDL.Func(
-        [IDL.Text, MachineType, IDL.Text, MachineStatus, IDL.Opt(IDL.Nat)],
+        [
+          IDL.Text,
+          MachineType,
+          IDL.Text,
+          MachineStatus,
+          IDL.Opt(IDL.Nat),
+          IDL.Opt(IDL.Nat),
+          IDL.Opt(IDL.Text),
+        ],
         [IDL.Nat],
         [],
       ),
@@ -758,6 +869,8 @@ export const idlFactory = ({ IDL }) => {
           IDL.Text,
           MachineStatus,
           IDL.Opt(IDL.Nat),
+          IDL.Opt(IDL.Nat),
+          IDL.Opt(IDL.Text),
         ],
         [],
         [],
@@ -773,6 +886,8 @@ export const idlFactory = ({ IDL }) => {
           IDL.Text,
           IDL.Text,
           ProductType,
+          SpinningUnit,
+          EndUse,
           IDL.Nat,
           TwistDirection,
           IDL.Nat,

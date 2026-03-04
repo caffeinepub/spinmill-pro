@@ -19,6 +19,34 @@ export interface InwardEntry {
     remarks: string;
 }
 export type Time = bigint;
+export interface ProductionOrderBalance {
+    isFulfilled: boolean;
+    orderId: bigint;
+    balanceQty: bigint;
+    orderQty: bigint;
+    producedQty: bigint;
+}
+export interface PurchaseOrder {
+    id: bigint;
+    status: PurchaseOrderStatus;
+    orderedQty: bigint;
+    expectedDeliveryDate: Time;
+    supplier: string;
+    orderDate: Time;
+    materialName: string;
+    poNumber: string;
+}
+export interface BatchStage {
+    id: bigint;
+    startTime: Time;
+    operatorNotes: string;
+    endTime: Time;
+    weightInKg: bigint;
+    weightOutKg: bigint;
+    stage: ProcessStage;
+    batchId: bigint;
+    machineId: bigint;
+}
 export interface RawMaterial {
     id: bigint;
     status: RawMaterialStatus;
@@ -34,6 +62,11 @@ export interface WarehouseStock {
     totalQty: bigint;
     warehouse: Warehouse;
     materialName: string;
+}
+export interface POBalance {
+    receivedQty: bigint;
+    orderedQty: bigint;
+    balanceQty: bigint;
 }
 export interface QualityTest {
     id: bigint;
@@ -59,19 +92,14 @@ export interface ProductionLog {
 export interface Machine {
     id: bigint;
     status: MachineStatus;
+    maintenanceStartTime?: Time;
+    runningLotNumber?: string;
     name: string;
     currentOrderId?: bigint;
+    totalMaintenanceDurationMins: bigint;
+    runningCount?: bigint;
     machineNumber: string;
     machineType: MachineType;
-}
-export interface YarnInventory {
-    id: bigint;
-    status: InventoryStatus;
-    yarnCountNe: bigint;
-    twistDirection: TwistDirection;
-    quantityCones: bigint;
-    lotNumber: string;
-    weightKg: bigint;
 }
 export interface DashboardStats {
     totalRawMaterialWeightAvailable: bigint;
@@ -83,15 +111,14 @@ export interface DashboardStats {
     totalMachinesRunning: bigint;
     totalInwardTodayKg: bigint;
 }
-export interface PurchaseOrder {
+export interface YarnInventory {
     id: bigint;
-    status: PurchaseOrderStatus;
-    orderedQty: bigint;
-    expectedDeliveryDate: Time;
-    supplier: string;
-    orderDate: Time;
-    materialName: string;
-    poNumber: string;
+    status: InventoryStatus;
+    yarnCountNe: bigint;
+    twistDirection: TwistDirection;
+    quantityCones: bigint;
+    lotNumber: string;
+    weightKg: bigint;
 }
 export interface ProductionOrder {
     id: bigint;
@@ -100,25 +127,23 @@ export interface ProductionOrder {
     twistDirection: TwistDirection;
     productType: ProductType;
     lotNumber: string;
+    spinningUnit: SpinningUnit;
     targetDate: Time;
     orderNumber: string;
     quantityKg: bigint;
+    endUse: EndUse;
 }
 export interface UserProfile {
     name: string;
     role: string;
     department: string;
 }
-export interface BatchStage {
-    id: bigint;
-    startTime: Time;
-    operatorNotes: string;
-    endTime: Time;
-    weightInKg: bigint;
-    weightOutKg: bigint;
-    stage: ProcessStage;
-    batchId: bigint;
-    machineId: bigint;
+export enum EndUse {
+    tfo = "tfo",
+    ground = "ground",
+    pile = "pile",
+    warp = "warp",
+    weft = "weft"
 }
 export enum InventoryStatus {
     inStock = "inStock",
@@ -131,6 +156,7 @@ export enum MachineStatus {
 }
 export enum MachineType {
     ringFrame = "ringFrame",
+    autocoro = "autocoro",
     combing = "combing",
     blowroom = "blowroom",
     carding = "carding",
@@ -156,6 +182,10 @@ export enum ProcessStage {
     drawing = "drawing"
 }
 export enum ProductType {
+    lt = "lt",
+    bamboo = "bamboo",
+    polyester = "polyester",
+    viscose = "viscose",
     carded = "carded",
     combed = "combed"
 }
@@ -173,6 +203,10 @@ export enum Shift {
     morning = "morning",
     night = "night",
     afternoon = "afternoon"
+}
+export enum SpinningUnit {
+    openend = "openend",
+    ringSpinning = "ringSpinning"
 }
 export enum TwistDirection {
     s = "s",
@@ -195,7 +229,7 @@ export interface backendInterface {
     addRawMaterial(lotNumber: string, supplier: string, grade: string, weightKg: bigint, warehouse: Warehouse, inwardEntryId: bigint | null): Promise<bigint>;
     addYarnInventory(lotNumber: string, yarnCountNe: bigint, twistDirection: TwistDirection, quantityCones: bigint, weightKg: bigint, status: InventoryStatus): Promise<bigint>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    createProductionOrder(orderNumber: string, lotNumber: string, productType: ProductType, yarnCountNe: bigint, twistDirection: TwistDirection, quantityKg: bigint, targetDate: Time, status: OrderStatus): Promise<bigint>;
+    createProductionOrder(orderNumber: string, lotNumber: string, productType: ProductType, spinningUnit: SpinningUnit, endUse: EndUse, yarnCountNe: bigint, twistDirection: TwistDirection, quantityKg: bigint, targetDate: Time, status: OrderStatus): Promise<bigint>;
     createPurchaseOrder(poNumber: string, supplier: string, materialName: string, orderedQty: bigint, orderDate: Time, expectedDeliveryDate: Time): Promise<bigint>;
     deleteBatchStage(id: bigint): Promise<void>;
     deleteInwardEntry(id: bigint): Promise<void>;
@@ -223,20 +257,24 @@ export interface backendInterface {
     getInwardEntriesByPO(purchaseOrderId: bigint): Promise<Array<InwardEntry>>;
     getInwardEntry(id: bigint): Promise<InwardEntry | null>;
     getMachine(id: bigint): Promise<Machine | null>;
+    getNextInwardNumber(): Promise<string>;
+    getNextPONumber(): Promise<string>;
+    getPOBalance(purchaseOrderId: bigint): Promise<POBalance | null>;
     getProductionLog(id: bigint): Promise<ProductionLog | null>;
     getProductionOrder(id: bigint): Promise<ProductionOrder | null>;
+    getProductionOrderBalance(yarnCountNe: bigint, lotNumber: string): Promise<ProductionOrderBalance | null>;
     getPurchaseOrder(id: bigint): Promise<PurchaseOrder | null>;
     getQualityTest(id: bigint): Promise<QualityTest | null>;
     getRawMaterial(id: bigint): Promise<RawMaterial | null>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     getYarnInventory(id: bigint): Promise<YarnInventory | null>;
     isCallerAdmin(): Promise<boolean>;
-    registerMachine(name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null): Promise<bigint>;
+    registerMachine(name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: bigint | null, runningLotNumber: string | null): Promise<bigint>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     updateBatchStage(id: bigint, batchId: bigint, stage: ProcessStage, weightInKg: bigint, weightOutKg: bigint, machineId: bigint, startTime: Time, endTime: Time, operatorNotes: string): Promise<void>;
-    updateMachine(id: bigint, name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null): Promise<void>;
+    updateMachine(id: bigint, name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: bigint | null, runningLotNumber: string | null): Promise<void>;
     updateProductionLog(id: bigint, shift: Shift, date: Time, machineId: bigint, quantityKg: bigint, efficiencyPercent: bigint, operatorName: string): Promise<void>;
-    updateProductionOrder(id: bigint, orderNumber: string, lotNumber: string, productType: ProductType, yarnCountNe: bigint, twistDirection: TwistDirection, quantityKg: bigint, targetDate: Time, status: OrderStatus): Promise<void>;
+    updateProductionOrder(id: bigint, orderNumber: string, lotNumber: string, productType: ProductType, spinningUnit: SpinningUnit, endUse: EndUse, yarnCountNe: bigint, twistDirection: TwistDirection, quantityKg: bigint, targetDate: Time, status: OrderStatus): Promise<void>;
     updatePurchaseOrder(id: bigint, poNumber: string, supplier: string, materialName: string, orderedQty: bigint, orderDate: Time, expectedDeliveryDate: Time): Promise<void>;
     updateQualityTest(id: bigint, batchId: bigint, csp: bigint, elongationPercent: bigint, evennessPercent: bigint, thinPlaces: bigint, thickPlaces: bigint, neps: bigint, hairinessIndex: bigint, pass: boolean): Promise<void>;
     updateRawMaterial(id: bigint, lotNumber: string, supplier: string, grade: string, weightKg: bigint, status: RawMaterialStatus, warehouse: Warehouse): Promise<void>;

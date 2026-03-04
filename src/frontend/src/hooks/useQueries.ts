@@ -2,12 +2,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   BatchStage,
   DashboardStats,
+  EndUse,
   InventoryStatus,
   InwardEntry,
   Machine,
   MachineStatus,
   MachineType,
   OrderStatus,
+  POBalance,
   ProcessStage,
   ProductType,
   ProductionLog,
@@ -17,6 +19,7 @@ import type {
   RawMaterial,
   RawMaterialStatus,
   Shift,
+  SpinningUnit,
   TwistDirection,
   Warehouse,
   WarehouseStock,
@@ -152,6 +155,8 @@ export function useCreateProductionOrder() {
       orderNumber: string;
       lotNumber: string;
       productType: ProductType;
+      spinningUnit: SpinningUnit;
+      endUse: EndUse;
       yarnCountNe: bigint;
       twistDirection: TwistDirection;
       quantityKg: bigint;
@@ -163,6 +168,8 @@ export function useCreateProductionOrder() {
         args.orderNumber,
         args.lotNumber,
         args.productType,
+        args.spinningUnit,
+        args.endUse,
         args.yarnCountNe,
         args.twistDirection,
         args.quantityKg,
@@ -186,6 +193,8 @@ export function useUpdateProductionOrder() {
       orderNumber: string;
       lotNumber: string;
       productType: ProductType;
+      spinningUnit: SpinningUnit;
+      endUse: EndUse;
       yarnCountNe: bigint;
       twistDirection: TwistDirection;
       quantityKg: bigint;
@@ -198,6 +207,8 @@ export function useUpdateProductionOrder() {
         args.orderNumber,
         args.lotNumber,
         args.productType,
+        args.spinningUnit,
+        args.endUse,
         args.yarnCountNe,
         args.twistDirection,
         args.quantityKg,
@@ -252,6 +263,8 @@ export function useRegisterMachine() {
       machineNumber: string;
       status: MachineStatus;
       currentOrderId: bigint | null;
+      runningCount: bigint | null;
+      runningLotNumber: string | null;
     }) => {
       if (!actor) throw new Error("No actor");
       return actor.registerMachine(
@@ -260,6 +273,8 @@ export function useRegisterMachine() {
         args.machineNumber,
         args.status,
         args.currentOrderId,
+        args.runningCount,
+        args.runningLotNumber,
       );
     },
     onSuccess: () => {
@@ -280,6 +295,8 @@ export function useUpdateMachine() {
       machineNumber: string;
       status: MachineStatus;
       currentOrderId: bigint | null;
+      runningCount: bigint | null;
+      runningLotNumber: string | null;
     }) => {
       if (!actor) throw new Error("No actor");
       return actor.updateMachine(
@@ -289,6 +306,8 @@ export function useUpdateMachine() {
         args.machineNumber,
         args.status,
         args.currentOrderId,
+        args.runningCount,
+        args.runningLotNumber,
       );
     },
     onSuccess: () => {
@@ -715,6 +734,7 @@ export function useCreatePurchaseOrder() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
       qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+      qc.invalidateQueries({ queryKey: ["nextPONumber"] });
     },
   });
 }
@@ -812,6 +832,7 @@ export function useAddInwardEntry() {
       qc.invalidateQueries({ queryKey: ["warehouseStock"] });
       qc.invalidateQueries({ queryKey: ["rawMaterials"] });
       qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+      qc.invalidateQueries({ queryKey: ["nextInwardNumber"] });
     },
   });
 }
@@ -846,5 +867,67 @@ export function useWarehouseStock() {
     },
     enabled: !!actor && !isFetching,
     retry: false,
+  });
+}
+
+// ─── Auto-Number & PO Balance ─────────────────────────────────────────────────
+
+export function useNextPONumber(enabled: boolean) {
+  const { actor, isFetching } = useActor();
+  return useQuery<string>({
+    queryKey: ["nextPONumber"],
+    queryFn: async () => {
+      if (!actor) throw new Error("No actor");
+      return actor.getNextPONumber();
+    },
+    enabled: !!actor && !isFetching && enabled,
+    retry: false,
+    staleTime: 0,
+  });
+}
+
+export function useNextInwardNumber(enabled: boolean) {
+  const { actor, isFetching } = useActor();
+  return useQuery<string>({
+    queryKey: ["nextInwardNumber"],
+    queryFn: async () => {
+      if (!actor) throw new Error("No actor");
+      return actor.getNextInwardNumber();
+    },
+    enabled: !!actor && !isFetching && enabled,
+    retry: false,
+    staleTime: 0,
+  });
+}
+
+export function usePOBalance(purchaseOrderId: bigint | null) {
+  const { actor, isFetching } = useActor();
+  return useQuery<POBalance | null>({
+    queryKey: ["poBalance", String(purchaseOrderId)],
+    queryFn: async () => {
+      if (!actor || purchaseOrderId === null) throw new Error("No actor or id");
+      return actor.getPOBalance(purchaseOrderId);
+    },
+    enabled: !!actor && !isFetching && purchaseOrderId !== null,
+    retry: false,
+    staleTime: 0,
+  });
+}
+
+export function useProductionOrderBalance(
+  yarnCountNe: bigint | null,
+  lotNumber: string | null,
+) {
+  const { actor, isFetching } = useActor();
+  return useQuery<import("../backend.d").ProductionOrderBalance | null>({
+    queryKey: ["productionOrderBalance", String(yarnCountNe), lotNumber],
+    queryFn: async () => {
+      if (!actor || yarnCountNe === null || !lotNumber)
+        throw new Error("No params");
+      return actor.getProductionOrderBalance(yarnCountNe, lotNumber);
+    },
+    enabled: !!actor && !isFetching && yarnCountNe !== null && !!lotNumber,
+    retry: false,
+    staleTime: 0,
   });
 }

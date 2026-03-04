@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Loader2, Pencil, Plus, ShoppingCart, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { PurchaseOrder } from "../backend.d";
 import { PurchaseOrderStatus } from "../backend.d";
@@ -30,6 +30,7 @@ import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useCreatePurchaseOrder,
   useDeletePurchaseOrder,
+  useNextPONumber,
   usePurchaseOrders,
   useUpdatePurchaseOrder,
 } from "../hooks/useQueries";
@@ -119,6 +120,16 @@ export default function PurchaseOrders() {
   const [editItem, setEditItem] = useState<PurchaseOrder | null>(null);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [form, setForm] = useState(defaultForm);
+
+  // Fetch next PO number only when adding a new order
+  const { data: nextPOData } = useNextPONumber(dialogOpen && !editItem);
+
+  // Pre-fill PO number when it arrives
+  useEffect(() => {
+    if (nextPOData && dialogOpen && !editItem) {
+      setForm((p) => ({ ...p, poNumber: nextPOData }));
+    }
+  }, [nextPOData, dialogOpen, editItem]);
 
   function openAdd() {
     setEditItem(null);
@@ -318,15 +329,30 @@ export default function PurchaseOrders() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="po-number">PO Number</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="po-number">PO Number</Label>
+                  {!editItem && (
+                    <span className="text-xs text-muted-foreground italic">
+                      (auto-generated)
+                    </span>
+                  )}
+                </div>
                 <Input
                   id="po-number"
                   data-ocid="purchaseorders.input"
                   value={form.poNumber}
                   onChange={(e) =>
-                    setForm((p) => ({ ...p, poNumber: e.target.value }))
+                    editItem
+                      ? setForm((p) => ({ ...p, poNumber: e.target.value }))
+                      : undefined
                   }
-                  placeholder="PO-2024-001"
+                  readOnly={!editItem}
+                  placeholder={!editItem ? "Generating…" : "PO-2024-001"}
+                  className={
+                    !editItem
+                      ? "bg-muted/60 text-muted-foreground cursor-default select-none"
+                      : ""
+                  }
                   required
                 />
               </div>

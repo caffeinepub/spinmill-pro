@@ -28,14 +28,18 @@ import { ClipboardList, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type {
+  EndUse,
   OrderStatus,
   ProductType,
   ProductionOrder,
+  SpinningUnit,
   TwistDirection,
 } from "../backend.d";
 import {
+  EndUse as EU,
   OrderStatus as OS,
   ProductType as PT,
+  SpinningUnit as SU,
   TwistDirection as TD,
 } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -54,6 +58,8 @@ const defaultForm = {
   orderNumber: "",
   lotNumber: "",
   productType: PT.carded as ProductType,
+  spinningUnit: SU.openend as SpinningUnit,
+  endUse: EU.warp as EndUse,
   yarnCountNe: "",
   twistDirection: TD.z as TwistDirection,
   quantityKg: "",
@@ -93,6 +99,8 @@ export default function ProductionOrders() {
       orderNumber: item.orderNumber,
       lotNumber: item.lotNumber,
       productType: item.productType,
+      spinningUnit: item.spinningUnit,
+      endUse: item.endUse,
       yarnCountNe: String(Number(item.yarnCountNe)),
       twistDirection: item.twistDirection,
       quantityKg: String(Number(item.quantityKg)),
@@ -112,6 +120,8 @@ export default function ProductionOrders() {
           orderNumber: form.orderNumber,
           lotNumber: form.lotNumber,
           productType: form.productType,
+          spinningUnit: form.spinningUnit,
+          endUse: form.endUse,
           yarnCountNe: BigInt(Math.round(Number(form.yarnCountNe))),
           twistDirection: form.twistDirection,
           quantityKg: BigInt(Math.round(Number(form.quantityKg))),
@@ -124,6 +134,8 @@ export default function ProductionOrders() {
           orderNumber: form.orderNumber,
           lotNumber: form.lotNumber,
           productType: form.productType,
+          spinningUnit: form.spinningUnit,
+          endUse: form.endUse,
           yarnCountNe: BigInt(Math.round(Number(form.yarnCountNe))),
           twistDirection: form.twistDirection,
           quantityKg: BigInt(Math.round(Number(form.quantityKg))),
@@ -201,6 +213,12 @@ export default function ProductionOrders() {
                   Product Type
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                  Unit
+                </TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                  End Use
+                </TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">
                   Yarn Count (Ne)
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">
@@ -236,7 +254,21 @@ export default function ProductionOrders() {
                     )}
                   </TableCell>
                   <TableCell className="capitalize">
-                    {order.productType}
+                    {order.productType === PT.lt
+                      ? "LT"
+                      : order.productType.charAt(0).toUpperCase() +
+                        order.productType.slice(1)}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {order.spinningUnit === SU.openend
+                      ? "Openend"
+                      : "Ring Spinning"}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {order.endUse === EU.tfo
+                      ? "TFO"
+                      : order.endUse.charAt(0).toUpperCase() +
+                        order.endUse.slice(1)}
                   </TableCell>
                   <TableCell className="font-mono-nums">
                     {Number(order.yarnCountNe)}
@@ -285,7 +317,7 @@ export default function ProductionOrders() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent data-ocid="orders.dialog" className="sm:max-w-lg">
+        <DialogContent data-ocid="orders.dialog" className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>
               {editItem ? "Edit Production Order" : "New Production Order"}
@@ -337,9 +369,57 @@ export default function ProductionOrders() {
                   <SelectContent>
                     <SelectItem value={PT.carded}>Carded</SelectItem>
                     <SelectItem value={PT.combed}>Combed</SelectItem>
+                    <SelectItem value={PT.polyester}>Polyester</SelectItem>
+                    <SelectItem value={PT.bamboo}>Bamboo</SelectItem>
+                    <SelectItem value={PT.viscose}>Viscose</SelectItem>
+                    <SelectItem value={PT.lt}>LT</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ord-unit">Unit</Label>
+                <Select
+                  value={form.spinningUnit}
+                  onValueChange={(v) =>
+                    setForm((p) => ({ ...p, spinningUnit: v as SpinningUnit }))
+                  }
+                >
+                  <SelectTrigger id="ord-unit" data-ocid="orders.unit_select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SU.openend}>Openend</SelectItem>
+                    <SelectItem value={SU.ringSpinning}>
+                      Ring Spinning
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ord-enduse">End Use</Label>
+                <Select
+                  value={form.endUse}
+                  onValueChange={(v) =>
+                    setForm((p) => ({ ...p, endUse: v as EndUse }))
+                  }
+                >
+                  <SelectTrigger
+                    id="ord-enduse"
+                    data-ocid="orders.enduse_select"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={EU.warp}>Warp</SelectItem>
+                    <SelectItem value={EU.weft}>Weft</SelectItem>
+                    <SelectItem value={EU.pile}>Pile</SelectItem>
+                    <SelectItem value={EU.ground}>Ground</SelectItem>
+                    <SelectItem value={EU.tfo}>TFO</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="ord-ne">Yarn Count (Ne)</Label>
                 <Input
