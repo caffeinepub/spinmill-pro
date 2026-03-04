@@ -35,6 +35,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAddQualityTest,
   useDeleteQualityTest,
@@ -55,6 +56,8 @@ const defaultForm = {
 };
 
 export default function QualityControl() {
+  const { identity } = useInternetIdentity();
+  const isLoggedIn = !!identity;
   const { data: tests = [], isLoading } = useQualityTests();
   const addMutation = useAddQualityTest();
   const updateMutation = useUpdateQualityTest();
@@ -115,7 +118,9 @@ export default function QualityControl() {
       }
       setDialogOpen(false);
     } catch {
-      toast.error("Operation failed");
+      toast.error(
+        isLoggedIn ? "Operation failed" : "Please sign in to save data",
+      );
     }
   }
 
@@ -125,7 +130,7 @@ export default function QualityControl() {
       await deleteMutation.mutateAsync(deleteId);
       toast.success("Quality test deleted");
     } catch {
-      toast.error("Delete failed");
+      toast.error(isLoggedIn ? "Delete failed" : "Please sign in to save data");
     } finally {
       setDeleteId(null);
     }

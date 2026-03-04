@@ -23,13 +23,27 @@ export interface BatchStage {
 }
 export interface DashboardStats {
   'totalRawMaterialWeightAvailable' : bigint,
+  'ringWarehouseStockKg' : bigint,
   'recentQualityTestPassRate' : bigint,
   'totalYarnInventoryWeight' : bigint,
+  'oeWarehouseStockKg' : bigint,
   'totalActiveOrders' : bigint,
   'totalMachinesRunning' : bigint,
+  'totalInwardTodayKg' : bigint,
 }
 export type InventoryStatus = { 'inStock' : null } |
   { 'dispatched' : null };
+export interface InwardEntry {
+  'id' : bigint,
+  'receivedQty' : bigint,
+  'inwardDate' : Time,
+  'inwardNumber' : string,
+  'vehicleNumber' : string,
+  'purchaseOrderId' : bigint,
+  'warehouse' : Warehouse,
+  'materialName' : string,
+  'remarks' : string,
+}
 export interface Machine {
   'id' : bigint,
   'status' : MachineStatus,
@@ -78,10 +92,24 @@ export interface ProductionOrder {
   'yarnCountNe' : bigint,
   'twistDirection' : TwistDirection,
   'productType' : ProductType,
+  'lotNumber' : string,
   'targetDate' : Time,
   'orderNumber' : string,
   'quantityKg' : bigint,
 }
+export interface PurchaseOrder {
+  'id' : bigint,
+  'status' : PurchaseOrderStatus,
+  'orderedQty' : bigint,
+  'expectedDeliveryDate' : Time,
+  'supplier' : string,
+  'orderDate' : Time,
+  'materialName' : string,
+  'poNumber' : string,
+}
+export type PurchaseOrderStatus = { 'closed' : null } |
+  { 'open' : null } |
+  { 'partiallyReceived' : null };
 export interface QualityTest {
   'id' : bigint,
   'csp' : bigint,
@@ -97,11 +125,13 @@ export interface QualityTest {
 export interface RawMaterial {
   'id' : bigint,
   'status' : RawMaterialStatus,
+  'inwardEntryId' : [] | [bigint],
   'supplier' : string,
   'lotNumber' : string,
   'weightKg' : bigint,
   'grade' : string,
   'dateReceived' : Time,
+  'warehouse' : Warehouse,
 }
 export type RawMaterialStatus = { 'available' : null } |
   { 'consumed' : null } |
@@ -120,6 +150,13 @@ export interface UserProfile {
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export type Warehouse = { 'oeRawMaterial' : null } |
+  { 'ringRawMaterial' : null };
+export interface WarehouseStock {
+  'totalQty' : bigint,
+  'warehouse' : Warehouse,
+  'materialName' : string,
+}
 export interface YarnInventory {
   'id' : bigint,
   'status' : InventoryStatus,
@@ -135,6 +172,10 @@ export interface _SERVICE {
     [bigint, ProcessStage, bigint, bigint, bigint, Time, Time, string],
     bigint
   >,
+  'addInwardEntry' : ActorMethod<
+    [string, bigint, Time, string, bigint, Warehouse, string, string],
+    bigint
+  >,
   'addProductionLog' : ActorMethod<
     [Shift, Time, bigint, bigint, bigint, string],
     bigint
@@ -143,37 +184,61 @@ export interface _SERVICE {
     [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, boolean],
     bigint
   >,
-  'addRawMaterial' : ActorMethod<[string, string, string, bigint], bigint>,
+  'addRawMaterial' : ActorMethod<
+    [string, string, string, bigint, Warehouse, [] | [bigint]],
+    bigint
+  >,
   'addYarnInventory' : ActorMethod<
     [string, bigint, TwistDirection, bigint, bigint, InventoryStatus],
     bigint
   >,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'createProductionOrder' : ActorMethod<
-    [string, ProductType, bigint, TwistDirection, bigint, Time, OrderStatus],
+    [
+      string,
+      string,
+      ProductType,
+      bigint,
+      TwistDirection,
+      bigint,
+      Time,
+      OrderStatus,
+    ],
+    bigint
+  >,
+  'createPurchaseOrder' : ActorMethod<
+    [string, string, string, bigint, Time, Time],
     bigint
   >,
   'deleteBatchStage' : ActorMethod<[bigint], undefined>,
+  'deleteInwardEntry' : ActorMethod<[bigint], undefined>,
   'deleteMachine' : ActorMethod<[bigint], undefined>,
   'deleteProductionLog' : ActorMethod<[bigint], undefined>,
   'deleteProductionOrder' : ActorMethod<[bigint], undefined>,
+  'deletePurchaseOrder' : ActorMethod<[bigint], undefined>,
   'deleteQualityTest' : ActorMethod<[bigint], undefined>,
   'deleteRawMaterial' : ActorMethod<[bigint], undefined>,
   'deleteYarnInventory' : ActorMethod<[bigint], undefined>,
   'getAllBatchStages' : ActorMethod<[], Array<BatchStage>>,
+  'getAllInwardEntries' : ActorMethod<[], Array<InwardEntry>>,
   'getAllMachines' : ActorMethod<[], Array<Machine>>,
   'getAllProductionLogs' : ActorMethod<[], Array<ProductionLog>>,
   'getAllProductionOrders' : ActorMethod<[], Array<ProductionOrder>>,
+  'getAllPurchaseOrders' : ActorMethod<[], Array<PurchaseOrder>>,
   'getAllQualityTests' : ActorMethod<[], Array<QualityTest>>,
   'getAllRawMaterials' : ActorMethod<[], Array<RawMaterial>>,
+  'getAllWarehouseStock' : ActorMethod<[], Array<WarehouseStock>>,
   'getAllYarnInventory' : ActorMethod<[], Array<YarnInventory>>,
   'getBatchStage' : ActorMethod<[bigint], [] | [BatchStage]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getDashboardStats' : ActorMethod<[], DashboardStats>,
+  'getInwardEntriesByPO' : ActorMethod<[bigint], Array<InwardEntry>>,
+  'getInwardEntry' : ActorMethod<[bigint], [] | [InwardEntry]>,
   'getMachine' : ActorMethod<[bigint], [] | [Machine]>,
   'getProductionLog' : ActorMethod<[bigint], [] | [ProductionLog]>,
   'getProductionOrder' : ActorMethod<[bigint], [] | [ProductionOrder]>,
+  'getPurchaseOrder' : ActorMethod<[bigint], [] | [PurchaseOrder]>,
   'getQualityTest' : ActorMethod<[bigint], [] | [QualityTest]>,
   'getRawMaterial' : ActorMethod<[bigint], [] | [RawMaterial]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
@@ -200,6 +265,7 @@ export interface _SERVICE {
     [
       bigint,
       string,
+      string,
       ProductType,
       bigint,
       TwistDirection,
@@ -207,6 +273,10 @@ export interface _SERVICE {
       Time,
       OrderStatus,
     ],
+    undefined
+  >,
+  'updatePurchaseOrder' : ActorMethod<
+    [bigint, string, string, string, bigint, Time, Time],
     undefined
   >,
   'updateQualityTest' : ActorMethod<
@@ -225,7 +295,7 @@ export interface _SERVICE {
     undefined
   >,
   'updateRawMaterial' : ActorMethod<
-    [bigint, string, string, string, bigint, RawMaterialStatus],
+    [bigint, string, string, string, bigint, RawMaterialStatus, Warehouse],
     undefined
   >,
   'updateYarnInventory' : ActorMethod<

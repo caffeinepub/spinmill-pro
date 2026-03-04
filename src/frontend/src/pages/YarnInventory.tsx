@@ -38,6 +38,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAddYarnInventory,
   useDeleteYarnInventory,
@@ -55,6 +56,8 @@ const defaultForm = {
 };
 
 export default function YarnInventory() {
+  const { identity } = useInternetIdentity();
+  const isLoggedIn = !!identity;
   const { data: inventory = [], isLoading } = useYarnInventory();
   const addMutation = useAddYarnInventory();
   const updateMutation = useUpdateYarnInventory();
@@ -111,7 +114,9 @@ export default function YarnInventory() {
       }
       setDialogOpen(false);
     } catch {
-      toast.error("Operation failed");
+      toast.error(
+        isLoggedIn ? "Operation failed" : "Please sign in to save data",
+      );
     }
   }
 
@@ -121,7 +126,7 @@ export default function YarnInventory() {
       await deleteMutation.mutateAsync(deleteId);
       toast.success("Yarn lot removed");
     } catch {
-      toast.error("Delete failed");
+      toast.error(isLoggedIn ? "Delete failed" : "Please sign in to save data");
     } finally {
       setDeleteId(null);
     }

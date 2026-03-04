@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Activity,
+  ArrowDownToLine,
   ClipboardList,
   Factory,
   Layers,
@@ -10,6 +11,7 @@ import {
   Settings2,
   ShieldCheck,
   TrendingUp,
+  Warehouse,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useDashboardStats } from "../hooks/useQueries";
@@ -128,7 +130,7 @@ export default function Dashboard() {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
         <KpiCard
           data-ocid="dashboard.card.1"
@@ -179,6 +181,39 @@ export default function Dashboard() {
             <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           }
           accent="bg-emerald-500/15"
+          loading={isLoading}
+        />
+        <KpiCard
+          data-ocid="dashboard.card.6"
+          title="Inward Today"
+          value={stats ? Number(stats.totalInwardTodayKg) : 0}
+          suffix="kg"
+          icon={
+            <ArrowDownToLine className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+          }
+          accent="bg-cyan-500/15"
+          loading={isLoading}
+        />
+        <KpiCard
+          data-ocid="dashboard.card.7"
+          title="OE Warehouse Stock"
+          value={stats ? Number(stats.oeWarehouseStockKg) : 0}
+          suffix="kg"
+          icon={
+            <Warehouse className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          }
+          accent="bg-blue-500/15"
+          loading={isLoading}
+        />
+        <KpiCard
+          data-ocid="dashboard.card.8"
+          title="Ring Warehouse Stock"
+          value={stats ? Number(stats.ringWarehouseStockKg) : 0}
+          suffix="kg"
+          icon={
+            <Warehouse className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+          }
+          accent="bg-violet-500/15"
           loading={isLoading}
         />
       </motion.div>

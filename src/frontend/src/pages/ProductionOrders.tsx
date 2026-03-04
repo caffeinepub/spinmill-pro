@@ -42,6 +42,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useCreateProductionOrder,
   useDeleteProductionOrder,
@@ -51,6 +52,7 @@ import {
 
 const defaultForm = {
   orderNumber: "",
+  lotNumber: "",
   productType: PT.carded as ProductType,
   yarnCountNe: "",
   twistDirection: TD.z as TwistDirection,
@@ -60,6 +62,8 @@ const defaultForm = {
 };
 
 export default function ProductionOrders() {
+  const { identity } = useInternetIdentity();
+  const isLoggedIn = !!identity;
   const { data: orders = [], isLoading } = useProductionOrders();
   const createMutation = useCreateProductionOrder();
   const updateMutation = useUpdateProductionOrder();
@@ -70,9 +74,15 @@ export default function ProductionOrders() {
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [form, setForm] = useState(defaultForm);
 
+  function generateOrderNumber() {
+    const year = new Date().getFullYear();
+    const nextNum = orders.length + 1;
+    return `PO-${year}-${String(nextNum).padStart(3, "0")}`;
+  }
+
   function openAdd() {
     setEditItem(null);
-    setForm(defaultForm);
+    setForm({ ...defaultForm, orderNumber: generateOrderNumber() });
     setDialogOpen(true);
   }
 
@@ -81,6 +91,7 @@ export default function ProductionOrders() {
     const d = new Date(Number(item.targetDate) / 1_000_000);
     setForm({
       orderNumber: item.orderNumber,
+      lotNumber: item.lotNumber,
       productType: item.productType,
       yarnCountNe: String(Number(item.yarnCountNe)),
       twistDirection: item.twistDirection,
@@ -99,6 +110,7 @@ export default function ProductionOrders() {
         await updateMutation.mutateAsync({
           id: editItem.id,
           orderNumber: form.orderNumber,
+          lotNumber: form.lotNumber,
           productType: form.productType,
           yarnCountNe: BigInt(Math.round(Number(form.yarnCountNe))),
           twistDirection: form.twistDirection,
@@ -110,6 +122,7 @@ export default function ProductionOrders() {
       } else {
         await createMutation.mutateAsync({
           orderNumber: form.orderNumber,
+          lotNumber: form.lotNumber,
           productType: form.productType,
           yarnCountNe: BigInt(Math.round(Number(form.yarnCountNe))),
           twistDirection: form.twistDirection,
@@ -121,7 +134,9 @@ export default function ProductionOrders() {
       }
       setDialogOpen(false);
     } catch {
-      toast.error("Operation failed");
+      toast.error(
+        isLoggedIn ? "Operation failed" : "Please sign in to save data",
+      );
     }
   }
 
@@ -131,7 +146,7 @@ export default function ProductionOrders() {
       await deleteMutation.mutateAsync(deleteId);
       toast.success("Order deleted");
     } catch {
-      toast.error("Delete failed");
+      toast.error(isLoggedIn ? "Delete failed" : "Please sign in to save data");
     } finally {
       setDeleteId(null);
     }
@@ -180,13 +195,16 @@ export default function ProductionOrders() {
                   Order #
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                  Lot No.
+                </TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">
                   Product Type
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">
                   Yarn Count (Ne)
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">
-                  Twist
+                  Type
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">
                   Qty (kg)
@@ -212,14 +230,19 @@ export default function ProductionOrders() {
                   <TableCell className="font-mono-nums font-medium">
                     {order.orderNumber}
                   </TableCell>
+                  <TableCell className="font-mono-nums text-sm">
+                    {order.lotNumber || (
+                      <span className="text-muted-foreground/50">—</span>
+                    )}
+                  </TableCell>
                   <TableCell className="capitalize">
                     {order.productType}
                   </TableCell>
                   <TableCell className="font-mono-nums">
                     {Number(order.yarnCountNe)}
                   </TableCell>
-                  <TableCell className="uppercase font-mono-nums">
-                    {order.twistDirection}
+                  <TableCell className="font-mono-nums">
+                    {order.twistDirection === TD.s ? "OE" : "RS"}
                   </TableCell>
                   <TableCell className="font-mono-nums">
                     {Number(order.quantityKg).toLocaleString()}
@@ -279,10 +302,27 @@ export default function ProductionOrders() {
                   onChange={(e) =>
                     setForm((p) => ({ ...p, orderNumber: e.target.value }))
                   }
-                  placeholder="PO-2024-001"
+                  placeholder="PO-2026-001"
+                  readOnly={!editItem}
+                  className={!editItem ? "bg-muted/50 cursor-default" : ""}
                   required
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ord-lot">Lot Number</Label>
+                <Input
+                  id="ord-lot"
+                  data-ocid="orders.lot_number_input"
+                  value={form.lotNumber}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, lotNumber: e.target.value }))
+                  }
+                  placeholder="LOT-2026-001"
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="ord-type">Product Type</Label>
                 <Select
@@ -300,8 +340,6 @@ export default function ProductionOrders() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="ord-ne">Yarn Count (Ne)</Label>
                 <Input
@@ -317,7 +355,7 @@ export default function ProductionOrders() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="ord-twist">Twist Direction</Label>
+                <Label htmlFor="ord-twist">Type</Label>
                 <Select
                   value={form.twistDirection}
                   onValueChange={(v) =>
@@ -331,11 +369,13 @@ export default function ProductionOrders() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={TD.s}>S-Twist</SelectItem>
-                    <SelectItem value={TD.z}>Z-Twist</SelectItem>
+                    <SelectItem value={TD.s}>OE</SelectItem>
+                    <SelectItem value={TD.z}>RS</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="ord-qty">Quantity (kg)</Label>
                 <Input
@@ -350,8 +390,6 @@ export default function ProductionOrders() {
                   required
                 />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="ord-date">Target Date</Label>
                 <Input
@@ -364,7 +402,9 @@ export default function ProductionOrders() {
                   required
                 />
               </div>
-              {editItem && (
+            </div>
+            {editItem && (
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="ord-status">Status</Label>
                   <Select
@@ -384,8 +424,8 @@ export default function ProductionOrders() {
                     </SelectContent>
                   </Select>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
             <DialogFooter>
               <Button
                 type="button"

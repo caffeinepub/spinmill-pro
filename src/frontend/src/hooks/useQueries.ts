@@ -3,6 +3,7 @@ import type {
   BatchStage,
   DashboardStats,
   InventoryStatus,
+  InwardEntry,
   Machine,
   MachineStatus,
   MachineType,
@@ -11,11 +12,14 @@ import type {
   ProductType,
   ProductionLog,
   ProductionOrder,
+  PurchaseOrder,
   QualityTest,
   RawMaterial,
   RawMaterialStatus,
   Shift,
   TwistDirection,
+  Warehouse,
+  WarehouseStock,
   YarnInventory,
 } from "../backend.d";
 import { useActor } from "./useActor";
@@ -31,6 +35,7 @@ export function useDashboardStats() {
       return actor.getDashboardStats();
     },
     enabled: !!actor && !isFetching,
+    retry: false,
   });
 }
 
@@ -45,6 +50,7 @@ export function useRawMaterials() {
       return actor.getAllRawMaterials();
     },
     enabled: !!actor && !isFetching,
+    retry: false,
   });
 }
 
@@ -57,6 +63,8 @@ export function useAddRawMaterial() {
       supplier: string;
       grade: string;
       weightKg: bigint;
+      warehouse: Warehouse;
+      inwardEntryId: bigint | null;
     }) => {
       if (!actor) throw new Error("No actor");
       return actor.addRawMaterial(
@@ -64,6 +72,8 @@ export function useAddRawMaterial() {
         args.supplier,
         args.grade,
         args.weightKg,
+        args.warehouse,
+        args.inwardEntryId,
       );
     },
     onSuccess: () => {
@@ -84,6 +94,7 @@ export function useUpdateRawMaterial() {
       grade: string;
       weightKg: bigint;
       status: RawMaterialStatus;
+      warehouse: Warehouse;
     }) => {
       if (!actor) throw new Error("No actor");
       return actor.updateRawMaterial(
@@ -93,6 +104,7 @@ export function useUpdateRawMaterial() {
         args.grade,
         args.weightKg,
         args.status,
+        args.warehouse,
       );
     },
     onSuccess: () => {
@@ -128,6 +140,7 @@ export function useProductionOrders() {
       return actor.getAllProductionOrders();
     },
     enabled: !!actor && !isFetching,
+    retry: false,
   });
 }
 
@@ -137,6 +150,7 @@ export function useCreateProductionOrder() {
   return useMutation({
     mutationFn: async (args: {
       orderNumber: string;
+      lotNumber: string;
       productType: ProductType;
       yarnCountNe: bigint;
       twistDirection: TwistDirection;
@@ -147,6 +161,7 @@ export function useCreateProductionOrder() {
       if (!actor) throw new Error("No actor");
       return actor.createProductionOrder(
         args.orderNumber,
+        args.lotNumber,
         args.productType,
         args.yarnCountNe,
         args.twistDirection,
@@ -169,6 +184,7 @@ export function useUpdateProductionOrder() {
     mutationFn: async (args: {
       id: bigint;
       orderNumber: string;
+      lotNumber: string;
       productType: ProductType;
       yarnCountNe: bigint;
       twistDirection: TwistDirection;
@@ -180,6 +196,7 @@ export function useUpdateProductionOrder() {
       return actor.updateProductionOrder(
         args.id,
         args.orderNumber,
+        args.lotNumber,
         args.productType,
         args.yarnCountNe,
         args.twistDirection,
@@ -221,6 +238,7 @@ export function useMachines() {
       return actor.getAllMachines();
     },
     enabled: !!actor && !isFetching,
+    retry: false,
   });
 }
 
@@ -306,6 +324,7 @@ export function useBatchStages() {
       return actor.getAllBatchStages();
     },
     enabled: !!actor && !isFetching,
+    retry: false,
   });
 }
 
@@ -394,6 +413,7 @@ export function useQualityTests() {
       return actor.getAllQualityTests();
     },
     enabled: !!actor && !isFetching,
+    retry: false,
   });
 }
 
@@ -495,6 +515,7 @@ export function useProductionLogs() {
       return actor.getAllProductionLogs();
     },
     enabled: !!actor && !isFetching,
+    retry: false,
   });
 }
 
@@ -575,6 +596,7 @@ export function useYarnInventory() {
       return actor.getAllYarnInventory();
     },
     enabled: !!actor && !isFetching,
+    retry: false,
   });
 }
 
@@ -650,5 +672,179 @@ export function useDeleteYarnInventory() {
       qc.invalidateQueries({ queryKey: ["yarnInventory"] });
       qc.invalidateQueries({ queryKey: ["dashboardStats"] });
     },
+  });
+}
+
+// ─── Purchase Orders ──────────────────────────────────────────────────────────
+
+export function usePurchaseOrders() {
+  const { actor, isFetching } = useActor();
+  return useQuery<PurchaseOrder[]>({
+    queryKey: ["purchaseOrders"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllPurchaseOrders();
+    },
+    enabled: !!actor && !isFetching,
+    retry: false,
+  });
+}
+
+export function useCreatePurchaseOrder() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      poNumber: string;
+      supplier: string;
+      materialName: string;
+      orderedQty: bigint;
+      orderDate: bigint;
+      expectedDeliveryDate: bigint;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.createPurchaseOrder(
+        args.poNumber,
+        args.supplier,
+        args.materialName,
+        args.orderedQty,
+        args.orderDate,
+        args.expectedDeliveryDate,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+}
+
+export function useUpdatePurchaseOrder() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: bigint;
+      poNumber: string;
+      supplier: string;
+      materialName: string;
+      orderedQty: bigint;
+      orderDate: bigint;
+      expectedDeliveryDate: bigint;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.updatePurchaseOrder(
+        args.id,
+        args.poNumber,
+        args.supplier,
+        args.materialName,
+        args.orderedQty,
+        args.orderDate,
+        args.expectedDeliveryDate,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+}
+
+export function useDeletePurchaseOrder() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("No actor");
+      return actor.deletePurchaseOrder(id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+}
+
+// ─── Inward Entries ───────────────────────────────────────────────────────────
+
+export function useInwardEntries() {
+  const { actor, isFetching } = useActor();
+  return useQuery<InwardEntry[]>({
+    queryKey: ["inwardEntries"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllInwardEntries();
+    },
+    enabled: !!actor && !isFetching,
+    retry: false,
+  });
+}
+
+export function useAddInwardEntry() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      inwardNumber: string;
+      purchaseOrderId: bigint;
+      inwardDate: bigint;
+      materialName: string;
+      receivedQty: bigint;
+      warehouse: Warehouse;
+      vehicleNumber: string;
+      remarks: string;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.addInwardEntry(
+        args.inwardNumber,
+        args.purchaseOrderId,
+        args.inwardDate,
+        args.materialName,
+        args.receivedQty,
+        args.warehouse,
+        args.vehicleNumber,
+        args.remarks,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inwardEntries"] });
+      qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
+      qc.invalidateQueries({ queryKey: ["warehouseStock"] });
+      qc.invalidateQueries({ queryKey: ["rawMaterials"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+}
+
+export function useDeleteInwardEntry() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("No actor");
+      return actor.deleteInwardEntry(id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inwardEntries"] });
+      qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
+      qc.invalidateQueries({ queryKey: ["warehouseStock"] });
+      qc.invalidateQueries({ queryKey: ["rawMaterials"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+}
+
+// ─── Warehouse Stock ──────────────────────────────────────────────────────────
+
+export function useWarehouseStock() {
+  const { actor, isFetching } = useActor();
+  return useQuery<WarehouseStock[]>({
+    queryKey: ["warehouseStock"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllWarehouseStock();
+    },
+    enabled: !!actor && !isFetching,
+    retry: false,
   });
 }

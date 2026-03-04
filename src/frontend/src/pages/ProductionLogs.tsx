@@ -34,6 +34,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAddProductionLog,
   useDeleteProductionLog,
@@ -64,6 +65,8 @@ const defaultForm = {
 };
 
 export default function ProductionLogs() {
+  const { identity } = useInternetIdentity();
+  const isLoggedIn = !!identity;
   const { data: logs = [], isLoading } = useProductionLogs();
   const { data: machines = [] } = useMachines();
   const addMutation = useAddProductionLog();
@@ -116,7 +119,9 @@ export default function ProductionLogs() {
       }
       setDialogOpen(false);
     } catch {
-      toast.error("Operation failed");
+      toast.error(
+        isLoggedIn ? "Operation failed" : "Please sign in to save data",
+      );
     }
   }
 
@@ -126,7 +131,7 @@ export default function ProductionLogs() {
       await deleteMutation.mutateAsync(deleteId);
       toast.success("Log deleted");
     } catch {
-      toast.error("Delete failed");
+      toast.error(isLoggedIn ? "Delete failed" : "Please sign in to save data");
     } finally {
       setDeleteId(null);
     }

@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import {
+  BarChart2,
   ChevronRight,
   ClipboardList,
   Factory,
@@ -13,30 +14,38 @@ import {
   Menu,
   Package,
   Package2,
+  PackageOpen,
   Settings2,
   ShieldCheck,
+  ShoppingCart,
   X,
 } from "lucide-react";
 import { useState } from "react";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import BatchTracking from "./pages/BatchTracking";
 import Dashboard from "./pages/Dashboard";
+import InwardEntry from "./pages/InwardEntry";
 import Machines from "./pages/Machines";
 import ProductionLogs from "./pages/ProductionLogs";
 import ProductionOrders from "./pages/ProductionOrders";
+import PurchaseOrders from "./pages/PurchaseOrders";
 import QualityControl from "./pages/QualityControl";
 import RawMaterials from "./pages/RawMaterials";
+import Reports from "./pages/Reports";
 import YarnInventory from "./pages/YarnInventory";
 
 type PageId =
   | "dashboard"
   | "raw-materials"
+  | "purchase-orders"
+  | "inward"
   | "production-orders"
   | "machines"
   | "batch-tracking"
   | "quality-control"
   | "production-logs"
-  | "yarn-inventory";
+  | "yarn-inventory"
+  | "reports";
 
 interface NavItem {
   id: PageId;
@@ -55,7 +64,19 @@ const navItems: NavItem[] = [
     id: "raw-materials",
     label: "Raw Materials",
     icon: <Package className="w-4 h-4" />,
-    group: "Production",
+    group: "Procurement",
+  },
+  {
+    id: "purchase-orders",
+    label: "Purchase Orders",
+    icon: <ShoppingCart className="w-4 h-4" />,
+    group: "Procurement",
+  },
+  {
+    id: "inward",
+    label: "Inward Entry",
+    icon: <PackageOpen className="w-4 h-4" />,
+    group: "Procurement",
   },
   {
     id: "production-orders",
@@ -82,6 +103,12 @@ const navItems: NavItem[] = [
     group: "Quality",
   },
   {
+    id: "reports",
+    label: "Reports",
+    icon: <BarChart2 className="w-4 h-4" />,
+    group: "Reports",
+  },
+  {
     id: "production-logs",
     label: "Production Logs",
     icon: <FileText className="w-4 h-4" />,
@@ -98,15 +125,18 @@ const navItems: NavItem[] = [
 const pageComponents: Record<PageId, React.ReactNode> = {
   dashboard: <Dashboard />,
   "raw-materials": <RawMaterials />,
+  "purchase-orders": <PurchaseOrders />,
+  inward: <InwardEntry />,
   "production-orders": <ProductionOrders />,
   machines: <Machines />,
   "batch-tracking": <BatchTracking />,
   "quality-control": <QualityControl />,
   "production-logs": <ProductionLogs />,
   "yarn-inventory": <YarnInventory />,
+  reports: <Reports />,
 };
 
-const groups = ["Production", "Quality", "Reports"];
+const groups = ["Procurement", "Production", "Quality", "Reports"];
 
 export default function App() {
   const [activePage, setActivePage] = useState<PageId>("dashboard");

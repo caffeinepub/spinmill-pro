@@ -20,6 +20,10 @@ export const ProcessStage = IDL.Variant({
   'drawing' : IDL.Null,
 });
 export const Time = IDL.Int;
+export const Warehouse = IDL.Variant({
+  'oeRawMaterial' : IDL.Null,
+  'ringRawMaterial' : IDL.Null,
+});
 export const Shift = IDL.Variant({
   'morning' : IDL.Null,
   'night' : IDL.Null,
@@ -55,6 +59,17 @@ export const BatchStage = IDL.Record({
   'stage' : ProcessStage,
   'batchId' : IDL.Nat,
   'machineId' : IDL.Nat,
+});
+export const InwardEntry = IDL.Record({
+  'id' : IDL.Nat,
+  'receivedQty' : IDL.Nat,
+  'inwardDate' : Time,
+  'inwardNumber' : IDL.Text,
+  'vehicleNumber' : IDL.Text,
+  'purchaseOrderId' : IDL.Nat,
+  'warehouse' : Warehouse,
+  'materialName' : IDL.Text,
+  'remarks' : IDL.Text,
 });
 export const MachineStatus = IDL.Variant({
   'idle' : IDL.Null,
@@ -93,9 +108,25 @@ export const ProductionOrder = IDL.Record({
   'yarnCountNe' : IDL.Nat,
   'twistDirection' : TwistDirection,
   'productType' : ProductType,
+  'lotNumber' : IDL.Text,
   'targetDate' : Time,
   'orderNumber' : IDL.Text,
   'quantityKg' : IDL.Nat,
+});
+export const PurchaseOrderStatus = IDL.Variant({
+  'closed' : IDL.Null,
+  'open' : IDL.Null,
+  'partiallyReceived' : IDL.Null,
+});
+export const PurchaseOrder = IDL.Record({
+  'id' : IDL.Nat,
+  'status' : PurchaseOrderStatus,
+  'orderedQty' : IDL.Nat,
+  'expectedDeliveryDate' : Time,
+  'supplier' : IDL.Text,
+  'orderDate' : Time,
+  'materialName' : IDL.Text,
+  'poNumber' : IDL.Text,
 });
 export const QualityTest = IDL.Record({
   'id' : IDL.Nat,
@@ -117,11 +148,18 @@ export const RawMaterialStatus = IDL.Variant({
 export const RawMaterial = IDL.Record({
   'id' : IDL.Nat,
   'status' : RawMaterialStatus,
+  'inwardEntryId' : IDL.Opt(IDL.Nat),
   'supplier' : IDL.Text,
   'lotNumber' : IDL.Text,
   'weightKg' : IDL.Nat,
   'grade' : IDL.Text,
   'dateReceived' : Time,
+  'warehouse' : Warehouse,
+});
+export const WarehouseStock = IDL.Record({
+  'totalQty' : IDL.Nat,
+  'warehouse' : Warehouse,
+  'materialName' : IDL.Text,
 });
 export const YarnInventory = IDL.Record({
   'id' : IDL.Nat,
@@ -139,16 +177,33 @@ export const UserProfile = IDL.Record({
 });
 export const DashboardStats = IDL.Record({
   'totalRawMaterialWeightAvailable' : IDL.Nat,
+  'ringWarehouseStockKg' : IDL.Nat,
   'recentQualityTestPassRate' : IDL.Nat,
   'totalYarnInventoryWeight' : IDL.Nat,
+  'oeWarehouseStockKg' : IDL.Nat,
   'totalActiveOrders' : IDL.Nat,
   'totalMachinesRunning' : IDL.Nat,
+  'totalInwardTodayKg' : IDL.Nat,
 });
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addBatchStage' : IDL.Func(
       [IDL.Nat, ProcessStage, IDL.Nat, IDL.Nat, IDL.Nat, Time, Time, IDL.Text],
+      [IDL.Nat],
+      [],
+    ),
+  'addInwardEntry' : IDL.Func(
+      [
+        IDL.Text,
+        IDL.Nat,
+        Time,
+        IDL.Text,
+        IDL.Nat,
+        Warehouse,
+        IDL.Text,
+        IDL.Text,
+      ],
       [IDL.Nat],
       [],
     ),
@@ -173,7 +228,7 @@ export const idlService = IDL.Service({
       [],
     ),
   'addRawMaterial' : IDL.Func(
-      [IDL.Text, IDL.Text, IDL.Text, IDL.Nat],
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Nat, Warehouse, IDL.Opt(IDL.Nat)],
       [IDL.Nat],
       [],
     ),
@@ -186,6 +241,7 @@ export const idlService = IDL.Service({
   'createProductionOrder' : IDL.Func(
       [
         IDL.Text,
+        IDL.Text,
         ProductType,
         IDL.Nat,
         TwistDirection,
@@ -196,14 +252,22 @@ export const idlService = IDL.Service({
       [IDL.Nat],
       [],
     ),
+  'createPurchaseOrder' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Nat, Time, Time],
+      [IDL.Nat],
+      [],
+    ),
   'deleteBatchStage' : IDL.Func([IDL.Nat], [], []),
+  'deleteInwardEntry' : IDL.Func([IDL.Nat], [], []),
   'deleteMachine' : IDL.Func([IDL.Nat], [], []),
   'deleteProductionLog' : IDL.Func([IDL.Nat], [], []),
   'deleteProductionOrder' : IDL.Func([IDL.Nat], [], []),
+  'deletePurchaseOrder' : IDL.Func([IDL.Nat], [], []),
   'deleteQualityTest' : IDL.Func([IDL.Nat], [], []),
   'deleteRawMaterial' : IDL.Func([IDL.Nat], [], []),
   'deleteYarnInventory' : IDL.Func([IDL.Nat], [], []),
   'getAllBatchStages' : IDL.Func([], [IDL.Vec(BatchStage)], ['query']),
+  'getAllInwardEntries' : IDL.Func([], [IDL.Vec(InwardEntry)], ['query']),
   'getAllMachines' : IDL.Func([], [IDL.Vec(Machine)], ['query']),
   'getAllProductionLogs' : IDL.Func([], [IDL.Vec(ProductionLog)], ['query']),
   'getAllProductionOrders' : IDL.Func(
@@ -211,13 +275,21 @@ export const idlService = IDL.Service({
       [IDL.Vec(ProductionOrder)],
       ['query'],
     ),
+  'getAllPurchaseOrders' : IDL.Func([], [IDL.Vec(PurchaseOrder)], ['query']),
   'getAllQualityTests' : IDL.Func([], [IDL.Vec(QualityTest)], ['query']),
   'getAllRawMaterials' : IDL.Func([], [IDL.Vec(RawMaterial)], ['query']),
+  'getAllWarehouseStock' : IDL.Func([], [IDL.Vec(WarehouseStock)], ['query']),
   'getAllYarnInventory' : IDL.Func([], [IDL.Vec(YarnInventory)], ['query']),
   'getBatchStage' : IDL.Func([IDL.Nat], [IDL.Opt(BatchStage)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getDashboardStats' : IDL.Func([], [DashboardStats], ['query']),
+  'getInwardEntriesByPO' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Vec(InwardEntry)],
+      ['query'],
+    ),
+  'getInwardEntry' : IDL.Func([IDL.Nat], [IDL.Opt(InwardEntry)], ['query']),
   'getMachine' : IDL.Func([IDL.Nat], [IDL.Opt(Machine)], ['query']),
   'getProductionLog' : IDL.Func([IDL.Nat], [IDL.Opt(ProductionLog)], ['query']),
   'getProductionOrder' : IDL.Func(
@@ -225,6 +297,7 @@ export const idlService = IDL.Service({
       [IDL.Opt(ProductionOrder)],
       ['query'],
     ),
+  'getPurchaseOrder' : IDL.Func([IDL.Nat], [IDL.Opt(PurchaseOrder)], ['query']),
   'getQualityTest' : IDL.Func([IDL.Nat], [IDL.Opt(QualityTest)], ['query']),
   'getRawMaterial' : IDL.Func([IDL.Nat], [IDL.Opt(RawMaterial)], ['query']),
   'getUserProfile' : IDL.Func(
@@ -276,6 +349,7 @@ export const idlService = IDL.Service({
       [
         IDL.Nat,
         IDL.Text,
+        IDL.Text,
         ProductType,
         IDL.Nat,
         TwistDirection,
@@ -283,6 +357,11 @@ export const idlService = IDL.Service({
         Time,
         OrderStatus,
       ],
+      [],
+      [],
+    ),
+  'updatePurchaseOrder' : IDL.Func(
+      [IDL.Nat, IDL.Text, IDL.Text, IDL.Text, IDL.Nat, Time, Time],
       [],
       [],
     ),
@@ -303,7 +382,15 @@ export const idlService = IDL.Service({
       [],
     ),
   'updateRawMaterial' : IDL.Func(
-      [IDL.Nat, IDL.Text, IDL.Text, IDL.Text, IDL.Nat, RawMaterialStatus],
+      [
+        IDL.Nat,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Nat,
+        RawMaterialStatus,
+        Warehouse,
+      ],
       [],
       [],
     ),
@@ -337,6 +424,10 @@ export const idlFactory = ({ IDL }) => {
     'drawing' : IDL.Null,
   });
   const Time = IDL.Int;
+  const Warehouse = IDL.Variant({
+    'oeRawMaterial' : IDL.Null,
+    'ringRawMaterial' : IDL.Null,
+  });
   const Shift = IDL.Variant({
     'morning' : IDL.Null,
     'night' : IDL.Null,
@@ -369,6 +460,17 @@ export const idlFactory = ({ IDL }) => {
     'stage' : ProcessStage,
     'batchId' : IDL.Nat,
     'machineId' : IDL.Nat,
+  });
+  const InwardEntry = IDL.Record({
+    'id' : IDL.Nat,
+    'receivedQty' : IDL.Nat,
+    'inwardDate' : Time,
+    'inwardNumber' : IDL.Text,
+    'vehicleNumber' : IDL.Text,
+    'purchaseOrderId' : IDL.Nat,
+    'warehouse' : Warehouse,
+    'materialName' : IDL.Text,
+    'remarks' : IDL.Text,
   });
   const MachineStatus = IDL.Variant({
     'idle' : IDL.Null,
@@ -407,9 +509,25 @@ export const idlFactory = ({ IDL }) => {
     'yarnCountNe' : IDL.Nat,
     'twistDirection' : TwistDirection,
     'productType' : ProductType,
+    'lotNumber' : IDL.Text,
     'targetDate' : Time,
     'orderNumber' : IDL.Text,
     'quantityKg' : IDL.Nat,
+  });
+  const PurchaseOrderStatus = IDL.Variant({
+    'closed' : IDL.Null,
+    'open' : IDL.Null,
+    'partiallyReceived' : IDL.Null,
+  });
+  const PurchaseOrder = IDL.Record({
+    'id' : IDL.Nat,
+    'status' : PurchaseOrderStatus,
+    'orderedQty' : IDL.Nat,
+    'expectedDeliveryDate' : Time,
+    'supplier' : IDL.Text,
+    'orderDate' : Time,
+    'materialName' : IDL.Text,
+    'poNumber' : IDL.Text,
   });
   const QualityTest = IDL.Record({
     'id' : IDL.Nat,
@@ -431,11 +549,18 @@ export const idlFactory = ({ IDL }) => {
   const RawMaterial = IDL.Record({
     'id' : IDL.Nat,
     'status' : RawMaterialStatus,
+    'inwardEntryId' : IDL.Opt(IDL.Nat),
     'supplier' : IDL.Text,
     'lotNumber' : IDL.Text,
     'weightKg' : IDL.Nat,
     'grade' : IDL.Text,
     'dateReceived' : Time,
+    'warehouse' : Warehouse,
+  });
+  const WarehouseStock = IDL.Record({
+    'totalQty' : IDL.Nat,
+    'warehouse' : Warehouse,
+    'materialName' : IDL.Text,
   });
   const YarnInventory = IDL.Record({
     'id' : IDL.Nat,
@@ -453,10 +578,13 @@ export const idlFactory = ({ IDL }) => {
   });
   const DashboardStats = IDL.Record({
     'totalRawMaterialWeightAvailable' : IDL.Nat,
+    'ringWarehouseStockKg' : IDL.Nat,
     'recentQualityTestPassRate' : IDL.Nat,
     'totalYarnInventoryWeight' : IDL.Nat,
+    'oeWarehouseStockKg' : IDL.Nat,
     'totalActiveOrders' : IDL.Nat,
     'totalMachinesRunning' : IDL.Nat,
+    'totalInwardTodayKg' : IDL.Nat,
   });
   
   return IDL.Service({
@@ -470,6 +598,20 @@ export const idlFactory = ({ IDL }) => {
           IDL.Nat,
           Time,
           Time,
+          IDL.Text,
+        ],
+        [IDL.Nat],
+        [],
+      ),
+    'addInwardEntry' : IDL.Func(
+        [
+          IDL.Text,
+          IDL.Nat,
+          Time,
+          IDL.Text,
+          IDL.Nat,
+          Warehouse,
+          IDL.Text,
           IDL.Text,
         ],
         [IDL.Nat],
@@ -496,7 +638,7 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'addRawMaterial' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Text, IDL.Nat],
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Nat, Warehouse, IDL.Opt(IDL.Nat)],
         [IDL.Nat],
         [],
       ),
@@ -509,6 +651,7 @@ export const idlFactory = ({ IDL }) => {
     'createProductionOrder' : IDL.Func(
         [
           IDL.Text,
+          IDL.Text,
           ProductType,
           IDL.Nat,
           TwistDirection,
@@ -519,14 +662,22 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Nat],
         [],
       ),
+    'createPurchaseOrder' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Nat, Time, Time],
+        [IDL.Nat],
+        [],
+      ),
     'deleteBatchStage' : IDL.Func([IDL.Nat], [], []),
+    'deleteInwardEntry' : IDL.Func([IDL.Nat], [], []),
     'deleteMachine' : IDL.Func([IDL.Nat], [], []),
     'deleteProductionLog' : IDL.Func([IDL.Nat], [], []),
     'deleteProductionOrder' : IDL.Func([IDL.Nat], [], []),
+    'deletePurchaseOrder' : IDL.Func([IDL.Nat], [], []),
     'deleteQualityTest' : IDL.Func([IDL.Nat], [], []),
     'deleteRawMaterial' : IDL.Func([IDL.Nat], [], []),
     'deleteYarnInventory' : IDL.Func([IDL.Nat], [], []),
     'getAllBatchStages' : IDL.Func([], [IDL.Vec(BatchStage)], ['query']),
+    'getAllInwardEntries' : IDL.Func([], [IDL.Vec(InwardEntry)], ['query']),
     'getAllMachines' : IDL.Func([], [IDL.Vec(Machine)], ['query']),
     'getAllProductionLogs' : IDL.Func([], [IDL.Vec(ProductionLog)], ['query']),
     'getAllProductionOrders' : IDL.Func(
@@ -534,13 +685,21 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(ProductionOrder)],
         ['query'],
       ),
+    'getAllPurchaseOrders' : IDL.Func([], [IDL.Vec(PurchaseOrder)], ['query']),
     'getAllQualityTests' : IDL.Func([], [IDL.Vec(QualityTest)], ['query']),
     'getAllRawMaterials' : IDL.Func([], [IDL.Vec(RawMaterial)], ['query']),
+    'getAllWarehouseStock' : IDL.Func([], [IDL.Vec(WarehouseStock)], ['query']),
     'getAllYarnInventory' : IDL.Func([], [IDL.Vec(YarnInventory)], ['query']),
     'getBatchStage' : IDL.Func([IDL.Nat], [IDL.Opt(BatchStage)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getDashboardStats' : IDL.Func([], [DashboardStats], ['query']),
+    'getInwardEntriesByPO' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Vec(InwardEntry)],
+        ['query'],
+      ),
+    'getInwardEntry' : IDL.Func([IDL.Nat], [IDL.Opt(InwardEntry)], ['query']),
     'getMachine' : IDL.Func([IDL.Nat], [IDL.Opt(Machine)], ['query']),
     'getProductionLog' : IDL.Func(
         [IDL.Nat],
@@ -550,6 +709,11 @@ export const idlFactory = ({ IDL }) => {
     'getProductionOrder' : IDL.Func(
         [IDL.Nat],
         [IDL.Opt(ProductionOrder)],
+        ['query'],
+      ),
+    'getPurchaseOrder' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Opt(PurchaseOrder)],
         ['query'],
       ),
     'getQualityTest' : IDL.Func([IDL.Nat], [IDL.Opt(QualityTest)], ['query']),
@@ -607,6 +771,7 @@ export const idlFactory = ({ IDL }) => {
         [
           IDL.Nat,
           IDL.Text,
+          IDL.Text,
           ProductType,
           IDL.Nat,
           TwistDirection,
@@ -614,6 +779,11 @@ export const idlFactory = ({ IDL }) => {
           Time,
           OrderStatus,
         ],
+        [],
+        [],
+      ),
+    'updatePurchaseOrder' : IDL.Func(
+        [IDL.Nat, IDL.Text, IDL.Text, IDL.Text, IDL.Nat, Time, Time],
         [],
         [],
       ),
@@ -634,7 +804,15 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'updateRawMaterial' : IDL.Func(
-        [IDL.Nat, IDL.Text, IDL.Text, IDL.Text, IDL.Nat, RawMaterialStatus],
+        [
+          IDL.Nat,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Nat,
+          RawMaterialStatus,
+          Warehouse,
+        ],
         [],
         [],
       ),

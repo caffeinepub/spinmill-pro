@@ -1,13 +1,5 @@
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -24,85 +16,120 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Package, Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { FilterX, Package, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import type { RawMaterial, RawMaterialStatus } from "../backend.d";
-import { RawMaterialStatus as RMS } from "../backend.d";
+import { Warehouse } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
-import { StatusBadge } from "../components/StatusBadge";
-import {
-  useAddRawMaterial,
-  useDeleteRawMaterial,
-  useRawMaterials,
-  useUpdateRawMaterial,
-} from "../hooks/useQueries";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { useDeleteRawMaterial, useRawMaterials } from "../hooks/useQueries";
 
-const defaultForm = {
-  lotNumber: "",
-  supplier: "",
-  grade: "",
-  weightKg: "",
-  status: RMS.available as RawMaterialStatus,
-};
+function WarehouseBadge({ warehouse }: { warehouse: Warehouse }) {
+  if (warehouse === Warehouse.oeRawMaterial) {
+    return (
+      <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 font-medium">
+        OE Raw Material
+      </Badge>
+    );
+  }
+  return (
+    <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 border-purple-200 font-medium">
+      Ring Raw Material
+    </Badge>
+  );
+}
+
+function formatMonthYear(timestampNs: bigint): string {
+  const ms = Number(timestampNs) / 1_000_000;
+  const date = new Date(ms);
+  return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
+function getMonthYearKey(timestampNs: bigint): string {
+  const ms = Number(timestampNs) / 1_000_000;
+  const date = new Date(ms);
+  // zero-padded month for sorting: "2026-01", "2026-03"
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
 
 export default function RawMaterials() {
+  const { identity } = useInternetIdentity();
+  const isLoggedIn = !!identity;
   const { data: materials = [], isLoading } = useRawMaterials();
-  const addMutation = useAddRawMaterial();
-  const updateMutation = useUpdateRawMaterial();
   const deleteMutation = useDeleteRawMaterial();
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editItem, setEditItem] = useState<RawMaterial | null>(null);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
-  const [form, setForm] = useState(defaultForm);
 
-  function openAdd() {
-    setEditItem(null);
-    setForm(defaultForm);
-    setDialogOpen(true);
-  }
+  // Filter state
+  const [supplierFilter, setSupplierFilter] = useState<string>("all");
+  const [gradeFilter, setGradeFilter] = useState<string>("all");
+  const [warehouseFilter, setWarehouseFilter] = useState<string>("all");
+  const [monthFilter, setMonthFilter] = useState<string>("all");
 
-  function openEdit(item: RawMaterial) {
-    setEditItem(item);
-    setForm({
-      lotNumber: item.lotNumber,
-      supplier: item.supplier,
-      grade: item.grade,
-      weightKg: String(Number(item.weightKg)),
-      status: item.status,
-    });
-    setDialogOpen(true);
-  }
+  // Derive unique filter options from the data
+  const supplierOptions = useMemo(() => {
+    const unique = Array.from(
+      new Set(materials.map((m) => m.supplier).filter(Boolean)),
+    );
+    return unique.sort();
+  }, [materials]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    try {
-      if (editItem) {
-        await updateMutation.mutateAsync({
-          id: editItem.id,
-          lotNumber: form.lotNumber,
-          supplier: form.supplier,
-          grade: form.grade,
-          weightKg: BigInt(Math.round(Number(form.weightKg))),
-          status: form.status,
-        });
-        toast.success("Raw material updated");
-      } else {
-        await addMutation.mutateAsync({
-          lotNumber: form.lotNumber,
-          supplier: form.supplier,
-          grade: form.grade,
-          weightKg: BigInt(Math.round(Number(form.weightKg))),
-        });
-        toast.success("Raw material added");
+  const gradeOptions = useMemo(() => {
+    const unique = Array.from(
+      new Set(materials.map((m) => m.grade).filter(Boolean)),
+    );
+    return unique.sort();
+  }, [materials]);
+
+  const monthOptions = useMemo(() => {
+    const seen = new Map<string, string>(); // key -> label
+    for (const m of materials) {
+      const key = getMonthYearKey(m.dateReceived);
+      if (!seen.has(key)) {
+        seen.set(key, formatMonthYear(m.dateReceived));
       }
-      setDialogOpen(false);
-    } catch {
-      toast.error("Operation failed");
     }
+    // sort descending (most recent first)
+    return Array.from(seen.entries())
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([key, label]) => ({ key, label }));
+  }, [materials]);
+
+  // Apply filters
+  const filteredMaterials = useMemo(() => {
+    return materials.filter((m) => {
+      if (supplierFilter !== "all" && m.supplier !== supplierFilter)
+        return false;
+      if (gradeFilter !== "all" && m.grade !== gradeFilter) return false;
+      if (warehouseFilter !== "all") {
+        if (warehouseFilter === "oe" && m.warehouse !== Warehouse.oeRawMaterial)
+          return false;
+        if (
+          warehouseFilter === "ring" &&
+          m.warehouse !== Warehouse.ringRawMaterial
+        )
+          return false;
+      }
+      if (monthFilter !== "all") {
+        if (getMonthYearKey(m.dateReceived) !== monthFilter) return false;
+      }
+      return true;
+    });
+  }, [materials, supplierFilter, gradeFilter, warehouseFilter, monthFilter]);
+
+  const isAnyFilterActive =
+    supplierFilter !== "all" ||
+    gradeFilter !== "all" ||
+    warehouseFilter !== "all" ||
+    monthFilter !== "all";
+
+  function clearFilters() {
+    setSupplierFilter("all");
+    setGradeFilter("all");
+    setWarehouseFilter("all");
+    setMonthFilter("all");
   }
 
   async function handleDelete() {
@@ -111,30 +138,136 @@ export default function RawMaterials() {
       await deleteMutation.mutateAsync(deleteId);
       toast.success("Raw material deleted");
     } catch {
-      toast.error("Delete failed");
+      toast.error(isLoggedIn ? "Delete failed" : "Please sign in to save data");
     } finally {
       setDeleteId(null);
     }
   }
 
-  const isPending = addMutation.isPending || updateMutation.isPending;
-
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <PageHeader
         title="Raw Materials"
-        description="Manage cotton bales and raw material inventory"
-        action={
-          <Button
-            data-ocid="rawmaterials.primary_button"
-            onClick={openAdd}
-            className="gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Raw Material
-          </Button>
-        }
+        description="Stock is automatically updated when inward entries are recorded against a purchase order"
       />
+
+      {/* Filter Bar */}
+      <div className="flex flex-wrap items-center gap-3 mb-4 p-4 rounded-lg border border-border/60 bg-card shadow-sm">
+        {/* Supplier */}
+        <div className="flex flex-col gap-1 min-w-[160px]">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Supplier
+          </span>
+          <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+            <SelectTrigger
+              className="h-9 text-sm"
+              data-ocid="rawmaterials.supplier.select"
+            >
+              <SelectValue placeholder="All Suppliers" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Suppliers</SelectItem>
+              {supplierOptions.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Grade */}
+        <div className="flex flex-col gap-1 min-w-[140px]">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Grade
+          </span>
+          <Select value={gradeFilter} onValueChange={setGradeFilter}>
+            <SelectTrigger
+              className="h-9 text-sm"
+              data-ocid="rawmaterials.grade.select"
+            >
+              <SelectValue placeholder="All Grades" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Grades</SelectItem>
+              {gradeOptions.map((g) => (
+                <SelectItem key={g} value={g}>
+                  {g}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Warehouse */}
+        <div className="flex flex-col gap-1 min-w-[175px]">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Warehouse
+          </span>
+          <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+            <SelectTrigger
+              className="h-9 text-sm"
+              data-ocid="rawmaterials.warehouse.select"
+            >
+              <SelectValue placeholder="All Warehouses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Warehouses</SelectItem>
+              <SelectItem value="oe">OE Raw Material</SelectItem>
+              <SelectItem value="ring">Ring Raw Material</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Month */}
+        <div className="flex flex-col gap-1 min-w-[150px]">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Month
+          </span>
+          <Select value={monthFilter} onValueChange={setMonthFilter}>
+            <SelectTrigger
+              className="h-9 text-sm"
+              data-ocid="rawmaterials.month.select"
+            >
+              <SelectValue placeholder="All Months" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Months</SelectItem>
+              {monthOptions.map(({ key, label }) => (
+                <SelectItem key={key} value={key}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Clear Filters */}
+        {isAnyFilterActive && (
+          <div className="flex flex-col justify-end gap-1 self-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearFilters}
+              data-ocid="rawmaterials.clear_filters.button"
+              className="h-9 text-sm gap-1.5 text-muted-foreground hover:text-foreground"
+            >
+              <FilterX className="w-3.5 h-3.5" />
+              Clear Filters
+            </Button>
+          </div>
+        )}
+
+        {/* Result count */}
+        {isAnyFilterActive && !isLoading && (
+          <div className="ml-auto self-end pb-0.5">
+            <span className="text-sm text-muted-foreground">
+              {filteredMaterials.length} of {materials.length} result
+              {materials.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+        )}
+      </div>
 
       <div className="rounded-lg border border-border/60 bg-card shadow-card overflow-hidden">
         {isLoading ? (
@@ -143,14 +276,20 @@ export default function RawMaterials() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
-        ) : materials.length === 0 ? (
+        ) : filteredMaterials.length === 0 ? (
           <EmptyState
             data-ocid="rawmaterials.empty_state"
             icon={<Package className="w-7 h-7" />}
-            title="No raw materials yet"
-            description="Add your first cotton bale or raw material lot to get started."
-            actionLabel="Add Raw Material"
-            onAction={openAdd}
+            title={
+              isAnyFilterActive
+                ? "No results match your filters"
+                : "No raw material stock yet"
+            }
+            description={
+              isAnyFilterActive
+                ? "Try adjusting or clearing your filters to see more records."
+                : "Stock is automatically added when you record an inward entry."
+            }
           />
         ) : (
           <Table>
@@ -172,7 +311,7 @@ export default function RawMaterials() {
                   Date Received
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">
-                  Status
+                  Warehouse
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider text-right">
                   Actions
@@ -180,7 +319,7 @@ export default function RawMaterials() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {materials.map((item, idx) => (
+              {filteredMaterials.map((item, idx) => (
                 <TableRow
                   key={String(item.id)}
                   data-ocid={`rawmaterials.item.${idx + 1}`}
@@ -200,29 +339,18 @@ export default function RawMaterials() {
                     ).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <StatusBadge status={item.status} />
+                    <WarehouseBadge warehouse={item.warehouse} />
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        data-ocid={`rawmaterials.edit_button.${idx + 1}`}
-                        onClick={() => openEdit(item)}
-                        className="h-8 w-8"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        data-ocid={`rawmaterials.delete_button.${idx + 1}`}
-                        onClick={() => setDeleteId(item.id)}
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      data-ocid={`rawmaterials.delete_button.${idx + 1}`}
+                      onClick={() => setDeleteId(item.id)}
+                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -230,116 +358,6 @@ export default function RawMaterials() {
           </Table>
         )}
       </div>
-
-      {/* Add/Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent data-ocid="rawmaterials.dialog" className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {editItem ? "Edit Raw Material" : "Add Raw Material"}
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="rm-lot">Lot Number</Label>
-                <Input
-                  id="rm-lot"
-                  data-ocid="rawmaterials.input"
-                  value={form.lotNumber}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, lotNumber: e.target.value }))
-                  }
-                  placeholder="LOT-2024-001"
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="rm-grade">Grade</Label>
-                <Input
-                  id="rm-grade"
-                  value={form.grade}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, grade: e.target.value }))
-                  }
-                  placeholder="A-Grade, B-Grade..."
-                  required
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="rm-supplier">Supplier</Label>
-              <Input
-                id="rm-supplier"
-                value={form.supplier}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, supplier: e.target.value }))
-                }
-                placeholder="Supplier name"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="rm-weight">Weight (kg)</Label>
-                <Input
-                  id="rm-weight"
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={form.weightKg}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, weightKg: e.target.value }))
-                  }
-                  placeholder="500"
-                  required
-                />
-              </div>
-              {editItem && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="rm-status">Status</Label>
-                  <Select
-                    value={form.status}
-                    onValueChange={(v) =>
-                      setForm((p) => ({ ...p, status: v as RawMaterialStatus }))
-                    }
-                  >
-                    <SelectTrigger
-                      id="rm-status"
-                      data-ocid="rawmaterials.select"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={RMS.available}>Available</SelectItem>
-                      <SelectItem value={RMS.inUse}>In Use</SelectItem>
-                      <SelectItem value={RMS.consumed}>Consumed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                data-ocid="rawmaterials.cancel_button"
-                onClick={() => setDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                data-ocid="rawmaterials.submit_button"
-                disabled={isPending}
-              >
-                {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {editItem ? "Update" : "Add"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       <ConfirmDialog
         open={!!deleteId}

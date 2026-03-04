@@ -43,6 +43,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAddBatchStage,
   useBatchStages,
@@ -85,6 +86,8 @@ const defaultForm = {
 };
 
 export default function BatchTracking() {
+  const { identity } = useInternetIdentity();
+  const isLoggedIn = !!identity;
   const { data: stages = [], isLoading } = useBatchStages();
   const { data: machines = [] } = useMachines();
   const addMutation = useAddBatchStage();
@@ -173,7 +176,9 @@ export default function BatchTracking() {
       }
       setDialogOpen(false);
     } catch {
-      toast.error("Operation failed");
+      toast.error(
+        isLoggedIn ? "Operation failed" : "Please sign in to save data",
+      );
     }
   }
 
@@ -183,7 +188,7 @@ export default function BatchTracking() {
       await deleteMutation.mutateAsync(deleteId);
       toast.success("Batch stage removed");
     } catch {
-      toast.error("Delete failed");
+      toast.error(isLoggedIn ? "Delete failed" : "Please sign in to save data");
     } finally {
       setDeleteId(null);
     }

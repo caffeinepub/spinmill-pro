@@ -43,6 +43,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useDeleteMachine,
   useMachines,
@@ -70,6 +71,8 @@ const defaultForm = {
 };
 
 export default function Machines() {
+  const { identity } = useInternetIdentity();
+  const isLoggedIn = !!identity;
   const { data: machines = [], isLoading } = useMachines();
   const { data: orders = [] } = useProductionOrders();
   const registerMutation = useRegisterMachine();
@@ -133,7 +136,9 @@ export default function Machines() {
       }
       setDialogOpen(false);
     } catch {
-      toast.error("Operation failed");
+      toast.error(
+        isLoggedIn ? "Operation failed" : "Please sign in to save data",
+      );
     }
   }
 
@@ -143,7 +148,7 @@ export default function Machines() {
       await deleteMutation.mutateAsync(deleteId);
       toast.success("Machine removed");
     } catch {
-      toast.error("Delete failed");
+      toast.error(isLoggedIn ? "Delete failed" : "Please sign in to save data");
     } finally {
       setDeleteId(null);
     }
