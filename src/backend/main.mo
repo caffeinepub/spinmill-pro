@@ -12,6 +12,8 @@ import Iter "mo:core/Iter";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
+
+
 actor {
   type RawMaterial = {
     id : Nat;
@@ -26,7 +28,6 @@ actor {
   };
 
   type RawMaterialStatus = { #available; #inUse; #consumed };
-
   type ProductionOrder = {
     id : Nat;
     orderNumber : Text;
@@ -50,18 +51,8 @@ actor {
     #lt;
   };
 
-  type SpinningUnit = {
-    #openend;
-    #ringSpinning;
-  };
-  type EndUse = {
-    #warp;
-    #weft;
-    #pile;
-    #ground;
-    #tfo;
-  };
-
+  type SpinningUnit = { #openend; #ringSpinning };
+  type EndUse = { #warp; #weft; #pile; #ground; #tfo };
   type TwistDirection = { #s; #z };
   type OrderStatus = { #pending; #inProgress; #completed; #cancelled };
 
@@ -88,6 +79,7 @@ actor {
     #winding;
     #autocoro;
   };
+
   type MachineStatus = { #running; #idle; #maintenance };
 
   type BatchStage = {
@@ -138,7 +130,6 @@ actor {
   };
 
   type Shift = { #morning; #afternoon; #night };
-
   type YarnInventory = {
     id : Nat;
     lotNumber : Text;
@@ -166,6 +157,7 @@ actor {
     totalInwardTodayKg : Nat;
     oeWarehouseStockKg : Nat;
     ringWarehouseStockKg : Nat;
+    totalDispatchedTodayKg : Nat;
   };
 
   type PurchaseOrderStatus = {
@@ -185,11 +177,7 @@ actor {
     status : PurchaseOrderStatus;
   };
 
-  type Warehouse = {
-    #oeRawMaterial;
-    #ringRawMaterial;
-  };
-
+  type Warehouse = { #oeRawMaterial; #ringRawMaterial };
   type MaterialIssue = {
     id : Nat;
     issueNumber : Text;
@@ -257,6 +245,42 @@ actor {
     totalPackedKg : Nat;
   };
 
+  // --- Dispatch Types ---
+  public type DispatchEntry = {
+    id : Nat;
+    dispatchNumber : Text;
+    dispatchDate : Time.Time;
+    lotNumber : Text;
+    destination : DispatchDestination;
+    quantityKg : Nat;
+    yarnCountNe : Nat;
+    spinningUnit : SpinningUnit;
+    productType : ProductType;
+    endUse : EndUse;
+    remarks : Text;
+  };
+
+  type DispatchDestination = {
+    #weaving;
+    #kolhapur;
+    #ambala;
+    #outside;
+    #amravati;
+    #softWinding;
+    #tfo;
+  };
+
+  type DispatchBalance = {
+    lotNumber : Text;
+    yarnCountNe : Nat;
+    spinningUnit : SpinningUnit;
+    productType : ProductType;
+    endUse : EndUse;
+    totalPackedKg : Nat;
+    totalDispatchedKg : Nat;
+    availableKg : Nat;
+  };
+
   // --- State ---
   var rawMaterialIdCounter = 0;
   var productionOrderIdCounter = 0;
@@ -268,8 +292,11 @@ actor {
   var purchaseOrderIdCounter = 0;
   var inwardEntryIdCounter = 0;
   var materialIssueIdCounter = 1;
-
   var packingEntryIdCounter = 1;
+
+  // --- New: Dispatch State ---
+  var dispatchEntryIdCounter = 1;
+  let dispatchEntries = Map.empty<Nat, DispatchEntry>();
 
   let rawMaterials = Map.empty<Nat, RawMaterial>();
   let productionOrders = Map.empty<Nat, ProductionOrder>();
@@ -279,18 +306,16 @@ actor {
   let productionLogs = Map.empty<Nat, ProductionLog>();
   let yarnInventory = Map.empty<Nat, YarnInventory>();
   let userProfiles = Map.empty<Principal, UserProfile>();
-
   let purchaseOrders = Map.empty<Nat, PurchaseOrder>();
   let inwardEntries = Map.empty<Nat, InwardEntry>();
   let warehouseStock = Map.empty<Text, WarehouseStock>();
   let materialIssues = Map.empty<Nat, MaterialIssue>();
-
   let packingEntries = Map.empty<Nat, PackingEntry>();
 
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
-  // --- Packing Functionality ---
+  // --- P A C K I N G ---
 
   public shared ({ caller }) func createPackingEntry(
     lotNumber : Text,
@@ -350,7 +375,10 @@ actor {
     newEntry.id;
   };
 
-  public query func getAllPackingEntries() : async [PackingEntry] {
+  public query ({ caller }) func getAllPackingEntries() : async [PackingEntry] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view packing entries");
+    };
     packingEntries.values().toArray().sort(func(a: PackingEntry, b: PackingEntry): Order.Order { Nat.compare(a.id, b.id) });
   };
 
@@ -396,7 +424,7 @@ actor {
 
   public query ({ caller }) func getNextPackingNumber() : async Text {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can get next packing number");
+      Runtime.trap("Unauthorized: Only users can view packing numbers");
     };
     let formattedNum = if (packingEntryIdCounter < 10) {
       "00" # packingEntryIdCounter.toText();
@@ -410,40 +438,184 @@ actor {
 
   public query ({ caller }) func getPackingBalance(lotNumber : Text) : async ?PackingBalance {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can get packing balance");
+      Runtime.trap("Unauthorized: Only users can view packing balance");
     };
-
     let inventoryEntry = yarnInventory.values().find(
       func(inv) { inv.lotNumber == lotNumber }
     );
+    let productionOrder = productionOrders.values().find(func(po) { po.lotNumber == lotNumber });
 
-    let productionOrder = switch (productionOrders.values().find(func(po) { po.lotNumber == lotNumber })) {
-      case (?po) { po };
-      case (null) { Runtime.trap("Production order not found") };
-    };
-
-    var totalPackedKg = 0;
-    for (entry in packingEntries.values()) {
-      if (entry.lotNumber == lotNumber) {
-        totalPackedKg += entry.quantityKg;
+    switch (productionOrder) {
+      case (null) { null };
+      case (?po) {
+        var totalPackedKg = 0;
+        for (entry in packingEntries.values()) {
+          if (entry.lotNumber == lotNumber) {
+            totalPackedKg += entry.quantityKg;
+          };
+        };
+        let availableKg = switch (inventoryEntry) {
+          case (?inventory) { inventory.weightKg };
+          case (null) { 0 };
+        };
+        ?{
+          lotNumber;
+          yarnCountNe = po.yarnCountNe;
+          spinningUnit = po.spinningUnit;
+          productType = po.productType;
+          endUse = po.endUse;
+          availableKg;
+          totalPackedKg;
+        };
       };
     };
+  };
 
-    let availableKg = switch (inventoryEntry) {
-      case (?inventory) { inventory.weightKg };
-      case (null) { 0 };
+  // --- DISPATCH ---
+  public shared ({ caller }) func createDispatchEntry(
+    lotNumber : Text,
+    destination : DispatchDestination,
+    quantityKg : Nat,
+    dispatchDate : Time.Time,
+    remarks : Text,
+  ) : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create dispatch entries");
     };
 
-    ?{
+    let packingEntry = switch (packingEntries.values().find(func(pe) { pe.lotNumber == lotNumber })) {
+      case (?pe) { pe };
+      case (null) { Runtime.trap("Packing entry not found") };
+    };
+
+    let totalPackedKg = packingEntries.values().foldLeft(
+      0,
+      func(acc, entry) {
+        if (entry.lotNumber == lotNumber) {
+          acc + entry.quantityKg;
+        } else { acc };
+      },
+    );
+
+    let totalDispatchedKg = dispatchEntries.values().foldLeft(
+      0,
+      func(acc, entry) {
+        if (entry.lotNumber == lotNumber) {
+          acc + entry.quantityKg;
+        } else { acc };
+      },
+    );
+
+    let availableKg = if (totalPackedKg > totalDispatchedKg) {
+      totalPackedKg - totalDispatchedKg;
+    } else { 0 };
+
+    if (quantityKg > availableKg) {
+      Runtime.trap("Not enough stock available for dispatch");
+    };
+
+    let dispatchNumber = "DSP-2026-" # (if (dispatchEntryIdCounter < 10) {
+      "00";
+    } else if (dispatchEntryIdCounter < 100) { "0" : Text } else {
+      "" : Text;
+    }) # dispatchEntryIdCounter.toText();
+
+    let newEntry : DispatchEntry = {
+      id = dispatchEntryIdCounter;
+      dispatchNumber;
+      dispatchDate;
       lotNumber;
-      yarnCountNe = productionOrder.yarnCountNe;
-      spinningUnit = productionOrder.spinningUnit;
-      productType = productionOrder.productType;
-      endUse = productionOrder.endUse;
-      availableKg;
-      totalPackedKg;
+      destination;
+      quantityKg;
+      yarnCountNe = packingEntry.yarnCountNe;
+      spinningUnit = packingEntry.spinningUnit;
+      productType = packingEntry.productType;
+      endUse = packingEntry.endUse;
+      remarks;
+    };
+
+    dispatchEntries.add(dispatchEntryIdCounter, newEntry);
+    dispatchEntryIdCounter += 1;
+    newEntry.id;
+  };
+
+  public query ({ caller }) func getAllDispatchEntries() : async [DispatchEntry] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view dispatch entries");
+    };
+    dispatchEntries.values().toArray().sort(func(a: DispatchEntry, b: DispatchEntry): Order.Order { Nat.compare(a.id, b.id) });
+  };
+
+  public shared ({ caller }) func deleteDispatchEntry(id : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can delete dispatch entries");
+    };
+
+    switch (dispatchEntries.get(id)) {
+      case (null) { Runtime.trap("Dispatch entry not found") };
+      case (?entry) {
+        dispatchEntries.remove(id);
+      };
     };
   };
+
+  public query ({ caller }) func getNextDispatchNumber() : async Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view dispatch numbers");
+    };
+    let formattedNum = if (dispatchEntryIdCounter < 10) {
+      "00" # dispatchEntryIdCounter.toText();
+    } else if (dispatchEntryIdCounter < 100) {
+      "0" # dispatchEntryIdCounter.toText();
+    } else {
+      dispatchEntryIdCounter.toText();
+    };
+    "DSP-2026-" # formattedNum;
+  };
+
+  public query ({ caller }) func getDispatchBalance(lotNumber : Text) : async ?DispatchBalance {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view dispatch balance");
+    };
+    let packingEntry = packingEntries.values().find(func(pe) { pe.lotNumber == lotNumber });
+
+    switch (packingEntry) {
+      case (null) { null };
+      case (?pe) {
+        var totalPackedKg = 0;
+        var totalDispatchedKg = 0;
+
+        for (entry in packingEntries.values()) {
+          if (entry.lotNumber == lotNumber) {
+            totalPackedKg += entry.quantityKg;
+          };
+        };
+
+        for (entry in dispatchEntries.values()) {
+          if (entry.lotNumber == lotNumber) {
+            totalDispatchedKg += entry.quantityKg;
+          };
+        };
+
+        let availableKg = if (totalPackedKg > totalDispatchedKg) {
+          totalPackedKg - totalDispatchedKg;
+        } else { 0 };
+
+        ?{
+          lotNumber;
+          yarnCountNe = pe.yarnCountNe;
+          spinningUnit = pe.spinningUnit;
+          productType = pe.productType;
+          endUse = pe.endUse;
+          totalPackedKg;
+          totalDispatchedKg;
+          availableKg;
+        };
+      };
+    };
+  };
+
+  // --- REMAINING CODE UNCHANGED (raw materials, orders, etc.) ---
 
   // --- USER PROFILE ---
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
@@ -636,7 +808,10 @@ actor {
     issueId;
   };
 
-  public query func getAllMaterialIssues() : async [MaterialIssue] {
+  public query ({ caller }) func getAllMaterialIssues() : async [MaterialIssue] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view material issues");
+    };
     materialIssues.values().toArray().sort(func(a: MaterialIssue, b: MaterialIssue): Order.Order { Nat.compare(a.id, b.id) });
   };
 
@@ -650,7 +825,6 @@ actor {
       case (?issue) { issue };
     };
 
-    // Rollback warehouse stock deduction
     let stockKey = warehouseToText(issue.warehouse) # "_" # issue.materialName;
     let currentStock = switch (warehouseStock.get(stockKey)) {
       case (null) { Runtime.trap("No warehouse stock found for this issue") };
@@ -665,7 +839,10 @@ actor {
     materialIssues.remove(id);
   };
 
-  public query func getNextIssueNumber() : async Text {
+  public query ({ caller }) func getNextIssueNumber() : async Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view issue numbers");
+    };
     let nextIssueNum = materialIssueIdCounter;
     let formattedNum = if (nextIssueNum < 10) {
       "00" # nextIssueNum.toText();
@@ -1283,6 +1460,14 @@ actor {
       };
     };
 
+    // Calculate totalDispatchedTodayKg
+    var totalDispatchedTodayKg = 0;
+    for (dispatchEntry in dispatchEntries.values()) {
+      if (today - dispatchEntry.dispatchDate < oneDayNanos) {
+        totalDispatchedTodayKg += dispatchEntry.quantityKg;
+      };
+    };
+
     {
       totalActiveOrders;
       totalMachinesRunning;
@@ -1292,6 +1477,7 @@ actor {
       totalInwardTodayKg;
       oeWarehouseStockKg;
       ringWarehouseStockKg;
+      totalDispatchedTodayKg;
     };
   };
 
@@ -1502,7 +1688,7 @@ actor {
   // Returns the next purchase order number in format PO-YYYY-NNN, where NNN is the next available 3-digit number (001, 002, etc.)
   public query ({ caller }) func getNextPONumber() : async Text {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can get next PO number");
+      Runtime.trap("Unauthorized: Only users can view PO numbers");
     };
     let nextPOId = purchaseOrderIdCounter + 1;
     let formattedNum = if (nextPOId < 10) {
@@ -1517,7 +1703,7 @@ actor {
 
   public query ({ caller }) func getNextInwardNumber() : async Text {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can get next inward number");
+      Runtime.trap("Unauthorized: Only users can view inward numbers");
     };
     let nextInwardId = inwardEntryIdCounter + 1;
     let formattedNum = if (nextInwardId < 10) {
@@ -1532,7 +1718,7 @@ actor {
 
   public query ({ caller }) func getPOBalance(purchaseOrderId : Nat) : async ?POBalance {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can get PO balance");
+      Runtime.trap("Unauthorized: Only users can view PO balance");
     };
     switch (purchaseOrders.get(purchaseOrderId)) {
       case (null) { null };
@@ -1658,14 +1844,14 @@ actor {
     lotNumber : Text,
   ) : async ?ProductionOrderBalance {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can get production order balance");
+      Runtime.trap("Unauthorized: Only users can view production order balance");
     };
     prodOrderBalanceInternal(yarnCountNe, lotNumber);
   };
 
   public query ({ caller }) func getNextProductionOrderNumber() : async Text {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can get next production order number");
+      Runtime.trap("Unauthorized: Only users can view production order numbers");
     };
     let nextPOId = productionOrderIdCounter + 1;
     let formattedNum = if (nextPOId < 10) {

@@ -25,11 +25,42 @@ export interface DashboardStats {
   'totalRawMaterialWeightAvailable' : bigint,
   'ringWarehouseStockKg' : bigint,
   'recentQualityTestPassRate' : bigint,
+  'totalDispatchedTodayKg' : bigint,
   'totalYarnInventoryWeight' : bigint,
   'oeWarehouseStockKg' : bigint,
   'totalActiveOrders' : bigint,
   'totalMachinesRunning' : bigint,
   'totalInwardTodayKg' : bigint,
+}
+export interface DispatchBalance {
+  'yarnCountNe' : bigint,
+  'productType' : ProductType,
+  'totalPackedKg' : bigint,
+  'lotNumber' : string,
+  'spinningUnit' : SpinningUnit,
+  'totalDispatchedKg' : bigint,
+  'availableKg' : bigint,
+  'endUse' : EndUse,
+}
+export type DispatchDestination = { 'tfo' : null } |
+  { 'amravati' : null } |
+  { 'kolhapur' : null } |
+  { 'ambala' : null } |
+  { 'weaving' : null } |
+  { 'outside' : null } |
+  { 'softWinding' : null };
+export interface DispatchEntry {
+  'id' : bigint,
+  'destination' : DispatchDestination,
+  'yarnCountNe' : bigint,
+  'dispatchDate' : Time,
+  'productType' : ProductType,
+  'lotNumber' : string,
+  'spinningUnit' : SpinningUnit,
+  'dispatchNumber' : string,
+  'remarks' : string,
+  'quantityKg' : bigint,
+  'endUse' : EndUse,
 }
 export type EndUse = { 'tfo' : null } |
   { 'ground' : null } |
@@ -255,6 +286,10 @@ export interface _SERVICE {
     bigint
   >,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'createDispatchEntry' : ActorMethod<
+    [string, DispatchDestination, bigint, Time, string],
+    bigint
+  >,
   'createMaterialIssue' : ActorMethod<
     [string, Warehouse, string, string, bigint, string],
     bigint
@@ -280,6 +315,7 @@ export interface _SERVICE {
     bigint
   >,
   'deleteBatchStage' : ActorMethod<[bigint], undefined>,
+  'deleteDispatchEntry' : ActorMethod<[bigint], undefined>,
   'deleteInwardEntry' : ActorMethod<[bigint], undefined>,
   'deleteMachine' : ActorMethod<[bigint], undefined>,
   'deleteMaterialIssue' : ActorMethod<[bigint], undefined>,
@@ -291,6 +327,7 @@ export interface _SERVICE {
   'deleteRawMaterial' : ActorMethod<[bigint], undefined>,
   'deleteYarnInventory' : ActorMethod<[bigint], undefined>,
   'getAllBatchStages' : ActorMethod<[], Array<BatchStage>>,
+  'getAllDispatchEntries' : ActorMethod<[], Array<DispatchEntry>>,
   'getAllInwardEntries' : ActorMethod<[], Array<InwardEntry>>,
   'getAllMachines' : ActorMethod<[], Array<Machine>>,
   'getAllMaterialIssues' : ActorMethod<[], Array<MaterialIssue>>,
@@ -306,9 +343,11 @@ export interface _SERVICE {
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getDashboardStats' : ActorMethod<[], DashboardStats>,
+  'getDispatchBalance' : ActorMethod<[string], [] | [DispatchBalance]>,
   'getInwardEntriesByPO' : ActorMethod<[bigint], Array<InwardEntry>>,
   'getInwardEntry' : ActorMethod<[bigint], [] | [InwardEntry]>,
   'getMachine' : ActorMethod<[bigint], [] | [Machine]>,
+  'getNextDispatchNumber' : ActorMethod<[], string>,
   'getNextInwardNumber' : ActorMethod<[], string>,
   'getNextIssueNumber' : ActorMethod<[], string>,
   'getNextPONumber' : ActorMethod<[], string>,

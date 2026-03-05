@@ -11,6 +11,7 @@ import {
   Settings2,
   ShieldCheck,
   TrendingUp,
+  Truck,
   Warehouse,
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -214,6 +215,17 @@ export default function Dashboard() {
             <Warehouse className="w-4 h-4 text-violet-600 dark:text-violet-400" />
           }
           accent="bg-violet-500/15"
+          loading={isLoading}
+        />
+        <KpiCard
+          data-ocid="dashboard.card.9"
+          title="Dispatched Today"
+          value={stats ? Number(stats.totalDispatchedTodayKg) : 0}
+          suffix="kg"
+          icon={
+            <Truck className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+          }
+          accent="bg-orange-500/15"
           loading={isLoading}
         />
       </motion.div>

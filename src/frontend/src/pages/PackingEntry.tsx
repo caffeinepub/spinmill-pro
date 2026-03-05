@@ -47,7 +47,7 @@ import {
   useNextPackingNumber,
   usePackingBalance,
   usePackingEntries,
-  useYarnInventory,
+  useProductionOrders,
 } from "../hooks/useQueries";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -247,7 +247,7 @@ export default function PackingEntryPage() {
   const isLoggedIn = !!identity;
 
   const { data: entries = [], isLoading } = usePackingEntries();
-  const { data: yarnInventory = [] } = useYarnInventory();
+  const { data: productionOrders = [] } = useProductionOrders();
   const createMutation = useCreatePackingEntry();
   const deleteMutation = useDeletePackingEntry();
 
@@ -258,9 +258,9 @@ export default function PackingEntryPage() {
   // Auto-generated packing number
   const { data: nextPackingNumber } = useNextPackingNumber(dialogOpen);
 
-  // Unique lot numbers from yarn inventory
+  // Unique lot numbers from production orders (each PO has a lot number)
   const lotNumbers = Array.from(
-    new Set(yarnInventory.map((y) => y.lotNumber)),
+    new Set(productionOrders.map((po) => po.lotNumber).filter(Boolean)),
   ).sort();
 
   // Balance for the selected lot

@@ -39,6 +39,15 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const DispatchDestination = IDL.Variant({
+  'tfo' : IDL.Null,
+  'amravati' : IDL.Null,
+  'kolhapur' : IDL.Null,
+  'ambala' : IDL.Null,
+  'weaving' : IDL.Null,
+  'outside' : IDL.Null,
+  'softWinding' : IDL.Null,
+});
 export const ProductType = IDL.Variant({
   'lt' : IDL.Null,
   'bamboo' : IDL.Null,
@@ -74,6 +83,19 @@ export const BatchStage = IDL.Record({
   'stage' : ProcessStage,
   'batchId' : IDL.Nat,
   'machineId' : IDL.Nat,
+});
+export const DispatchEntry = IDL.Record({
+  'id' : IDL.Nat,
+  'destination' : DispatchDestination,
+  'yarnCountNe' : IDL.Nat,
+  'dispatchDate' : Time,
+  'productType' : ProductType,
+  'lotNumber' : IDL.Text,
+  'spinningUnit' : SpinningUnit,
+  'dispatchNumber' : IDL.Text,
+  'remarks' : IDL.Text,
+  'quantityKg' : IDL.Nat,
+  'endUse' : EndUse,
 });
 export const InwardEntry = IDL.Record({
   'id' : IDL.Nat,
@@ -224,11 +246,22 @@ export const DashboardStats = IDL.Record({
   'totalRawMaterialWeightAvailable' : IDL.Nat,
   'ringWarehouseStockKg' : IDL.Nat,
   'recentQualityTestPassRate' : IDL.Nat,
+  'totalDispatchedTodayKg' : IDL.Nat,
   'totalYarnInventoryWeight' : IDL.Nat,
   'oeWarehouseStockKg' : IDL.Nat,
   'totalActiveOrders' : IDL.Nat,
   'totalMachinesRunning' : IDL.Nat,
   'totalInwardTodayKg' : IDL.Nat,
+});
+export const DispatchBalance = IDL.Record({
+  'yarnCountNe' : IDL.Nat,
+  'productType' : ProductType,
+  'totalPackedKg' : IDL.Nat,
+  'lotNumber' : IDL.Text,
+  'spinningUnit' : SpinningUnit,
+  'totalDispatchedKg' : IDL.Nat,
+  'availableKg' : IDL.Nat,
+  'endUse' : EndUse,
 });
 export const POBalance = IDL.Record({
   'receivedQty' : IDL.Nat,
@@ -304,6 +337,11 @@ export const idlService = IDL.Service({
       [],
     ),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'createDispatchEntry' : IDL.Func(
+      [IDL.Text, DispatchDestination, IDL.Nat, Time, IDL.Text],
+      [IDL.Nat],
+      [],
+    ),
   'createMaterialIssue' : IDL.Func(
       [IDL.Text, Warehouse, IDL.Text, IDL.Text, IDL.Nat, IDL.Text],
       [IDL.Nat],
@@ -336,6 +374,7 @@ export const idlService = IDL.Service({
       [],
     ),
   'deleteBatchStage' : IDL.Func([IDL.Nat], [], []),
+  'deleteDispatchEntry' : IDL.Func([IDL.Nat], [], []),
   'deleteInwardEntry' : IDL.Func([IDL.Nat], [], []),
   'deleteMachine' : IDL.Func([IDL.Nat], [], []),
   'deleteMaterialIssue' : IDL.Func([IDL.Nat], [], []),
@@ -347,6 +386,7 @@ export const idlService = IDL.Service({
   'deleteRawMaterial' : IDL.Func([IDL.Nat], [], []),
   'deleteYarnInventory' : IDL.Func([IDL.Nat], [], []),
   'getAllBatchStages' : IDL.Func([], [IDL.Vec(BatchStage)], ['query']),
+  'getAllDispatchEntries' : IDL.Func([], [IDL.Vec(DispatchEntry)], ['query']),
   'getAllInwardEntries' : IDL.Func([], [IDL.Vec(InwardEntry)], ['query']),
   'getAllMachines' : IDL.Func([], [IDL.Vec(Machine)], ['query']),
   'getAllMaterialIssues' : IDL.Func([], [IDL.Vec(MaterialIssue)], ['query']),
@@ -366,6 +406,11 @@ export const idlService = IDL.Service({
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getDashboardStats' : IDL.Func([], [DashboardStats], ['query']),
+  'getDispatchBalance' : IDL.Func(
+      [IDL.Text],
+      [IDL.Opt(DispatchBalance)],
+      ['query'],
+    ),
   'getInwardEntriesByPO' : IDL.Func(
       [IDL.Nat],
       [IDL.Vec(InwardEntry)],
@@ -373,6 +418,7 @@ export const idlService = IDL.Service({
     ),
   'getInwardEntry' : IDL.Func([IDL.Nat], [IDL.Opt(InwardEntry)], ['query']),
   'getMachine' : IDL.Func([IDL.Nat], [IDL.Opt(Machine)], ['query']),
+  'getNextDispatchNumber' : IDL.Func([], [IDL.Text], ['query']),
   'getNextInwardNumber' : IDL.Func([], [IDL.Text], ['query']),
   'getNextIssueNumber' : IDL.Func([], [IDL.Text], ['query']),
   'getNextPONumber' : IDL.Func([], [IDL.Text], ['query']),
@@ -553,6 +599,15 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
+  const DispatchDestination = IDL.Variant({
+    'tfo' : IDL.Null,
+    'amravati' : IDL.Null,
+    'kolhapur' : IDL.Null,
+    'ambala' : IDL.Null,
+    'weaving' : IDL.Null,
+    'outside' : IDL.Null,
+    'softWinding' : IDL.Null,
+  });
   const ProductType = IDL.Variant({
     'lt' : IDL.Null,
     'bamboo' : IDL.Null,
@@ -588,6 +643,19 @@ export const idlFactory = ({ IDL }) => {
     'stage' : ProcessStage,
     'batchId' : IDL.Nat,
     'machineId' : IDL.Nat,
+  });
+  const DispatchEntry = IDL.Record({
+    'id' : IDL.Nat,
+    'destination' : DispatchDestination,
+    'yarnCountNe' : IDL.Nat,
+    'dispatchDate' : Time,
+    'productType' : ProductType,
+    'lotNumber' : IDL.Text,
+    'spinningUnit' : SpinningUnit,
+    'dispatchNumber' : IDL.Text,
+    'remarks' : IDL.Text,
+    'quantityKg' : IDL.Nat,
+    'endUse' : EndUse,
   });
   const InwardEntry = IDL.Record({
     'id' : IDL.Nat,
@@ -738,11 +806,22 @@ export const idlFactory = ({ IDL }) => {
     'totalRawMaterialWeightAvailable' : IDL.Nat,
     'ringWarehouseStockKg' : IDL.Nat,
     'recentQualityTestPassRate' : IDL.Nat,
+    'totalDispatchedTodayKg' : IDL.Nat,
     'totalYarnInventoryWeight' : IDL.Nat,
     'oeWarehouseStockKg' : IDL.Nat,
     'totalActiveOrders' : IDL.Nat,
     'totalMachinesRunning' : IDL.Nat,
     'totalInwardTodayKg' : IDL.Nat,
+  });
+  const DispatchBalance = IDL.Record({
+    'yarnCountNe' : IDL.Nat,
+    'productType' : ProductType,
+    'totalPackedKg' : IDL.Nat,
+    'lotNumber' : IDL.Text,
+    'spinningUnit' : SpinningUnit,
+    'totalDispatchedKg' : IDL.Nat,
+    'availableKg' : IDL.Nat,
+    'endUse' : EndUse,
   });
   const POBalance = IDL.Record({
     'receivedQty' : IDL.Nat,
@@ -827,6 +906,11 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'createDispatchEntry' : IDL.Func(
+        [IDL.Text, DispatchDestination, IDL.Nat, Time, IDL.Text],
+        [IDL.Nat],
+        [],
+      ),
     'createMaterialIssue' : IDL.Func(
         [IDL.Text, Warehouse, IDL.Text, IDL.Text, IDL.Nat, IDL.Text],
         [IDL.Nat],
@@ -859,6 +943,7 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'deleteBatchStage' : IDL.Func([IDL.Nat], [], []),
+    'deleteDispatchEntry' : IDL.Func([IDL.Nat], [], []),
     'deleteInwardEntry' : IDL.Func([IDL.Nat], [], []),
     'deleteMachine' : IDL.Func([IDL.Nat], [], []),
     'deleteMaterialIssue' : IDL.Func([IDL.Nat], [], []),
@@ -870,6 +955,7 @@ export const idlFactory = ({ IDL }) => {
     'deleteRawMaterial' : IDL.Func([IDL.Nat], [], []),
     'deleteYarnInventory' : IDL.Func([IDL.Nat], [], []),
     'getAllBatchStages' : IDL.Func([], [IDL.Vec(BatchStage)], ['query']),
+    'getAllDispatchEntries' : IDL.Func([], [IDL.Vec(DispatchEntry)], ['query']),
     'getAllInwardEntries' : IDL.Func([], [IDL.Vec(InwardEntry)], ['query']),
     'getAllMachines' : IDL.Func([], [IDL.Vec(Machine)], ['query']),
     'getAllMaterialIssues' : IDL.Func([], [IDL.Vec(MaterialIssue)], ['query']),
@@ -889,6 +975,11 @@ export const idlFactory = ({ IDL }) => {
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getDashboardStats' : IDL.Func([], [DashboardStats], ['query']),
+    'getDispatchBalance' : IDL.Func(
+        [IDL.Text],
+        [IDL.Opt(DispatchBalance)],
+        ['query'],
+      ),
     'getInwardEntriesByPO' : IDL.Func(
         [IDL.Nat],
         [IDL.Vec(InwardEntry)],
@@ -896,6 +987,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getInwardEntry' : IDL.Func([IDL.Nat], [IDL.Opt(InwardEntry)], ['query']),
     'getMachine' : IDL.Func([IDL.Nat], [IDL.Opt(Machine)], ['query']),
+    'getNextDispatchNumber' : IDL.Func([], [IDL.Text], ['query']),
     'getNextInwardNumber' : IDL.Func([], [IDL.Text], ['query']),
     'getNextIssueNumber' : IDL.Func([], [IDL.Text], ['query']),
     'getNextPONumber' : IDL.Func([], [IDL.Text], ['query']),

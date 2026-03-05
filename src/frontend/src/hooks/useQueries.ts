@@ -34,7 +34,7 @@ import { useActor } from "./useActor";
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export function useDashboardStats() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<DashboardStats>({
     queryKey: ["dashboardStats"],
     queryFn: async () => {
@@ -42,15 +42,15 @@ export function useDashboardStats() {
       const result = await actor.getDashboardStats();
       return normalizeRecord(result);
     },
-    enabled: !!actor && !isFetching,
-    retry: false,
+    enabled: !!actor,
+    retry: 2,
   });
 }
 
 // ─── Raw Materials ────────────────────────────────────────────────────────────
 
 export function useRawMaterials() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<RawMaterial[]>({
     queryKey: ["rawMaterials"],
     queryFn: async () => {
@@ -58,8 +58,8 @@ export function useRawMaterials() {
       const result = await actor.getAllRawMaterials();
       return normalizeRecord(result);
     },
-    enabled: !!actor && !isFetching,
-    retry: false,
+    enabled: !!actor,
+    retry: 2,
   });
 }
 
@@ -141,7 +141,7 @@ export function useDeleteRawMaterial() {
 // ─── Production Orders ────────────────────────────────────────────────────────
 
 export function useProductionOrders() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<ProductionOrder[]>({
     queryKey: ["productionOrders"],
     queryFn: async () => {
@@ -149,8 +149,8 @@ export function useProductionOrders() {
       const result = await actor.getAllProductionOrders();
       return normalizeRecord(result);
     },
-    enabled: !!actor && !isFetching,
-    retry: false,
+    enabled: !!actor,
+    retry: 2,
   });
 }
 
@@ -248,7 +248,7 @@ export function useDeleteProductionOrder() {
 // ─── Machines ─────────────────────────────────────────────────────────────────
 
 export function useMachines() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<Machine[]>({
     queryKey: ["machines"],
     queryFn: async () => {
@@ -256,8 +256,8 @@ export function useMachines() {
       const result = await actor.getAllMachines();
       return normalizeRecord(result);
     },
-    enabled: !!actor && !isFetching,
-    retry: false,
+    enabled: !!actor,
+    retry: 2,
   });
 }
 
@@ -343,7 +343,7 @@ export function useDeleteMachine() {
 // ─── Batch Stages ─────────────────────────────────────────────────────────────
 
 export function useBatchStages() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<BatchStage[]>({
     queryKey: ["batchStages"],
     queryFn: async () => {
@@ -351,8 +351,8 @@ export function useBatchStages() {
       const result = await actor.getAllBatchStages();
       return normalizeRecord(result);
     },
-    enabled: !!actor && !isFetching,
-    retry: false,
+    enabled: !!actor,
+    retry: 2,
   });
 }
 
@@ -433,7 +433,7 @@ export function useDeleteBatchStage() {
 // ─── Quality Tests ────────────────────────────────────────────────────────────
 
 export function useQualityTests() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<QualityTest[]>({
     queryKey: ["qualityTests"],
     queryFn: async () => {
@@ -441,8 +441,8 @@ export function useQualityTests() {
       const result = await actor.getAllQualityTests();
       return normalizeRecord(result);
     },
-    enabled: !!actor && !isFetching,
-    retry: false,
+    enabled: !!actor,
+    retry: 2,
   });
 }
 
@@ -536,7 +536,7 @@ export function useDeleteQualityTest() {
 // ─── Production Logs ──────────────────────────────────────────────────────────
 
 export function useProductionLogs() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<ProductionLog[]>({
     queryKey: ["productionLogs"],
     queryFn: async () => {
@@ -544,8 +544,8 @@ export function useProductionLogs() {
       const result = await actor.getAllProductionLogs();
       return normalizeRecord(result);
     },
-    enabled: !!actor && !isFetching,
-    retry: false,
+    enabled: !!actor,
+    retry: 2,
   });
 }
 
@@ -618,7 +618,7 @@ export function useDeleteProductionLog() {
 // ─── Yarn Inventory ───────────────────────────────────────────────────────────
 
 export function useYarnInventory() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<YarnInventory[]>({
     queryKey: ["yarnInventory"],
     queryFn: async () => {
@@ -626,8 +626,8 @@ export function useYarnInventory() {
       const result = await actor.getAllYarnInventory();
       return normalizeRecord(result);
     },
-    enabled: !!actor && !isFetching,
-    retry: false,
+    enabled: !!actor,
+    retry: 2,
   });
 }
 
@@ -709,7 +709,7 @@ export function useDeleteYarnInventory() {
 // ─── Purchase Orders ──────────────────────────────────────────────────────────
 
 export function usePurchaseOrders() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<PurchaseOrder[]>({
     queryKey: ["purchaseOrders"],
     queryFn: async () => {
@@ -717,8 +717,8 @@ export function usePurchaseOrders() {
       const result = await actor.getAllPurchaseOrders();
       return normalizeRecord(result);
     },
-    enabled: !!actor && !isFetching,
-    retry: false,
+    enabled: !!actor,
+    retry: 2,
   });
 }
 
@@ -801,7 +801,7 @@ export function useDeletePurchaseOrder() {
 // ─── Inward Entries ───────────────────────────────────────────────────────────
 
 export function useInwardEntries() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<InwardEntry[]>({
     queryKey: ["inwardEntries"],
     queryFn: async () => {
@@ -809,8 +809,8 @@ export function useInwardEntries() {
       const result = await actor.getAllInwardEntries();
       return normalizeRecord(result);
     },
-    enabled: !!actor && !isFetching,
-    retry: false,
+    enabled: !!actor,
+    retry: 2,
   });
 }
 
@@ -872,7 +872,7 @@ export function useDeleteInwardEntry() {
 // ─── Warehouse Stock ──────────────────────────────────────────────────────────
 
 export function useWarehouseStock() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<WarehouseStock[]>({
     queryKey: ["warehouseStock"],
     queryFn: async () => {
@@ -880,43 +880,43 @@ export function useWarehouseStock() {
       const result = await actor.getAllWarehouseStock();
       return normalizeRecord(result);
     },
-    enabled: !!actor && !isFetching,
-    retry: false,
+    enabled: !!actor,
+    retry: 2,
   });
 }
 
 // ─── Auto-Number & PO Balance ─────────────────────────────────────────────────
 
 export function useNextPONumber(enabled: boolean) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<string>({
     queryKey: ["nextPONumber"],
     queryFn: async () => {
       if (!actor) throw new Error("No actor");
       return actor.getNextPONumber();
     },
-    enabled: !!actor && !isFetching && enabled,
+    enabled: !!actor && enabled,
     retry: false,
     staleTime: 0,
   });
 }
 
 export function useNextInwardNumber(enabled: boolean) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<string>({
     queryKey: ["nextInwardNumber"],
     queryFn: async () => {
       if (!actor) throw new Error("No actor");
       return actor.getNextInwardNumber();
     },
-    enabled: !!actor && !isFetching && enabled,
+    enabled: !!actor && enabled,
     retry: false,
     staleTime: 0,
   });
 }
 
 export function usePOBalance(purchaseOrderId: bigint | null) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<POBalance | null>({
     queryKey: ["poBalance", String(purchaseOrderId)],
     queryFn: async () => {
@@ -924,7 +924,7 @@ export function usePOBalance(purchaseOrderId: bigint | null) {
       const result = await actor.getPOBalance(purchaseOrderId);
       return result ? normalizeRecord(result) : null;
     },
-    enabled: !!actor && !isFetching && purchaseOrderId !== null,
+    enabled: !!actor && purchaseOrderId !== null,
     retry: false,
     staleTime: 0,
   });
@@ -934,7 +934,7 @@ export function useProductionOrderBalance(
   yarnCountNe: bigint | null,
   lotNumber: string | null,
 ) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<import("../backend.d").ProductionOrderBalance | null>({
     queryKey: ["productionOrderBalance", String(yarnCountNe), lotNumber],
     queryFn: async () => {
@@ -946,7 +946,7 @@ export function useProductionOrderBalance(
       );
       return result ? normalizeRecord(result) : null;
     },
-    enabled: !!actor && !isFetching && yarnCountNe !== null && !!lotNumber,
+    enabled: !!actor && yarnCountNe !== null && !!lotNumber,
     retry: false,
     staleTime: 0,
   });
@@ -955,7 +955,7 @@ export function useProductionOrderBalance(
 // ─── Material Issues ──────────────────────────────────────────────────────────
 
 export function useMaterialIssues() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<MaterialIssue[]>({
     queryKey: ["materialIssues"],
     queryFn: async () => {
@@ -963,8 +963,8 @@ export function useMaterialIssues() {
       const result = await actor.getAllMaterialIssues();
       return normalizeRecord(result);
     },
-    enabled: !!actor && !isFetching,
-    retry: false,
+    enabled: !!actor,
+    retry: 2,
   });
 }
 
@@ -1018,14 +1018,104 @@ export function useDeleteMaterialIssue() {
 }
 
 export function useNextIssueNumber(enabled: boolean) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<string>({
     queryKey: ["nextIssueNumber"],
     queryFn: async () => {
       if (!actor) throw new Error("No actor");
       return actor.getNextIssueNumber();
     },
-    enabled: !!actor && !isFetching && enabled,
+    enabled: !!actor && enabled,
+    retry: false,
+    staleTime: 0,
+  });
+}
+
+// ─── Dispatch Entries ─────────────────────────────────────────────────────────
+
+export function useDispatchEntries() {
+  const { actor } = useActor();
+  return useQuery<import("../backend.d").DispatchEntry[]>({
+    queryKey: ["dispatchEntries"],
+    queryFn: async () => {
+      if (!actor) return [];
+      const result = await actor.getAllDispatchEntries();
+      return normalizeRecord(result);
+    },
+    enabled: !!actor,
+    retry: 2,
+  });
+}
+
+export function useCreateDispatchEntry() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      lotNumber: string;
+      destination: import("../backend.d").DispatchDestination;
+      quantityKg: bigint;
+      dispatchDate: bigint;
+      remarks: string;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.createDispatchEntry(
+        args.lotNumber,
+        args.destination,
+        args.quantityKg,
+        args.dispatchDate,
+        args.remarks,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["dispatchEntries"] });
+      qc.invalidateQueries({ queryKey: ["dispatchBalance"] });
+      qc.invalidateQueries({ queryKey: ["nextDispatchNumber"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+}
+
+export function useDeleteDispatchEntry() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("No actor");
+      return actor.deleteDispatchEntry(id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["dispatchEntries"] });
+      qc.invalidateQueries({ queryKey: ["dispatchBalance"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+}
+
+export function useNextDispatchNumber(enabled: boolean) {
+  const { actor } = useActor();
+  return useQuery<string>({
+    queryKey: ["nextDispatchNumber"],
+    queryFn: async () => {
+      if (!actor) throw new Error("No actor");
+      return actor.getNextDispatchNumber();
+    },
+    enabled: !!actor && enabled,
+    retry: false,
+    staleTime: 0,
+  });
+}
+
+export function useDispatchBalance(lotNumber: string | null) {
+  const { actor } = useActor();
+  return useQuery<import("../backend.d").DispatchBalance | null>({
+    queryKey: ["dispatchBalance", lotNumber],
+    queryFn: async () => {
+      if (!actor || !lotNumber) throw new Error("No params");
+      const result = await actor.getDispatchBalance(lotNumber);
+      return result ? normalizeRecord(result) : null;
+    },
+    enabled: !!actor && !!lotNumber,
     retry: false,
     staleTime: 0,
   });
@@ -1034,7 +1124,7 @@ export function useNextIssueNumber(enabled: boolean) {
 // ─── Packing Entries ──────────────────────────────────────────────────────────
 
 export function usePackingEntries() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<PackingEntry[]>({
     queryKey: ["packingEntries"],
     queryFn: async () => {
@@ -1042,8 +1132,8 @@ export function usePackingEntries() {
       const result = await actor.getAllPackingEntries();
       return normalizeRecord(result);
     },
-    enabled: !!actor && !isFetching,
-    retry: false,
+    enabled: !!actor,
+    retry: 2,
   });
 }
 
@@ -1091,21 +1181,21 @@ export function useDeletePackingEntry() {
 }
 
 export function useNextPackingNumber(enabled: boolean) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<string>({
     queryKey: ["nextPackingNumber"],
     queryFn: async () => {
       if (!actor) throw new Error("No actor");
       return actor.getNextPackingNumber();
     },
-    enabled: !!actor && !isFetching && enabled,
+    enabled: !!actor && enabled,
     retry: false,
     staleTime: 0,
   });
 }
 
 export function usePackingBalance(lotNumber: string | null) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<PackingBalance | null>({
     queryKey: ["packingBalance", lotNumber],
     queryFn: async () => {
@@ -1113,7 +1203,7 @@ export function usePackingBalance(lotNumber: string | null) {
       const result = await actor.getPackingBalance(lotNumber);
       return result ? normalizeRecord(result) : null;
     },
-    enabled: !!actor && !isFetching && !!lotNumber,
+    enabled: !!actor && !!lotNumber,
     retry: false,
     staleTime: 0,
   });

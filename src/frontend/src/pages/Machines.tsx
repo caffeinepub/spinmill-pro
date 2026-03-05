@@ -37,7 +37,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { Machine, MachineStatus, MachineType } from "../backend.d";
+import { MachineType } from "../backend.d";
+import type { Machine, MachineStatus } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
@@ -52,14 +53,14 @@ import {
 } from "../hooks/useQueries";
 
 const unitLabels: Record<string, string> = {
-  oeSpinning: "OE Spinning",
-  ringSpinning: "Ring Spinning",
-  tfo: "TFO",
+  [MachineType.autocoro]: "OE Spinning",
+  [MachineType.ringFrame]: "Ring Spinning",
+  [MachineType.winding]: "TFO",
 };
 
 const defaultForm = {
   name: "",
-  machineType: "oeSpinning" as MachineType,
+  machineType: MachineType.autocoro as MachineType,
   machineNumber: "",
   status: "idle" as MachineStatus,
   currentOrderId: "",

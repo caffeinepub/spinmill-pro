@@ -427,16 +427,36 @@ export default function InwardEntry() {
 
             <div className="space-y-1.5">
               <Label htmlFor="iw-material">Material Name</Label>
-              <Input
-                id="iw-material"
-                data-ocid="inward.input"
+              <Select
                 value={form.materialName}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, materialName: e.target.value }))
+                onValueChange={(v) =>
+                  setForm((p) => ({ ...p, materialName: v }))
                 }
-                placeholder="Auto-filled from PO"
-                required
-              />
+              >
+                <SelectTrigger id="iw-material" data-ocid="inward.select">
+                  <SelectValue placeholder="Select material..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {[
+                    "Cotton",
+                    "Comber Noil",
+                    "Flat strips",
+                    "Polyester",
+                    "RP",
+                    "Viscose",
+                    "Bamboo",
+                    "Silver Ionic",
+                    "Break comber",
+                    "Navy Blue",
+                    "Further Cotton",
+                    "US Cotton",
+                  ].map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

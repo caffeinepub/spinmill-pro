@@ -9,6 +9,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -82,6 +89,23 @@ function POStatusBadge({ status }: { status: PurchaseOrderStatus | string }) {
     </Badge>
   );
 }
+
+// ─── Material Options ─────────────────────────────────────────────────────────
+
+const MATERIAL_OPTIONS = [
+  "Cotton",
+  "Comber Noil",
+  "Flat strips",
+  "Polyester",
+  "RP",
+  "Viscose",
+  "Bamboo",
+  "Silver Ionic",
+  "Break comber",
+  "Navy Blue",
+  "Further Cotton",
+  "US Cotton",
+];
 
 // ─── Default Form ─────────────────────────────────────────────────────────────
 
@@ -371,16 +395,27 @@ export default function PurchaseOrders() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="po-material">Material Name</Label>
-              <Input
-                id="po-material"
-                data-ocid="purchaseorders.input"
+              <Select
                 value={form.materialName}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, materialName: e.target.value }))
+                onValueChange={(val) =>
+                  setForm((p) => ({ ...p, materialName: val }))
                 }
-                placeholder="e.g. Cotton Fibre – 28mm Staple"
                 required
-              />
+              >
+                <SelectTrigger
+                  id="po-material"
+                  data-ocid="purchaseorders.select"
+                >
+                  <SelectValue placeholder="Select material" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MATERIAL_OPTIONS.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="po-qty">Ordered Quantity (kg)</Label>

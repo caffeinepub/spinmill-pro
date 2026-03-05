@@ -38,6 +38,19 @@ export interface ProductionOrderBalance {
     orderQty: bigint;
     producedQty: bigint;
 }
+export interface DispatchEntry {
+    id: bigint;
+    destination: DispatchDestination;
+    yarnCountNe: bigint;
+    dispatchDate: Time;
+    productType: ProductType;
+    lotNumber: string;
+    spinningUnit: SpinningUnit;
+    dispatchNumber: string;
+    remarks: string;
+    quantityKg: bigint;
+    endUse: EndUse;
+}
 export interface PackingBalance {
     yarnCountNe: bigint;
     productType: ProductType;
@@ -137,6 +150,7 @@ export interface DashboardStats {
     totalRawMaterialWeightAvailable: bigint;
     ringWarehouseStockKg: bigint;
     recentQualityTestPassRate: bigint;
+    totalDispatchedTodayKg: bigint;
     totalYarnInventoryWeight: bigint;
     oeWarehouseStockKg: bigint;
     totalActiveOrders: bigint;
@@ -169,6 +183,25 @@ export interface UserProfile {
     name: string;
     role: string;
     department: string;
+}
+export interface DispatchBalance {
+    yarnCountNe: bigint;
+    productType: ProductType;
+    totalPackedKg: bigint;
+    lotNumber: string;
+    spinningUnit: SpinningUnit;
+    totalDispatchedKg: bigint;
+    availableKg: bigint;
+    endUse: EndUse;
+}
+export enum DispatchDestination {
+    tfo = "tfo",
+    amravati = "amravati",
+    kolhapur = "kolhapur",
+    ambala = "ambala",
+    weaving = "weaving",
+    outside = "outside",
+    softWinding = "softWinding"
 }
 export enum EndUse {
     tfo = "tfo",
@@ -261,11 +294,13 @@ export interface backendInterface {
     addRawMaterial(lotNumber: string, supplier: string, grade: string, weightKg: bigint, warehouse: Warehouse, inwardEntryId: bigint | null): Promise<bigint>;
     addYarnInventory(lotNumber: string, yarnCountNe: bigint, twistDirection: TwistDirection, quantityCones: bigint, weightKg: bigint, status: InventoryStatus): Promise<bigint>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    createDispatchEntry(lotNumber: string, destination: DispatchDestination, quantityKg: bigint, dispatchDate: Time, remarks: string): Promise<bigint>;
     createMaterialIssue(department: string, warehouse: Warehouse, materialName: string, grade: string, issuedQty: bigint, remarks: string): Promise<bigint>;
     createPackingEntry(lotNumber: string, quantityKg: bigint, remarks: string, packingDate: Time): Promise<bigint>;
     createProductionOrder(orderNumber: string, lotNumber: string, productType: ProductType, spinningUnit: SpinningUnit, endUse: EndUse, yarnCountNe: bigint, twistDirection: TwistDirection, quantityKg: bigint, targetDate: Time, status: OrderStatus): Promise<bigint>;
     createPurchaseOrder(poNumber: string, supplier: string, materialName: string, orderedQty: bigint, orderDate: Time, expectedDeliveryDate: Time): Promise<bigint>;
     deleteBatchStage(id: bigint): Promise<void>;
+    deleteDispatchEntry(id: bigint): Promise<void>;
     deleteInwardEntry(id: bigint): Promise<void>;
     deleteMachine(id: bigint): Promise<void>;
     deleteMaterialIssue(id: bigint): Promise<void>;
@@ -277,6 +312,7 @@ export interface backendInterface {
     deleteRawMaterial(id: bigint): Promise<void>;
     deleteYarnInventory(id: bigint): Promise<void>;
     getAllBatchStages(): Promise<Array<BatchStage>>;
+    getAllDispatchEntries(): Promise<Array<DispatchEntry>>;
     getAllInwardEntries(): Promise<Array<InwardEntry>>;
     getAllMachines(): Promise<Array<Machine>>;
     getAllMaterialIssues(): Promise<Array<MaterialIssue>>;
@@ -292,9 +328,11 @@ export interface backendInterface {
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getDashboardStats(): Promise<DashboardStats>;
+    getDispatchBalance(lotNumber: string): Promise<DispatchBalance | null>;
     getInwardEntriesByPO(purchaseOrderId: bigint): Promise<Array<InwardEntry>>;
     getInwardEntry(id: bigint): Promise<InwardEntry | null>;
     getMachine(id: bigint): Promise<Machine | null>;
+    getNextDispatchNumber(): Promise<string>;
     getNextInwardNumber(): Promise<string>;
     getNextIssueNumber(): Promise<string>;
     getNextPONumber(): Promise<string>;

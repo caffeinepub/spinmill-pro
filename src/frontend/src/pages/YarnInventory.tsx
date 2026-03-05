@@ -16,11 +16,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { FilterX, Info, Package2, Weight } from "lucide-react";
+import {
+  AlertCircle,
+  FilterX,
+  Info,
+  Package2,
+  RefreshCw,
+  Weight,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
-import { useActor } from "../hooks/useActor";
 import { usePackingEntries } from "../hooks/useQueries";
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
@@ -54,9 +60,13 @@ interface AggregatedLot {
 }
 
 export default function YarnInventory() {
-  const { isFetching: actorFetching } = useActor();
-  const { data: packingEntries = [], isLoading } = usePackingEntries();
-  const isLoadingData = isLoading || actorFetching;
+  const {
+    data: packingEntries = [],
+    isLoading,
+    isError,
+    refetch,
+  } = usePackingEntries();
+  const isLoadingData = isLoading;
 
   const [filterUnit, setFilterUnit] = useState<string>("");
   const [filterProductType, setFilterProductType] = useState<string>("");
@@ -160,6 +170,28 @@ export default function YarnInventory() {
           entry required.
         </p>
       </div>
+
+      {/* Error Banner */}
+      {isError && (
+        <div
+          data-ocid="yarn.error_state"
+          className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 mb-4"
+        >
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <p className="text-sm">Failed to load yarn inventory data.</p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            className="gap-1.5 text-xs"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3 mb-4">

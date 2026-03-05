@@ -51,6 +51,21 @@ import {
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
+const MATERIAL_NAMES = [
+  "Cotton",
+  "Comber Noil",
+  "Flat strips",
+  "Polyester",
+  "RP",
+  "Viscose",
+  "Bamboo",
+  "Silver Ionic",
+  "Break comber",
+  "Navy Blue",
+  "Further Cotton",
+  "US Cotton",
+];
+
 const DEPARTMENTS = [
   "Blowroom",
   "Carding",
@@ -518,19 +533,27 @@ export default function MaterialIssue() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="mi-material">Material Name</Label>
-                <Input
-                  id="mi-material"
-                  data-ocid="material-issue.input"
+                <Select
                   value={form.materialName}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, materialName: e.target.value }))
+                  onValueChange={(v) =>
+                    setForm((p) => ({ ...p, materialName: v }))
                   }
-                  placeholder="e.g. Cotton Bale"
                   required
-                />
-                <p className="text-xs text-muted-foreground">
-                  Must match the material name used in the inward entry
-                </p>
+                >
+                  <SelectTrigger
+                    id="mi-material"
+                    data-ocid="material-issue.select"
+                  >
+                    <SelectValue placeholder="Select material..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MATERIAL_NAMES.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="mi-grade">Grade</Label>

@@ -18,6 +18,7 @@ import {
   PackageOpen,
   Settings2,
   ShoppingCart,
+  Truck,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -32,6 +33,7 @@ import ProductionOrders from "./pages/ProductionOrders";
 import PurchaseOrders from "./pages/PurchaseOrders";
 import RawMaterials from "./pages/RawMaterials";
 import Reports from "./pages/Reports";
+import YarnDispatch from "./pages/YarnDispatch";
 import YarnInventory from "./pages/YarnInventory";
 
 type PageId =
@@ -45,6 +47,7 @@ type PageId =
   | "packing-entry"
   | "production-logs"
   | "yarn-inventory"
+  | "yarn-dispatch"
   | "reports";
 
 interface NavItem {
@@ -120,6 +123,12 @@ const navItems: NavItem[] = [
     icon: <Package2 className="w-4 h-4" />,
     group: "Packing",
   },
+  {
+    id: "yarn-dispatch",
+    label: "Yarn Dispatch",
+    icon: <Truck className="w-4 h-4" />,
+    group: "Packing",
+  },
 ];
 
 const pageComponents: Record<PageId, React.ReactNode> = {
@@ -133,6 +142,7 @@ const pageComponents: Record<PageId, React.ReactNode> = {
   "packing-entry": <PackingEntry />,
   "production-logs": <ProductionLogs />,
   "yarn-inventory": <YarnInventory />,
+  "yarn-dispatch": <YarnDispatch />,
   reports: <Reports />,
 };
 
