@@ -42,7 +42,7 @@ import type {
   PurchaseOrder,
   RawMaterial,
 } from "../backend.d";
-import { RawMaterialStatus, Warehouse as WarehouseEnum } from "../backend.d";
+import type { RawMaterialStatus } from "../backend.d";
 import {
   useBatchStages,
   useInwardEntries,
@@ -496,7 +496,7 @@ function DailyConsumptionReport({
   }, [rows]);
 
   const consumedMaterials = useMemo(
-    () => materials.filter((m) => m.status === RawMaterialStatus.consumed),
+    () => materials.filter((m) => (m.status as string) === "consumed"),
     [materials],
   );
 
@@ -769,8 +769,8 @@ function DailyConsumptionReport({
 // ─── Inward Raw Material Report ───────────────────────────────────────────────
 
 function warehouseLabel(w: string): string {
-  if (w === WarehouseEnum.oeRawMaterial) return "OE Raw Material";
-  if (w === WarehouseEnum.ringRawMaterial) return "Ring Raw Material";
+  if (w === "oeRawMaterial") return "OE Raw Material";
+  if (w === "ringRawMaterial") return "Ring Raw Material";
   return w;
 }
 
@@ -817,10 +817,10 @@ function InwardRawMaterialReport({
   const kpis = useMemo(() => {
     const totalQty = rows.reduce((s, r) => s + Number(r.receivedQty), 0);
     const oeQty = rows
-      .filter((r) => (r.warehouse as string) === WarehouseEnum.oeRawMaterial)
+      .filter((r) => (r.warehouse as string) === "oeRawMaterial")
       .reduce((s, r) => s + Number(r.receivedQty), 0);
     const ringQty = rows
-      .filter((r) => (r.warehouse as string) === WarehouseEnum.ringRawMaterial)
+      .filter((r) => (r.warehouse as string) === "ringRawMaterial")
       .reduce((s, r) => s + Number(r.receivedQty), 0);
     return { totalQty, oeQty, ringQty, count: rows.length };
   }, [rows]);
@@ -902,12 +902,8 @@ function InwardRawMaterialReport({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Warehouses</SelectItem>
-              <SelectItem value={WarehouseEnum.oeRawMaterial}>
-                OE Raw Material
-              </SelectItem>
-              <SelectItem value={WarehouseEnum.ringRawMaterial}>
-                Ring Raw Material
-              </SelectItem>
+              <SelectItem value="oeRawMaterial">OE Raw Material</SelectItem>
+              <SelectItem value="ringRawMaterial">Ring Raw Material</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -1001,8 +997,7 @@ function InwardRawMaterialReport({
             <TableBody>
               {rows.map((entry, idx) => {
                 const po = poMap.get(String(entry.purchaseOrderId));
-                const isOE =
-                  (entry.warehouse as string) === WarehouseEnum.oeRawMaterial;
+                const isOE = (entry.warehouse as string) === "oeRawMaterial";
                 return (
                   <TableRow
                     key={String(entry.id)}

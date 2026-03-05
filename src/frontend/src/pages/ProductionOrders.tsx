@@ -35,13 +35,6 @@ import type {
   SpinningUnit,
   TwistDirection,
 } from "../backend.d";
-import {
-  EndUse as EU,
-  OrderStatus as OS,
-  ProductType as PT,
-  SpinningUnit as SU,
-  TwistDirection as TD,
-} from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
@@ -57,14 +50,14 @@ import {
 const defaultForm = {
   orderNumber: "",
   lotNumber: "",
-  productType: PT.carded as ProductType,
-  spinningUnit: SU.openend as SpinningUnit,
-  endUse: EU.warp as EndUse,
+  productType: "carded" as ProductType,
+  spinningUnit: "openend" as SpinningUnit,
+  endUse: "warp" as EndUse,
   yarnCountNe: "",
-  twistDirection: TD.z as TwistDirection,
+  twistDirection: "z" as TwistDirection,
   quantityKg: "",
   targetDate: "",
-  status: OS.pending as OrderStatus,
+  status: "pending" as OrderStatus,
 };
 
 export default function ProductionOrders() {
@@ -140,7 +133,7 @@ export default function ProductionOrders() {
           twistDirection: form.twistDirection,
           quantityKg: BigInt(Math.round(Number(form.quantityKg))),
           targetDate: targetTs,
-          status: OS.pending,
+          status: "pending" as OrderStatus,
         });
         toast.success("Order created");
       }
@@ -254,18 +247,18 @@ export default function ProductionOrders() {
                     )}
                   </TableCell>
                   <TableCell className="capitalize">
-                    {order.productType === PT.lt
+                    {order.productType === "lt"
                       ? "LT"
                       : order.productType.charAt(0).toUpperCase() +
                         order.productType.slice(1)}
                   </TableCell>
                   <TableCell className="text-sm">
-                    {order.spinningUnit === SU.openend
+                    {order.spinningUnit === "openend"
                       ? "Openend"
                       : "Ring Spinning"}
                   </TableCell>
                   <TableCell className="text-sm">
-                    {order.endUse === EU.tfo
+                    {order.endUse === "tfo"
                       ? "TFO"
                       : order.endUse.charAt(0).toUpperCase() +
                         order.endUse.slice(1)}
@@ -274,7 +267,7 @@ export default function ProductionOrders() {
                     {Number(order.yarnCountNe)}
                   </TableCell>
                   <TableCell className="font-mono-nums">
-                    {order.twistDirection === TD.s ? "OE" : "RS"}
+                    {order.twistDirection === "s" ? "OE" : "RS"}
                   </TableCell>
                   <TableCell className="font-mono-nums">
                     {Number(order.quantityKg).toLocaleString()}
@@ -367,12 +360,12 @@ export default function ProductionOrders() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={PT.carded}>Carded</SelectItem>
-                    <SelectItem value={PT.combed}>Combed</SelectItem>
-                    <SelectItem value={PT.polyester}>Polyester</SelectItem>
-                    <SelectItem value={PT.bamboo}>Bamboo</SelectItem>
-                    <SelectItem value={PT.viscose}>Viscose</SelectItem>
-                    <SelectItem value={PT.lt}>LT</SelectItem>
+                    <SelectItem value="carded">Carded</SelectItem>
+                    <SelectItem value="combed">Combed</SelectItem>
+                    <SelectItem value="polyester">Polyester</SelectItem>
+                    <SelectItem value="bamboo">Bamboo</SelectItem>
+                    <SelectItem value="viscose">Viscose</SelectItem>
+                    <SelectItem value="lt">LT</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -388,10 +381,8 @@ export default function ProductionOrders() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={SU.openend}>Openend</SelectItem>
-                    <SelectItem value={SU.ringSpinning}>
-                      Ring Spinning
-                    </SelectItem>
+                    <SelectItem value="openend">Openend</SelectItem>
+                    <SelectItem value="ringSpinning">Ring Spinning</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -410,11 +401,11 @@ export default function ProductionOrders() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={EU.warp}>Warp</SelectItem>
-                    <SelectItem value={EU.weft}>Weft</SelectItem>
-                    <SelectItem value={EU.pile}>Pile</SelectItem>
-                    <SelectItem value={EU.ground}>Ground</SelectItem>
-                    <SelectItem value={EU.tfo}>TFO</SelectItem>
+                    <SelectItem value="warp">Warp</SelectItem>
+                    <SelectItem value="weft">Weft</SelectItem>
+                    <SelectItem value="pile">Pile</SelectItem>
+                    <SelectItem value="ground">Ground</SelectItem>
+                    <SelectItem value="tfo">TFO</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -449,8 +440,8 @@ export default function ProductionOrders() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={TD.s}>OE</SelectItem>
-                    <SelectItem value={TD.z}>RS</SelectItem>
+                    <SelectItem value="s">OE</SelectItem>
+                    <SelectItem value="z">RS</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -497,10 +488,10 @@ export default function ProductionOrders() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={OS.pending}>Pending</SelectItem>
-                      <SelectItem value={OS.inProgress}>In Progress</SelectItem>
-                      <SelectItem value={OS.completed}>Completed</SelectItem>
-                      <SelectItem value={OS.cancelled}>Cancelled</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="inProgress">In Progress</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

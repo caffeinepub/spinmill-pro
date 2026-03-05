@@ -72,6 +72,17 @@ export type MachineType = { 'ringFrame' : null } |
   { 'roving' : null } |
   { 'winding' : null } |
   { 'drawing' : null };
+export interface MaterialIssue {
+  'id' : bigint,
+  'issueDate' : Time,
+  'issuedQty' : bigint,
+  'issueNumber' : string,
+  'grade' : string,
+  'department' : string,
+  'warehouse' : Warehouse,
+  'materialName' : string,
+  'remarks' : string,
+}
 export type OrderStatus = { 'cancelled' : null } |
   { 'pending' : null } |
   { 'completed' : null } |
@@ -223,6 +234,10 @@ export interface _SERVICE {
     bigint
   >,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'createMaterialIssue' : ActorMethod<
+    [string, Warehouse, string, string, bigint, string],
+    bigint
+  >,
   'createProductionOrder' : ActorMethod<
     [
       string,
@@ -245,6 +260,7 @@ export interface _SERVICE {
   'deleteBatchStage' : ActorMethod<[bigint], undefined>,
   'deleteInwardEntry' : ActorMethod<[bigint], undefined>,
   'deleteMachine' : ActorMethod<[bigint], undefined>,
+  'deleteMaterialIssue' : ActorMethod<[bigint], undefined>,
   'deleteProductionLog' : ActorMethod<[bigint], undefined>,
   'deleteProductionOrder' : ActorMethod<[bigint], undefined>,
   'deletePurchaseOrder' : ActorMethod<[bigint], undefined>,
@@ -254,6 +270,7 @@ export interface _SERVICE {
   'getAllBatchStages' : ActorMethod<[], Array<BatchStage>>,
   'getAllInwardEntries' : ActorMethod<[], Array<InwardEntry>>,
   'getAllMachines' : ActorMethod<[], Array<Machine>>,
+  'getAllMaterialIssues' : ActorMethod<[], Array<MaterialIssue>>,
   'getAllProductionLogs' : ActorMethod<[], Array<ProductionLog>>,
   'getAllProductionOrders' : ActorMethod<[], Array<ProductionOrder>>,
   'getAllPurchaseOrders' : ActorMethod<[], Array<PurchaseOrder>>,
@@ -269,6 +286,7 @@ export interface _SERVICE {
   'getInwardEntry' : ActorMethod<[bigint], [] | [InwardEntry]>,
   'getMachine' : ActorMethod<[bigint], [] | [Machine]>,
   'getNextInwardNumber' : ActorMethod<[], string>,
+  'getNextIssueNumber' : ActorMethod<[], string>,
   'getNextPONumber' : ActorMethod<[], string>,
   'getPOBalance' : ActorMethod<[bigint], [] | [POBalance]>,
   'getProductionLog' : ActorMethod<[bigint], [] | [ProductionLog]>,

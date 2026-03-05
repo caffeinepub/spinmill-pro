@@ -12,8 +12,6 @@ import Iter "mo:core/Iter";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
-
-
 actor {
   type RawMaterial = {
     id : Nat;
@@ -192,6 +190,18 @@ actor {
     #ringRawMaterial;
   };
 
+  type MaterialIssue = {
+    id : Nat;
+    issueNumber : Text;
+    issueDate : Time.Time;
+    department : Text;
+    warehouse : Warehouse;
+    materialName : Text;
+    grade : Text;
+    issuedQty : Nat;
+    remarks : Text;
+  };
+
   type InwardEntry = {
     id : Nat;
     inwardNumber : Text;
@@ -234,6 +244,7 @@ actor {
   var yarnInventoryIdCounter = 0;
   var purchaseOrderIdCounter = 0;
   var inwardEntryIdCounter = 0;
+  var materialIssueIdCounter = 1; // Start at 1 for proper counting
 
   let rawMaterials = Map.empty<Nat, RawMaterial>();
   let productionOrders = Map.empty<Nat, ProductionOrder>();
@@ -247,6 +258,7 @@ actor {
   let purchaseOrders = Map.empty<Nat, PurchaseOrder>();
   let inwardEntries = Map.empty<Nat, InwardEntry>();
   let warehouseStock = Map.empty<Text, WarehouseStock>();
+  let materialIssues = Map.empty<Nat, MaterialIssue>();
 
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -350,6 +362,150 @@ actor {
     };
     if (not rawMaterials.containsKey(id)) { Runtime.trap("Raw material not found") };
     rawMaterials.remove(id);
+  };
+
+  // --- MATERIAL ISSUES ---
+  public shared ({ caller }) func createMaterialIssue(
+    department : Text,
+    warehouse : Warehouse,
+    materialName : Text,
+    grade : Text,
+    issuedQty : Nat,
+    remarks : Text,
+  ) : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create material issues");
+    };
+
+    let issueId = materialIssueIdCounter;
+    let issueNumber = "ISS-2026-" # (if (issueId < 10) { "00" } else if (issueId < 100) {
+      "0";
+    } else { "" }) # issueId.toText();
+
+    // Check warehouse stock key and quantity
+    let stockKey = warehouseToText(warehouse) # "_" # materialName;
+    let currentStock = switch (warehouseStock.get(stockKey)) {
+      case (null) { Runtime.trap("No stock found for this material and warehouse") };
+      case (?s) { s };
+    };
+
+    if (currentStock.totalQty < issuedQty) {
+      Runtime.trap("Not enough stock available for this issue");
+    };
+
+    // Deduct issued quantity from warehouse stock
+    let newStock = {
+      currentStock with totalQty = currentStock.totalQty - issuedQty;
+    };
+    warehouseStock.add(stockKey, newStock);
+
+    // Deduct from raw materials FIFO-style
+    var remainingQty = issuedQty;
+
+    let rawMaterialIdsToRemove = List.empty<Nat>();
+    let rawMaterialsIter = rawMaterials.entries();
+    for ((materialId, material) in rawMaterialsIter) {
+      let warehouseMatches = switch (material.warehouse, warehouse) {
+        case (#oeRawMaterial, #oeRawMaterial) { true };
+        case (#ringRawMaterial, #ringRawMaterial) { true };
+        case (_) { false };
+      };
+      if (warehouseMatches and material.grade == grade) {
+        if (remainingQty > 0) {
+          if (material.weightKg <= remainingQty) {
+            remainingQty -= material.weightKg;
+            rawMaterialIdsToRemove.add(materialId);
+          } else {
+            let updatedMaterial : RawMaterial = {
+              material with weightKg = material.weightKg - remainingQty
+            };
+            rawMaterials.add(materialId, updatedMaterial);
+            remainingQty := 0;
+          };
+        };
+      };
+    };
+
+    let toRemoveArray = rawMaterialIdsToRemove.toArray();
+    let toRemoveIter = toRemoveArray.values();
+    for (rawMatId in toRemoveIter) {
+      rawMaterials.remove(rawMatId);
+    };
+
+    if (remainingQty > 0) {
+      // Rollback warehouse stock deduction
+      warehouseStock.add(
+        stockKey,
+        {
+          currentStock with totalQty = currentStock.totalQty + issuedQty;
+        },
+      );
+      Runtime.trap("Not enough raw materials for this issue (rollback successful)");
+    };
+
+    // Create material issue record
+    let issue : MaterialIssue = {
+      id = issueId;
+      issueNumber;
+      issueDate = Time.now();
+      department;
+      warehouse;
+      materialName;
+      grade;
+      issuedQty;
+      remarks;
+    };
+
+    materialIssues.add(issueId, issue);
+    materialIssueIdCounter += 1;
+    issueId;
+  };
+
+  public query ({ caller }) func getAllMaterialIssues() : async [MaterialIssue] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view material issues");
+    };
+    materialIssues.values().toArray().sort(func(a: MaterialIssue, b: MaterialIssue): Order.Order { Nat.compare(a.id, b.id) });
+  };
+
+  public shared ({ caller }) func deleteMaterialIssue(id : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can delete material issues");
+    };
+
+    let issue = switch (materialIssues.get(id)) {
+      case (null) { Runtime.trap("Material issue not found") };
+      case (?issue) { issue };
+    };
+
+    // Rollback warehouse stock deduction
+    let stockKey = warehouseToText(issue.warehouse) # "_" # issue.materialName;
+    let currentStock = switch (warehouseStock.get(stockKey)) {
+      case (null) { Runtime.trap("No warehouse stock found for this issue") };
+      case (?s) { s };
+    };
+
+    let newStock = {
+      currentStock with totalQty = currentStock.totalQty + issue.issuedQty;
+    };
+    warehouseStock.add(stockKey, newStock);
+
+    materialIssues.remove(id);
+  };
+
+  public query ({ caller }) func getNextIssueNumber() : async Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can get next issue number");
+    };
+    let nextIssueNum = materialIssueIdCounter;
+    let formattedNum = if (nextIssueNum < 10) {
+      "00" # nextIssueNum.toText();
+    } else if (nextIssueNum < 100) {
+      "0" # nextIssueNum.toText();
+    } else {
+      nextIssueNum.toText();
+    };
+    "ISS-2026-" # formattedNum;
   };
 
   // --- PRODUCTION ORDERS ---
@@ -682,8 +838,8 @@ actor {
     productionLogs.add(id, log);
     productionLogIdCounter += 1;
 
-    let _ = switch (machines.get(machineId)) {
-      case (null) { () };
+    switch (machines.get(machineId)) {
+      case (null) {};
       case (?machine) {
         switch (machine.runningCount, machine.runningLotNumber) {
           case (?count, ?lot) {
@@ -909,9 +1065,7 @@ actor {
       };
     };
 
-    let recentQualityTestPassRate = if (totalTests > 0) {
-      (passedTests * 100) / totalTests;
-    } else {
+    let recentQualityTestPassRate = if (totalTests > 0) { (passedTests * 100) / totalTests } else {
       0;
     };
 

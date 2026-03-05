@@ -39,7 +39,6 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import type { ProductionLog, Shift } from "../backend.d";
-import { Shift as SH } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
@@ -66,7 +65,7 @@ const shiftColors: Record<string, string> = {
 };
 
 const defaultForm = {
-  shift: SH.morning as Shift,
+  shift: "morning" as Shift,
   date: new Date().toISOString().substring(0, 10),
   machineId: "",
   quantityKg: "",
@@ -347,9 +346,9 @@ export default function ProductionLogs() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={SH.morning}>Morning</SelectItem>
-                    <SelectItem value={SH.afternoon}>Afternoon</SelectItem>
-                    <SelectItem value={SH.night}>Night</SelectItem>
+                    <SelectItem value="morning">Morning</SelectItem>
+                    <SelectItem value="afternoon">Afternoon</SelectItem>
+                    <SelectItem value="night">Night</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

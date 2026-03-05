@@ -113,6 +113,17 @@ export const Machine = IDL.Record({
   'machineNumber' : IDL.Text,
   'machineType' : MachineType,
 });
+export const MaterialIssue = IDL.Record({
+  'id' : IDL.Nat,
+  'issueDate' : Time,
+  'issuedQty' : IDL.Nat,
+  'issueNumber' : IDL.Text,
+  'grade' : IDL.Text,
+  'department' : IDL.Text,
+  'warehouse' : Warehouse,
+  'materialName' : IDL.Text,
+  'remarks' : IDL.Text,
+});
 export const ProductionLog = IDL.Record({
   'id' : IDL.Nat,
   'date' : Time,
@@ -272,6 +283,11 @@ export const idlService = IDL.Service({
       [],
     ),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'createMaterialIssue' : IDL.Func(
+      [IDL.Text, Warehouse, IDL.Text, IDL.Text, IDL.Nat, IDL.Text],
+      [IDL.Nat],
+      [],
+    ),
   'createProductionOrder' : IDL.Func(
       [
         IDL.Text,
@@ -296,6 +312,7 @@ export const idlService = IDL.Service({
   'deleteBatchStage' : IDL.Func([IDL.Nat], [], []),
   'deleteInwardEntry' : IDL.Func([IDL.Nat], [], []),
   'deleteMachine' : IDL.Func([IDL.Nat], [], []),
+  'deleteMaterialIssue' : IDL.Func([IDL.Nat], [], []),
   'deleteProductionLog' : IDL.Func([IDL.Nat], [], []),
   'deleteProductionOrder' : IDL.Func([IDL.Nat], [], []),
   'deletePurchaseOrder' : IDL.Func([IDL.Nat], [], []),
@@ -305,6 +322,7 @@ export const idlService = IDL.Service({
   'getAllBatchStages' : IDL.Func([], [IDL.Vec(BatchStage)], ['query']),
   'getAllInwardEntries' : IDL.Func([], [IDL.Vec(InwardEntry)], ['query']),
   'getAllMachines' : IDL.Func([], [IDL.Vec(Machine)], ['query']),
+  'getAllMaterialIssues' : IDL.Func([], [IDL.Vec(MaterialIssue)], ['query']),
   'getAllProductionLogs' : IDL.Func([], [IDL.Vec(ProductionLog)], ['query']),
   'getAllProductionOrders' : IDL.Func(
       [],
@@ -328,6 +346,7 @@ export const idlService = IDL.Service({
   'getInwardEntry' : IDL.Func([IDL.Nat], [IDL.Opt(InwardEntry)], ['query']),
   'getMachine' : IDL.Func([IDL.Nat], [IDL.Opt(Machine)], ['query']),
   'getNextInwardNumber' : IDL.Func([], [IDL.Text], ['query']),
+  'getNextIssueNumber' : IDL.Func([], [IDL.Text], ['query']),
   'getNextPONumber' : IDL.Func([], [IDL.Text], ['query']),
   'getPOBalance' : IDL.Func([IDL.Nat], [IDL.Opt(POBalance)], ['query']),
   'getProductionLog' : IDL.Func([IDL.Nat], [IDL.Opt(ProductionLog)], ['query']),
@@ -573,6 +592,17 @@ export const idlFactory = ({ IDL }) => {
     'machineNumber' : IDL.Text,
     'machineType' : MachineType,
   });
+  const MaterialIssue = IDL.Record({
+    'id' : IDL.Nat,
+    'issueDate' : Time,
+    'issuedQty' : IDL.Nat,
+    'issueNumber' : IDL.Text,
+    'grade' : IDL.Text,
+    'department' : IDL.Text,
+    'warehouse' : Warehouse,
+    'materialName' : IDL.Text,
+    'remarks' : IDL.Text,
+  });
   const ProductionLog = IDL.Record({
     'id' : IDL.Nat,
     'date' : Time,
@@ -741,6 +771,11 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'createMaterialIssue' : IDL.Func(
+        [IDL.Text, Warehouse, IDL.Text, IDL.Text, IDL.Nat, IDL.Text],
+        [IDL.Nat],
+        [],
+      ),
     'createProductionOrder' : IDL.Func(
         [
           IDL.Text,
@@ -765,6 +800,7 @@ export const idlFactory = ({ IDL }) => {
     'deleteBatchStage' : IDL.Func([IDL.Nat], [], []),
     'deleteInwardEntry' : IDL.Func([IDL.Nat], [], []),
     'deleteMachine' : IDL.Func([IDL.Nat], [], []),
+    'deleteMaterialIssue' : IDL.Func([IDL.Nat], [], []),
     'deleteProductionLog' : IDL.Func([IDL.Nat], [], []),
     'deleteProductionOrder' : IDL.Func([IDL.Nat], [], []),
     'deletePurchaseOrder' : IDL.Func([IDL.Nat], [], []),
@@ -774,6 +810,7 @@ export const idlFactory = ({ IDL }) => {
     'getAllBatchStages' : IDL.Func([], [IDL.Vec(BatchStage)], ['query']),
     'getAllInwardEntries' : IDL.Func([], [IDL.Vec(InwardEntry)], ['query']),
     'getAllMachines' : IDL.Func([], [IDL.Vec(Machine)], ['query']),
+    'getAllMaterialIssues' : IDL.Func([], [IDL.Vec(MaterialIssue)], ['query']),
     'getAllProductionLogs' : IDL.Func([], [IDL.Vec(ProductionLog)], ['query']),
     'getAllProductionOrders' : IDL.Func(
         [],
@@ -797,6 +834,7 @@ export const idlFactory = ({ IDL }) => {
     'getInwardEntry' : IDL.Func([IDL.Nat], [IDL.Opt(InwardEntry)], ['query']),
     'getMachine' : IDL.Func([IDL.Nat], [IDL.Opt(Machine)], ['query']),
     'getNextInwardNumber' : IDL.Func([], [IDL.Text], ['query']),
+    'getNextIssueNumber' : IDL.Func([], [IDL.Text], ['query']),
     'getNextPONumber' : IDL.Func([], [IDL.Text], ['query']),
     'getPOBalance' : IDL.Func([IDL.Nat], [IDL.Opt(POBalance)], ['query']),
     'getProductionLog' : IDL.Func(

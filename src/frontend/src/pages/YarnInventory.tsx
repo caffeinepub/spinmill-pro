@@ -19,12 +19,7 @@ import {
 import { FilterX, Info, Package2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import {
-  EndUse as EU,
-  InventoryStatus,
-  ProductType as PT,
-  SpinningUnit as SU,
-} from "../backend.d";
+import type { EndUse, ProductType, SpinningUnit } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
@@ -36,16 +31,20 @@ import {
   useYarnInventory,
 } from "../hooks/useQueries";
 
-function getUnit(su: SU): string {
-  return su === SU.openend ? "Openend" : "Ring Spinning";
+function getUnit(su: SpinningUnit): string {
+  return su === "openend" ? "Openend" : "Ring Spinning";
 }
 
-function getProductType(pt: PT): string {
-  return pt === PT.lt ? "LT" : pt.charAt(0).toUpperCase() + pt.slice(1);
+function getProductType(pt: ProductType): string {
+  return pt === "lt"
+    ? "LT"
+    : (pt as string).charAt(0).toUpperCase() + (pt as string).slice(1);
 }
 
-function getEndUse(eu: EU): string {
-  return eu === EU.tfo ? "TFO" : eu.charAt(0).toUpperCase() + eu.slice(1);
+function getEndUse(eu: EndUse): string {
+  return eu === "tfo"
+    ? "TFO"
+    : (eu as string).charAt(0).toUpperCase() + (eu as string).slice(1);
 }
 
 export default function YarnInventory() {
@@ -56,9 +55,9 @@ export default function YarnInventory() {
   const deleteMutation = useDeleteYarnInventory();
 
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
-  const [filterUnit, setFilterUnit] = useState<SU | "">("");
-  const [filterProductType, setFilterProductType] = useState<PT | "">("");
-  const [filterEndUse, setFilterEndUse] = useState<EU | "">("");
+  const [filterUnit, setFilterUnit] = useState<string>("");
+  const [filterProductType, setFilterProductType] = useState<string>("");
+  const [filterEndUse, setFilterEndUse] = useState<string>("");
 
   function matchOrder(lotNumber: string, yarnCountNe: bigint) {
     return (
@@ -85,9 +84,7 @@ export default function YarnInventory() {
   });
 
   const totalWeight = inventory.reduce((sum, i) => sum + Number(i.weightKg), 0);
-  const inStockCount = inventory.filter(
-    (i) => i.status === InventoryStatus.inStock,
-  ).length;
+  const inStockCount = inventory.filter((i) => i.status === "inStock").length;
 
   async function handleDelete() {
     if (!deleteId) return;
@@ -153,52 +150,49 @@ export default function YarnInventory() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <Select
-          value={filterUnit}
-          onValueChange={(val) => setFilterUnit(val as SU | "")}
-        >
+        <Select value={filterUnit} onValueChange={(val) => setFilterUnit(val)}>
           <SelectTrigger className="w-44" data-ocid="yarn.unit_filter">
             <SelectValue placeholder="Unit: All" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="">All Units</SelectItem>
-            <SelectItem value={SU.openend}>Openend</SelectItem>
-            <SelectItem value={SU.ringSpinning}>Ring Spinning</SelectItem>
+            <SelectItem value="openend">Openend</SelectItem>
+            <SelectItem value="ringSpinning">Ring Spinning</SelectItem>
           </SelectContent>
         </Select>
 
         <Select
           value={filterProductType}
-          onValueChange={(val) => setFilterProductType(val as PT | "")}
+          onValueChange={(val) => setFilterProductType(val)}
         >
           <SelectTrigger className="w-48" data-ocid="yarn.product_type_filter">
             <SelectValue placeholder="Product Type: All" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="">All Product Types</SelectItem>
-            <SelectItem value={PT.carded}>Carded</SelectItem>
-            <SelectItem value={PT.combed}>Combed</SelectItem>
-            <SelectItem value={PT.polyester}>Polyester</SelectItem>
-            <SelectItem value={PT.bamboo}>Bamboo</SelectItem>
-            <SelectItem value={PT.viscose}>Viscose</SelectItem>
-            <SelectItem value={PT.lt}>LT</SelectItem>
+            <SelectItem value="carded">Carded</SelectItem>
+            <SelectItem value="combed">Combed</SelectItem>
+            <SelectItem value="polyester">Polyester</SelectItem>
+            <SelectItem value="bamboo">Bamboo</SelectItem>
+            <SelectItem value="viscose">Viscose</SelectItem>
+            <SelectItem value="lt">LT</SelectItem>
           </SelectContent>
         </Select>
 
         <Select
           value={filterEndUse}
-          onValueChange={(val) => setFilterEndUse(val as EU | "")}
+          onValueChange={(val) => setFilterEndUse(val)}
         >
           <SelectTrigger className="w-44" data-ocid="yarn.end_use_filter">
             <SelectValue placeholder="End Use: All" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="">All End Uses</SelectItem>
-            <SelectItem value={EU.warp}>Warp</SelectItem>
-            <SelectItem value={EU.weft}>Weft</SelectItem>
-            <SelectItem value={EU.pile}>Pile</SelectItem>
-            <SelectItem value={EU.ground}>Ground</SelectItem>
-            <SelectItem value={EU.tfo}>TFO</SelectItem>
+            <SelectItem value="warp">Warp</SelectItem>
+            <SelectItem value="weft">Weft</SelectItem>
+            <SelectItem value="pile">Pile</SelectItem>
+            <SelectItem value="ground">Ground</SelectItem>
+            <SelectItem value="tfo">TFO</SelectItem>
           </SelectContent>
         </Select>
 

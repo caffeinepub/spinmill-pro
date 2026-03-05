@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import {
+  ArrowUpFromLine,
   BarChart2,
   ChevronRight,
   ClipboardList,
@@ -24,6 +25,7 @@ import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import Dashboard from "./pages/Dashboard";
 import InwardEntry from "./pages/InwardEntry";
 import Machines from "./pages/Machines";
+import MaterialIssue from "./pages/MaterialIssue";
 import ProductionLogs from "./pages/ProductionLogs";
 import ProductionOrders from "./pages/ProductionOrders";
 import PurchaseOrders from "./pages/PurchaseOrders";
@@ -37,6 +39,7 @@ type PageId =
   | "raw-materials"
   | "purchase-orders"
   | "inward"
+  | "material-issue"
   | "production-orders"
   | "machines"
   | "quality-control"
@@ -73,6 +76,12 @@ const navItems: NavItem[] = [
     id: "inward",
     label: "Inward Entry",
     icon: <PackageOpen className="w-4 h-4" />,
+    group: "Procurement",
+  },
+  {
+    id: "material-issue",
+    label: "Material Issue",
+    icon: <ArrowUpFromLine className="w-4 h-4" />,
     group: "Procurement",
   },
   {
@@ -118,6 +127,7 @@ const pageComponents: Record<PageId, React.ReactNode> = {
   "raw-materials": <RawMaterials />,
   "purchase-orders": <PurchaseOrders />,
   inward: <InwardEntry />,
+  "material-issue": <MaterialIssue />,
   "production-orders": <ProductionOrders />,
   machines: <Machines />,
   "quality-control": <QualityControl />,

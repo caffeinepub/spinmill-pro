@@ -8,6 +8,7 @@ import type {
   Machine,
   MachineStatus,
   MachineType,
+  MaterialIssue,
   OrderStatus,
   POBalance,
   ProcessStage,
@@ -25,6 +26,7 @@ import type {
   WarehouseStock,
   YarnInventory,
 } from "../backend.d";
+import { normalizeRecord } from "../utils/candid";
 import { useActor } from "./useActor";
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
@@ -35,7 +37,8 @@ export function useDashboardStats() {
     queryKey: ["dashboardStats"],
     queryFn: async () => {
       if (!actor) throw new Error("No actor");
-      return actor.getDashboardStats();
+      const result = await actor.getDashboardStats();
+      return normalizeRecord(result);
     },
     enabled: !!actor && !isFetching,
     retry: false,
@@ -50,7 +53,8 @@ export function useRawMaterials() {
     queryKey: ["rawMaterials"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllRawMaterials();
+      const result = await actor.getAllRawMaterials();
+      return normalizeRecord(result);
     },
     enabled: !!actor && !isFetching,
     retry: false,
@@ -140,7 +144,8 @@ export function useProductionOrders() {
     queryKey: ["productionOrders"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllProductionOrders();
+      const result = await actor.getAllProductionOrders();
+      return normalizeRecord(result);
     },
     enabled: !!actor && !isFetching,
     retry: false,
@@ -246,7 +251,8 @@ export function useMachines() {
     queryKey: ["machines"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllMachines();
+      const result = await actor.getAllMachines();
+      return normalizeRecord(result);
     },
     enabled: !!actor && !isFetching,
     retry: false,
@@ -340,7 +346,8 @@ export function useBatchStages() {
     queryKey: ["batchStages"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllBatchStages();
+      const result = await actor.getAllBatchStages();
+      return normalizeRecord(result);
     },
     enabled: !!actor && !isFetching,
     retry: false,
@@ -429,7 +436,8 @@ export function useQualityTests() {
     queryKey: ["qualityTests"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllQualityTests();
+      const result = await actor.getAllQualityTests();
+      return normalizeRecord(result);
     },
     enabled: !!actor && !isFetching,
     retry: false,
@@ -531,7 +539,8 @@ export function useProductionLogs() {
     queryKey: ["productionLogs"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllProductionLogs();
+      const result = await actor.getAllProductionLogs();
+      return normalizeRecord(result);
     },
     enabled: !!actor && !isFetching,
     retry: false,
@@ -612,7 +621,8 @@ export function useYarnInventory() {
     queryKey: ["yarnInventory"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllYarnInventory();
+      const result = await actor.getAllYarnInventory();
+      return normalizeRecord(result);
     },
     enabled: !!actor && !isFetching,
     retry: false,
@@ -702,7 +712,8 @@ export function usePurchaseOrders() {
     queryKey: ["purchaseOrders"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllPurchaseOrders();
+      const result = await actor.getAllPurchaseOrders();
+      return normalizeRecord(result);
     },
     enabled: !!actor && !isFetching,
     retry: false,
@@ -793,7 +804,8 @@ export function useInwardEntries() {
     queryKey: ["inwardEntries"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllInwardEntries();
+      const result = await actor.getAllInwardEntries();
+      return normalizeRecord(result);
     },
     enabled: !!actor && !isFetching,
     retry: false,
@@ -863,7 +875,8 @@ export function useWarehouseStock() {
     queryKey: ["warehouseStock"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllWarehouseStock();
+      const result = await actor.getAllWarehouseStock();
+      return normalizeRecord(result);
     },
     enabled: !!actor && !isFetching,
     retry: false,
@@ -906,7 +919,8 @@ export function usePOBalance(purchaseOrderId: bigint | null) {
     queryKey: ["poBalance", String(purchaseOrderId)],
     queryFn: async () => {
       if (!actor || purchaseOrderId === null) throw new Error("No actor or id");
-      return actor.getPOBalance(purchaseOrderId);
+      const result = await actor.getPOBalance(purchaseOrderId);
+      return result ? normalizeRecord(result) : null;
     },
     enabled: !!actor && !isFetching && purchaseOrderId !== null,
     retry: false,
@@ -924,9 +938,92 @@ export function useProductionOrderBalance(
     queryFn: async () => {
       if (!actor || yarnCountNe === null || !lotNumber)
         throw new Error("No params");
-      return actor.getProductionOrderBalance(yarnCountNe, lotNumber);
+      const result = await actor.getProductionOrderBalance(
+        yarnCountNe,
+        lotNumber,
+      );
+      return result ? normalizeRecord(result) : null;
     },
     enabled: !!actor && !isFetching && yarnCountNe !== null && !!lotNumber,
+    retry: false,
+    staleTime: 0,
+  });
+}
+
+// ─── Material Issues ──────────────────────────────────────────────────────────
+
+export function useMaterialIssues() {
+  const { actor, isFetching } = useActor();
+  return useQuery<MaterialIssue[]>({
+    queryKey: ["materialIssues"],
+    queryFn: async () => {
+      if (!actor) return [];
+      const result = await actor.getAllMaterialIssues();
+      return normalizeRecord(result);
+    },
+    enabled: !!actor && !isFetching,
+    retry: false,
+  });
+}
+
+export function useCreateMaterialIssue() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      department: string;
+      warehouse: Warehouse;
+      materialName: string;
+      grade: string;
+      issuedQty: bigint;
+      remarks: string;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.createMaterialIssue(
+        args.department,
+        args.warehouse,
+        args.materialName,
+        args.grade,
+        args.issuedQty,
+        args.remarks,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["materialIssues"] });
+      qc.invalidateQueries({ queryKey: ["rawMaterials"] });
+      qc.invalidateQueries({ queryKey: ["warehouseStock"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+      qc.invalidateQueries({ queryKey: ["nextIssueNumber"] });
+    },
+  });
+}
+
+export function useDeleteMaterialIssue() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("No actor");
+      return actor.deleteMaterialIssue(id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["materialIssues"] });
+      qc.invalidateQueries({ queryKey: ["rawMaterials"] });
+      qc.invalidateQueries({ queryKey: ["warehouseStock"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+}
+
+export function useNextIssueNumber(enabled: boolean) {
+  const { actor, isFetching } = useActor();
+  return useQuery<string>({
+    queryKey: ["nextIssueNumber"],
+    queryFn: async () => {
+      if (!actor) throw new Error("No actor");
+      return actor.getNextIssueNumber();
+    },
+    enabled: !!actor && !isFetching && enabled,
     retry: false,
     staleTime: 0,
   });

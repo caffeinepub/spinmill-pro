@@ -47,6 +47,17 @@ export interface BatchStage {
     batchId: bigint;
     machineId: bigint;
 }
+export interface MaterialIssue {
+    id: bigint;
+    issueDate: Time;
+    issuedQty: bigint;
+    issueNumber: string;
+    grade: string;
+    department: string;
+    warehouse: Warehouse;
+    materialName: string;
+    remarks: string;
+}
 export interface RawMaterial {
     id: bigint;
     status: RawMaterialStatus;
@@ -229,11 +240,13 @@ export interface backendInterface {
     addRawMaterial(lotNumber: string, supplier: string, grade: string, weightKg: bigint, warehouse: Warehouse, inwardEntryId: bigint | null): Promise<bigint>;
     addYarnInventory(lotNumber: string, yarnCountNe: bigint, twistDirection: TwistDirection, quantityCones: bigint, weightKg: bigint, status: InventoryStatus): Promise<bigint>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    createMaterialIssue(department: string, warehouse: Warehouse, materialName: string, grade: string, issuedQty: bigint, remarks: string): Promise<bigint>;
     createProductionOrder(orderNumber: string, lotNumber: string, productType: ProductType, spinningUnit: SpinningUnit, endUse: EndUse, yarnCountNe: bigint, twistDirection: TwistDirection, quantityKg: bigint, targetDate: Time, status: OrderStatus): Promise<bigint>;
     createPurchaseOrder(poNumber: string, supplier: string, materialName: string, orderedQty: bigint, orderDate: Time, expectedDeliveryDate: Time): Promise<bigint>;
     deleteBatchStage(id: bigint): Promise<void>;
     deleteInwardEntry(id: bigint): Promise<void>;
     deleteMachine(id: bigint): Promise<void>;
+    deleteMaterialIssue(id: bigint): Promise<void>;
     deleteProductionLog(id: bigint): Promise<void>;
     deleteProductionOrder(id: bigint): Promise<void>;
     deletePurchaseOrder(id: bigint): Promise<void>;
@@ -243,6 +256,7 @@ export interface backendInterface {
     getAllBatchStages(): Promise<Array<BatchStage>>;
     getAllInwardEntries(): Promise<Array<InwardEntry>>;
     getAllMachines(): Promise<Array<Machine>>;
+    getAllMaterialIssues(): Promise<Array<MaterialIssue>>;
     getAllProductionLogs(): Promise<Array<ProductionLog>>;
     getAllProductionOrders(): Promise<Array<ProductionOrder>>;
     getAllPurchaseOrders(): Promise<Array<PurchaseOrder>>;
@@ -258,6 +272,7 @@ export interface backendInterface {
     getInwardEntry(id: bigint): Promise<InwardEntry | null>;
     getMachine(id: bigint): Promise<Machine | null>;
     getNextInwardNumber(): Promise<string>;
+    getNextIssueNumber(): Promise<string>;
     getNextPONumber(): Promise<string>;
     getPOBalance(purchaseOrderId: bigint): Promise<POBalance | null>;
     getProductionLog(id: bigint): Promise<ProductionLog | null>;

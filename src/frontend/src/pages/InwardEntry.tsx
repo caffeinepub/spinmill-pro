@@ -29,8 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, PackageOpen, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { InwardEntry as InwardEntryType } from "../backend.d";
-import { Warehouse } from "../backend.d";
+import type { InwardEntry as InwardEntryType, Warehouse } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
@@ -63,15 +62,15 @@ function formatDate(ns: bigint): string {
 }
 
 function warehouseLabel(w: Warehouse | string): string {
-  if (w === Warehouse.oeRawMaterial) return "OE Raw Material";
-  if (w === Warehouse.ringRawMaterial) return "Ring Raw Material";
+  if ((w as string) === "oeRawMaterial") return "OE Raw Material";
+  if ((w as string) === "ringRawMaterial") return "Ring Raw Material";
   return String(w);
 }
 
 // ─── Warehouse Badge ──────────────────────────────────────────────────────────
 
 function WarehouseBadge({ warehouse }: { warehouse: Warehouse | string }) {
-  const isOE = warehouse === Warehouse.oeRawMaterial;
+  const isOE = (warehouse as string) === "oeRawMaterial";
   return (
     <Badge
       variant="outline"
@@ -470,10 +469,10 @@ export default function InwardEntry() {
                     <SelectValue placeholder="Select warehouse..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={Warehouse.oeRawMaterial}>
+                    <SelectItem value="oeRawMaterial">
                       OE Raw Material
                     </SelectItem>
-                    <SelectItem value={Warehouse.ringRawMaterial}>
+                    <SelectItem value="ringRawMaterial">
                       Ring Raw Material
                     </SelectItem>
                   </SelectContent>

@@ -21,8 +21,7 @@ import {
 import { Loader2, Pencil, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { PurchaseOrder } from "../backend.d";
-import { PurchaseOrderStatus } from "../backend.d";
+import type { PurchaseOrder, PurchaseOrderStatus } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
@@ -57,22 +56,22 @@ function formatDate(ns: bigint): string {
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 
 function POStatusBadge({ status }: { status: PurchaseOrderStatus | string }) {
-  const config = {
-    [PurchaseOrderStatus.open]: {
+  const config: Record<string, { label: string; cls: string }> = {
+    open: {
       label: "Open",
       cls: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800/60",
     },
-    [PurchaseOrderStatus.partiallyReceived]: {
+    partiallyReceived: {
       label: "Partially Received",
       cls: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800/60",
     },
-    [PurchaseOrderStatus.closed]: {
+    closed: {
       label: "Closed",
       cls: "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-400 dark:border-green-800/60",
     },
   };
 
-  const c = config[status as PurchaseOrderStatus] ?? {
+  const c = config[status as string] ?? {
     label: String(status),
     cls: "",
   };

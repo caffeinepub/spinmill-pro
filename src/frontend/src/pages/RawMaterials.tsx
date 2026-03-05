@@ -19,7 +19,7 @@ import {
 import { FilterX, Package, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Warehouse } from "../backend.d";
+import type { Warehouse } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
@@ -27,7 +27,7 @@ import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useDeleteRawMaterial, useRawMaterials } from "../hooks/useQueries";
 
 function WarehouseBadge({ warehouse }: { warehouse: Warehouse }) {
-  if (warehouse === Warehouse.oeRawMaterial) {
+  if ((warehouse as string) === "oeRawMaterial") {
     return (
       <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 font-medium">
         OE Raw Material
@@ -116,11 +116,14 @@ export default function RawMaterials() {
         return false;
       if (gradeFilter !== "all" && m.grade !== gradeFilter) return false;
       if (warehouseFilter !== "all") {
-        if (warehouseFilter === "oe" && m.warehouse !== Warehouse.oeRawMaterial)
+        if (
+          warehouseFilter === "oe" &&
+          (m.warehouse as string) !== "oeRawMaterial"
+        )
           return false;
         if (
           warehouseFilter === "ring" &&
-          m.warehouse !== Warehouse.ringRawMaterial
+          (m.warehouse as string) !== "ringRawMaterial"
         )
           return false;
       }

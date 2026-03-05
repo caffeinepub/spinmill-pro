@@ -38,7 +38,6 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Machine, MachineStatus, MachineType } from "../backend.d";
-import { MachineStatus as MS, MachineType as MT } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
@@ -65,9 +64,9 @@ const machineTypeLabels: Record<string, string> = {
 
 const defaultForm = {
   name: "",
-  machineType: MT.ringFrame as MachineType,
+  machineType: "ringFrame" as MachineType,
   machineNumber: "",
-  status: MS.idle as MachineStatus,
+  status: "idle" as MachineStatus,
   currentOrderId: "",
   runningCount: "",
   runningLotNumber: "",
@@ -87,11 +86,9 @@ export default function Machines() {
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [form, setForm] = useState(defaultForm);
 
-  const running = machines.filter((m) => m.status === MS.running).length;
-  const idle = machines.filter((m) => m.status === MS.idle).length;
-  const maintenance = machines.filter(
-    (m) => m.status === MS.maintenance,
-  ).length;
+  const running = machines.filter((m) => m.status === "running").length;
+  const idle = machines.filter((m) => m.status === "idle").length;
+  const maintenance = machines.filter((m) => m.status === "maintenance").length;
 
   function openAdd() {
     setEditItem(null);
@@ -121,7 +118,7 @@ export default function Machines() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const orderId = form.currentOrderId ? BigInt(form.currentOrderId) : null;
-    const isRunning = form.status === MS.running;
+    const isRunning = form.status === "running";
     const runningCount =
       isRunning && form.runningCount ? BigInt(form.runningCount) : null;
     const runningLotNumber =
@@ -300,12 +297,12 @@ export default function Machines() {
                       <StatusBadge status={machine.status} />
                     </TableCell>
                     <TableCell className="text-sm">
-                      {machine.status === MS.running &&
+                      {machine.status === "running" &&
                       machine.runningCount !== undefined ? (
                         <span className="font-medium">
                           {String(Number(machine.runningCount))}
                         </span>
-                      ) : machine.status === MS.maintenance ? (
+                      ) : machine.status === "maintenance" ? (
                         <span className="inline-flex items-center bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded font-medium whitespace-nowrap">
                           {Number(machine.totalMaintenanceDurationMins) >= 60
                             ? `${Math.floor(Number(machine.totalMaintenanceDurationMins) / 60)}h ${Number(machine.totalMaintenanceDurationMins) % 60}m`
@@ -316,7 +313,7 @@ export default function Machines() {
                       )}
                     </TableCell>
                     <TableCell className="text-sm">
-                      {machine.status === MS.running &&
+                      {machine.status === "running" &&
                       machine.runningLotNumber ? (
                         <span className="font-medium font-mono-nums">
                           {machine.runningLotNumber}
@@ -422,7 +419,7 @@ export default function Machines() {
                     setForm((p) => ({
                       ...p,
                       status: v as MachineStatus,
-                      ...(v !== MS.running
+                      ...(v !== "running"
                         ? { runningCount: "", runningLotNumber: "" }
                         : {}),
                     }))
@@ -432,9 +429,9 @@ export default function Machines() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={MS.running}>Running</SelectItem>
-                    <SelectItem value={MS.idle}>Idle</SelectItem>
-                    <SelectItem value={MS.maintenance}>Maintenance</SelectItem>
+                    <SelectItem value="running">Running</SelectItem>
+                    <SelectItem value="idle">Idle</SelectItem>
+                    <SelectItem value="maintenance">Maintenance</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -468,7 +465,7 @@ export default function Machines() {
                 </Select>
               </div>
             )}
-            {form.status === MS.running && (
+            {form.status === "running" && (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="mc-count">Count (Ne) (optional)</Label>
