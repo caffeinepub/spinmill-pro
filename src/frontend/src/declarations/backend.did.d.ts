@@ -92,6 +92,27 @@ export interface POBalance {
   'orderedQty' : bigint,
   'balanceQty' : bigint,
 }
+export interface PackingBalance {
+  'yarnCountNe' : bigint,
+  'productType' : ProductType,
+  'totalPackedKg' : bigint,
+  'lotNumber' : string,
+  'spinningUnit' : SpinningUnit,
+  'availableKg' : bigint,
+  'endUse' : EndUse,
+}
+export interface PackingEntry {
+  'id' : bigint,
+  'yarnCountNe' : bigint,
+  'packingDate' : Time,
+  'packingNumber' : string,
+  'productType' : ProductType,
+  'lotNumber' : string,
+  'spinningUnit' : SpinningUnit,
+  'remarks' : string,
+  'quantityKg' : bigint,
+  'endUse' : EndUse,
+}
 export type ProcessStage = { 'qualityCheck' : null } |
   { 'combing' : null } |
   { 'finished' : null } |
@@ -238,6 +259,7 @@ export interface _SERVICE {
     [string, Warehouse, string, string, bigint, string],
     bigint
   >,
+  'createPackingEntry' : ActorMethod<[string, bigint, string, Time], bigint>,
   'createProductionOrder' : ActorMethod<
     [
       string,
@@ -261,6 +283,7 @@ export interface _SERVICE {
   'deleteInwardEntry' : ActorMethod<[bigint], undefined>,
   'deleteMachine' : ActorMethod<[bigint], undefined>,
   'deleteMaterialIssue' : ActorMethod<[bigint], undefined>,
+  'deletePackingEntry' : ActorMethod<[bigint], undefined>,
   'deleteProductionLog' : ActorMethod<[bigint], undefined>,
   'deleteProductionOrder' : ActorMethod<[bigint], undefined>,
   'deletePurchaseOrder' : ActorMethod<[bigint], undefined>,
@@ -271,6 +294,7 @@ export interface _SERVICE {
   'getAllInwardEntries' : ActorMethod<[], Array<InwardEntry>>,
   'getAllMachines' : ActorMethod<[], Array<Machine>>,
   'getAllMaterialIssues' : ActorMethod<[], Array<MaterialIssue>>,
+  'getAllPackingEntries' : ActorMethod<[], Array<PackingEntry>>,
   'getAllProductionLogs' : ActorMethod<[], Array<ProductionLog>>,
   'getAllProductionOrders' : ActorMethod<[], Array<ProductionOrder>>,
   'getAllPurchaseOrders' : ActorMethod<[], Array<PurchaseOrder>>,
@@ -288,7 +312,10 @@ export interface _SERVICE {
   'getNextInwardNumber' : ActorMethod<[], string>,
   'getNextIssueNumber' : ActorMethod<[], string>,
   'getNextPONumber' : ActorMethod<[], string>,
+  'getNextPackingNumber' : ActorMethod<[], string>,
+  'getNextProductionOrderNumber' : ActorMethod<[], string>,
   'getPOBalance' : ActorMethod<[bigint], [] | [POBalance]>,
+  'getPackingBalance' : ActorMethod<[string], [] | [PackingBalance]>,
   'getProductionLog' : ActorMethod<[bigint], [] | [ProductionLog]>,
   'getProductionOrder' : ActorMethod<[bigint], [] | [ProductionOrder]>,
   'getProductionOrderBalance' : ActorMethod<

@@ -186,10 +186,21 @@ export default function MaterialIssue() {
         `Issue ${form.issueNumber} created — stock deducted from ${warehouseLabel(form.warehouse as Warehouse)}`,
       );
       setDialogOpen(false);
-    } catch {
-      toast.error(
-        isLoggedIn ? "Operation failed" : "Please sign in to save data",
-      );
+    } catch (err) {
+      if (!isLoggedIn) {
+        toast.error("Please sign in to save data");
+      } else {
+        // Extract meaningful message from backend error
+        const msg = err instanceof Error ? err.message : String(err);
+        // Backend trap messages are often in format "Reject text: ..."
+        const match = msg.match(/Reject text: (.+)/);
+        const displayMsg = match
+          ? match[1]
+          : msg.length > 0 && msg.length < 200
+            ? msg
+            : "Operation failed. Please check that the material name matches your inward records exactly.";
+        toast.error(displayMsg);
+      }
     }
   }
 
@@ -517,6 +528,9 @@ export default function MaterialIssue() {
                   placeholder="e.g. Cotton Bale"
                   required
                 />
+                <p className="text-xs text-muted-foreground">
+                  Must match the material name used in the inward entry
+                </p>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="mi-grade">Grade</Label>

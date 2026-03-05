@@ -124,6 +124,18 @@ export const MaterialIssue = IDL.Record({
   'materialName' : IDL.Text,
   'remarks' : IDL.Text,
 });
+export const PackingEntry = IDL.Record({
+  'id' : IDL.Nat,
+  'yarnCountNe' : IDL.Nat,
+  'packingDate' : Time,
+  'packingNumber' : IDL.Text,
+  'productType' : ProductType,
+  'lotNumber' : IDL.Text,
+  'spinningUnit' : SpinningUnit,
+  'remarks' : IDL.Text,
+  'quantityKg' : IDL.Nat,
+  'endUse' : EndUse,
+});
 export const ProductionLog = IDL.Record({
   'id' : IDL.Nat,
   'date' : Time,
@@ -223,6 +235,15 @@ export const POBalance = IDL.Record({
   'orderedQty' : IDL.Nat,
   'balanceQty' : IDL.Nat,
 });
+export const PackingBalance = IDL.Record({
+  'yarnCountNe' : IDL.Nat,
+  'productType' : ProductType,
+  'totalPackedKg' : IDL.Nat,
+  'lotNumber' : IDL.Text,
+  'spinningUnit' : SpinningUnit,
+  'availableKg' : IDL.Nat,
+  'endUse' : EndUse,
+});
 export const ProductionOrderBalance = IDL.Record({
   'isFulfilled' : IDL.Bool,
   'orderId' : IDL.Nat,
@@ -288,6 +309,11 @@ export const idlService = IDL.Service({
       [IDL.Nat],
       [],
     ),
+  'createPackingEntry' : IDL.Func(
+      [IDL.Text, IDL.Nat, IDL.Text, Time],
+      [IDL.Nat],
+      [],
+    ),
   'createProductionOrder' : IDL.Func(
       [
         IDL.Text,
@@ -313,6 +339,7 @@ export const idlService = IDL.Service({
   'deleteInwardEntry' : IDL.Func([IDL.Nat], [], []),
   'deleteMachine' : IDL.Func([IDL.Nat], [], []),
   'deleteMaterialIssue' : IDL.Func([IDL.Nat], [], []),
+  'deletePackingEntry' : IDL.Func([IDL.Nat], [], []),
   'deleteProductionLog' : IDL.Func([IDL.Nat], [], []),
   'deleteProductionOrder' : IDL.Func([IDL.Nat], [], []),
   'deletePurchaseOrder' : IDL.Func([IDL.Nat], [], []),
@@ -323,6 +350,7 @@ export const idlService = IDL.Service({
   'getAllInwardEntries' : IDL.Func([], [IDL.Vec(InwardEntry)], ['query']),
   'getAllMachines' : IDL.Func([], [IDL.Vec(Machine)], ['query']),
   'getAllMaterialIssues' : IDL.Func([], [IDL.Vec(MaterialIssue)], ['query']),
+  'getAllPackingEntries' : IDL.Func([], [IDL.Vec(PackingEntry)], ['query']),
   'getAllProductionLogs' : IDL.Func([], [IDL.Vec(ProductionLog)], ['query']),
   'getAllProductionOrders' : IDL.Func(
       [],
@@ -348,7 +376,14 @@ export const idlService = IDL.Service({
   'getNextInwardNumber' : IDL.Func([], [IDL.Text], ['query']),
   'getNextIssueNumber' : IDL.Func([], [IDL.Text], ['query']),
   'getNextPONumber' : IDL.Func([], [IDL.Text], ['query']),
+  'getNextPackingNumber' : IDL.Func([], [IDL.Text], ['query']),
+  'getNextProductionOrderNumber' : IDL.Func([], [IDL.Text], ['query']),
   'getPOBalance' : IDL.Func([IDL.Nat], [IDL.Opt(POBalance)], ['query']),
+  'getPackingBalance' : IDL.Func(
+      [IDL.Text],
+      [IDL.Opt(PackingBalance)],
+      ['query'],
+    ),
   'getProductionLog' : IDL.Func([IDL.Nat], [IDL.Opt(ProductionLog)], ['query']),
   'getProductionOrder' : IDL.Func(
       [IDL.Nat],
@@ -603,6 +638,18 @@ export const idlFactory = ({ IDL }) => {
     'materialName' : IDL.Text,
     'remarks' : IDL.Text,
   });
+  const PackingEntry = IDL.Record({
+    'id' : IDL.Nat,
+    'yarnCountNe' : IDL.Nat,
+    'packingDate' : Time,
+    'packingNumber' : IDL.Text,
+    'productType' : ProductType,
+    'lotNumber' : IDL.Text,
+    'spinningUnit' : SpinningUnit,
+    'remarks' : IDL.Text,
+    'quantityKg' : IDL.Nat,
+    'endUse' : EndUse,
+  });
   const ProductionLog = IDL.Record({
     'id' : IDL.Nat,
     'date' : Time,
@@ -702,6 +749,15 @@ export const idlFactory = ({ IDL }) => {
     'orderedQty' : IDL.Nat,
     'balanceQty' : IDL.Nat,
   });
+  const PackingBalance = IDL.Record({
+    'yarnCountNe' : IDL.Nat,
+    'productType' : ProductType,
+    'totalPackedKg' : IDL.Nat,
+    'lotNumber' : IDL.Text,
+    'spinningUnit' : SpinningUnit,
+    'availableKg' : IDL.Nat,
+    'endUse' : EndUse,
+  });
   const ProductionOrderBalance = IDL.Record({
     'isFulfilled' : IDL.Bool,
     'orderId' : IDL.Nat,
@@ -776,6 +832,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Nat],
         [],
       ),
+    'createPackingEntry' : IDL.Func(
+        [IDL.Text, IDL.Nat, IDL.Text, Time],
+        [IDL.Nat],
+        [],
+      ),
     'createProductionOrder' : IDL.Func(
         [
           IDL.Text,
@@ -801,6 +862,7 @@ export const idlFactory = ({ IDL }) => {
     'deleteInwardEntry' : IDL.Func([IDL.Nat], [], []),
     'deleteMachine' : IDL.Func([IDL.Nat], [], []),
     'deleteMaterialIssue' : IDL.Func([IDL.Nat], [], []),
+    'deletePackingEntry' : IDL.Func([IDL.Nat], [], []),
     'deleteProductionLog' : IDL.Func([IDL.Nat], [], []),
     'deleteProductionOrder' : IDL.Func([IDL.Nat], [], []),
     'deletePurchaseOrder' : IDL.Func([IDL.Nat], [], []),
@@ -811,6 +873,7 @@ export const idlFactory = ({ IDL }) => {
     'getAllInwardEntries' : IDL.Func([], [IDL.Vec(InwardEntry)], ['query']),
     'getAllMachines' : IDL.Func([], [IDL.Vec(Machine)], ['query']),
     'getAllMaterialIssues' : IDL.Func([], [IDL.Vec(MaterialIssue)], ['query']),
+    'getAllPackingEntries' : IDL.Func([], [IDL.Vec(PackingEntry)], ['query']),
     'getAllProductionLogs' : IDL.Func([], [IDL.Vec(ProductionLog)], ['query']),
     'getAllProductionOrders' : IDL.Func(
         [],
@@ -836,7 +899,14 @@ export const idlFactory = ({ IDL }) => {
     'getNextInwardNumber' : IDL.Func([], [IDL.Text], ['query']),
     'getNextIssueNumber' : IDL.Func([], [IDL.Text], ['query']),
     'getNextPONumber' : IDL.Func([], [IDL.Text], ['query']),
+    'getNextPackingNumber' : IDL.Func([], [IDL.Text], ['query']),
+    'getNextProductionOrderNumber' : IDL.Func([], [IDL.Text], ['query']),
     'getPOBalance' : IDL.Func([IDL.Nat], [IDL.Opt(POBalance)], ['query']),
+    'getPackingBalance' : IDL.Func(
+        [IDL.Text],
+        [IDL.Opt(PackingBalance)],
+        ['query'],
+      ),
     'getProductionLog' : IDL.Func(
         [IDL.Nat],
         [IDL.Opt(ProductionLog)],

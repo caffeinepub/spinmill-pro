@@ -1,40 +1,25 @@
 # SpinMill Pro
 
 ## Current State
-- Full textile spinning mill management app with: Dashboard, Raw Materials (auto-populated from inward), Purchase Orders, Inward Entry, Production Orders, Machines, Production Logs, Quality Control, Yarn Inventory, Reports.
-- Raw Materials section shows stock per inward entry with warehouse badge (OE / Ring), filters by supplier/grade/warehouse/month.
-- Warehouse stock is maintained in a `warehouseStock` map keyed by `warehouse_materialName`.
-- No material issue/dispatch module exists currently.
+The Material Issue section exists under Procurement. Users can create a new issue, which deducts stock from the warehouse and performs FIFO deduction from raw materials. However, users are getting "Operation failed" when trying to submit a new material issue entry.
 
 ## Requested Changes (Diff)
 
 ### Add
-- **Material Issue** module: A new section in the sidebar under "Procurement" called "Material Issue"
-- Backend `MaterialIssue` type: id, issueNumber (auto-generated e.g. ISS-2026-001), issueDate, department (text), warehouse (Warehouse enum), materialName (text), grade (text), issuedQty (Nat), remarks (text)
-- `createMaterialIssue` shared function: creates issue record, deducts `issuedQty` from `warehouseStock` for the matching warehouse+materialName, also deducts from the corresponding raw material records (reduce weightKg proportionally or by matching entries, FIFO - earliest first, remove if weight reaches 0)
-- `getAllMaterialIssues` query function
-- `deleteMaterialIssue` shared function: reverses the stock deduction (adds back to warehouseStock)
-- `getNextIssueNumber` query: returns next ISS-2026-NNN
-- Department options: Blowroom, Carding, Drawing, Combing, Roving, Ring Frame, Autocoro, OE
-- Material Issue page in frontend:
-  - Table listing all issues with columns: Issue No., Date, Department, Warehouse, Material, Grade, Issued Qty (Kg), Remarks
-  - "New Issue" button opens dialog form with fields: Issue No. (auto), Issue Date, Department (select), Warehouse (select: OE Raw Material / Ring Raw Material), Material Name (auto-populated from available stock in selected warehouse), Grade (auto-populated), Issued Qty (Kg), Remarks
-  - After submit: issued qty is deducted from Raw Materials and warehouse stock automatically
-  - Delete button per row reverses the deduction
+- Nothing new to add
 
 ### Modify
-- **Sidebar**: Add "Material Issue" nav item under Procurement group
-- **Raw Materials page**: Stock quantities reflect deductions from issues (already driven by backend warehouseStock and rawMaterials maps, so automatic once backend is updated)
-- **Dashboard**: No change needed
+- **Backend**: Fix `createMaterialIssue` so the operation succeeds when valid stock exists
+  - The FIFO deduction checks `material.grade == grade`, but raw materials created from inward entries use `materialName` as the `grade` field. The grade filter must be removed or made optional so the FIFO deduction works based on warehouse match alone.
+  - The backend `getNextIssueNumber` and `getPackingBalance` are `query` functions that call `AccessControl.hasPermission` with `caller` -- but `query` functions cannot authenticate the caller (no identity verification). Move the auth check to only `shared` (update) functions. For `query` functions that need caller identity, change to `shared query` or remove the auth guard.
+  - `getAllMaterialIssues` also has an unnecessary auth check for a read-only function -- allow anonymous reads similar to other list functions.
+- **Frontend**: In MaterialIssue.tsx, show the actual backend error message in the toast (not just "Operation failed") to help diagnose future issues.
 
 ### Remove
-- Nothing removed
+- Nothing to remove
 
 ## Implementation Plan
-1. Add `MaterialIssue` type and `materialIssueIdCounter` state in `main.mo`
-2. Add `createMaterialIssue` function: auto-deducts from `warehouseStock` and FIFO-deducts from `rawMaterials` records matching warehouse+grade
-3. Add `getAllMaterialIssues`, `deleteMaterialIssue` (reverses stock), `getNextIssueNumber` functions
-4. Update `backend.d.ts` with new types and functions
-5. Build `MaterialIssue.tsx` page with table, new-issue dialog, auto-fill material from warehouse stock, validation (cannot issue more than available stock)
-6. Add Material Issue nav item to sidebar in `App.tsx`
-7. Wire route in router
+1. In `main.mo`, change `createMaterialIssue` FIFO deduction to match on warehouse only (not grade), since raw material `grade` = `materialName` from inward, not a separate grade field.
+2. Change `getAllMaterialIssues` from requiring auth to allowing anonymous reads (consistent with other getAll functions).
+3. Change `getNextIssueNumber` from `query` with caller auth check to removing the auth guard (it's a safe read).
+4. In `MaterialIssue.tsx`, update the catch block to extract and display the real error message from the backend trap.

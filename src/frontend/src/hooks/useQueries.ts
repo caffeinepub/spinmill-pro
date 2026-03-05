@@ -11,6 +11,8 @@ import type {
   MaterialIssue,
   OrderStatus,
   POBalance,
+  PackingBalance,
+  PackingEntry,
   ProcessStage,
   ProductType,
   ProductionLog,
@@ -1024,6 +1026,94 @@ export function useNextIssueNumber(enabled: boolean) {
       return actor.getNextIssueNumber();
     },
     enabled: !!actor && !isFetching && enabled,
+    retry: false,
+    staleTime: 0,
+  });
+}
+
+// ─── Packing Entries ──────────────────────────────────────────────────────────
+
+export function usePackingEntries() {
+  const { actor, isFetching } = useActor();
+  return useQuery<PackingEntry[]>({
+    queryKey: ["packingEntries"],
+    queryFn: async () => {
+      if (!actor) return [];
+      const result = await actor.getAllPackingEntries();
+      return normalizeRecord(result);
+    },
+    enabled: !!actor && !isFetching,
+    retry: false,
+  });
+}
+
+export function useCreatePackingEntry() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      lotNumber: string;
+      quantityKg: bigint;
+      remarks: string;
+      packingDate: bigint;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.createPackingEntry(
+        args.lotNumber,
+        args.quantityKg,
+        args.remarks,
+        args.packingDate,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["packingEntries"] });
+      qc.invalidateQueries({ queryKey: ["yarnInventory"] });
+      qc.invalidateQueries({ queryKey: ["nextPackingNumber"] });
+      qc.invalidateQueries({ queryKey: ["packingBalance"] });
+    },
+  });
+}
+
+export function useDeletePackingEntry() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("No actor");
+      return actor.deletePackingEntry(id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["packingEntries"] });
+      qc.invalidateQueries({ queryKey: ["yarnInventory"] });
+      qc.invalidateQueries({ queryKey: ["packingBalance"] });
+    },
+  });
+}
+
+export function useNextPackingNumber(enabled: boolean) {
+  const { actor, isFetching } = useActor();
+  return useQuery<string>({
+    queryKey: ["nextPackingNumber"],
+    queryFn: async () => {
+      if (!actor) throw new Error("No actor");
+      return actor.getNextPackingNumber();
+    },
+    enabled: !!actor && !isFetching && enabled,
+    retry: false,
+    staleTime: 0,
+  });
+}
+
+export function usePackingBalance(lotNumber: string | null) {
+  const { actor, isFetching } = useActor();
+  return useQuery<PackingBalance | null>({
+    queryKey: ["packingBalance", lotNumber],
+    queryFn: async () => {
+      if (!actor || !lotNumber) throw new Error("No params");
+      const result = await actor.getPackingBalance(lotNumber);
+      return result ? normalizeRecord(result) : null;
+    },
+    enabled: !!actor && !isFetching && !!lotNumber,
     retry: false,
     staleTime: 0,
   });

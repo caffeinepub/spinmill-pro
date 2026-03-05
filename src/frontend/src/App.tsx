@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   ArrowUpFromLine,
   BarChart2,
+  Box,
   ChevronRight,
   ClipboardList,
   Factory,
@@ -16,7 +17,6 @@ import {
   Package2,
   PackageOpen,
   Settings2,
-  ShieldCheck,
   ShoppingCart,
   X,
 } from "lucide-react";
@@ -26,10 +26,10 @@ import Dashboard from "./pages/Dashboard";
 import InwardEntry from "./pages/InwardEntry";
 import Machines from "./pages/Machines";
 import MaterialIssue from "./pages/MaterialIssue";
+import PackingEntry from "./pages/PackingEntry";
 import ProductionLogs from "./pages/ProductionLogs";
 import ProductionOrders from "./pages/ProductionOrders";
 import PurchaseOrders from "./pages/PurchaseOrders";
-import QualityControl from "./pages/QualityControl";
 import RawMaterials from "./pages/RawMaterials";
 import Reports from "./pages/Reports";
 import YarnInventory from "./pages/YarnInventory";
@@ -42,7 +42,7 @@ type PageId =
   | "material-issue"
   | "production-orders"
   | "machines"
-  | "quality-control"
+  | "packing-entry"
   | "production-logs"
   | "yarn-inventory"
   | "reports";
@@ -97,10 +97,10 @@ const navItems: NavItem[] = [
     group: "Production",
   },
   {
-    id: "quality-control",
-    label: "Quality Control",
-    icon: <ShieldCheck className="w-4 h-4" />,
-    group: "Quality",
+    id: "packing-entry",
+    label: "Packing Entry",
+    icon: <Box className="w-4 h-4" />,
+    group: "Packing",
   },
   {
     id: "reports",
@@ -130,13 +130,13 @@ const pageComponents: Record<PageId, React.ReactNode> = {
   "material-issue": <MaterialIssue />,
   "production-orders": <ProductionOrders />,
   machines: <Machines />,
-  "quality-control": <QualityControl />,
+  "packing-entry": <PackingEntry />,
   "production-logs": <ProductionLogs />,
   "yarn-inventory": <YarnInventory />,
   reports: <Reports />,
 };
 
-const groups = ["Procurement", "Production", "Quality", "Reports"];
+const groups = ["Procurement", "Production", "Packing", "Reports"];
 
 export default function App() {
   const [activePage, setActivePage] = useState<PageId>("dashboard");

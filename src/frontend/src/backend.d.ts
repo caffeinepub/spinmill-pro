@@ -18,6 +18,18 @@ export interface InwardEntry {
     materialName: string;
     remarks: string;
 }
+export interface PackingEntry {
+    id: bigint;
+    yarnCountNe: bigint;
+    packingDate: Time;
+    packingNumber: string;
+    productType: ProductType;
+    lotNumber: string;
+    spinningUnit: SpinningUnit;
+    remarks: string;
+    quantityKg: bigint;
+    endUse: EndUse;
+}
 export type Time = bigint;
 export interface ProductionOrderBalance {
     isFulfilled: boolean;
@@ -25,6 +37,15 @@ export interface ProductionOrderBalance {
     balanceQty: bigint;
     orderQty: bigint;
     producedQty: bigint;
+}
+export interface PackingBalance {
+    yarnCountNe: bigint;
+    productType: ProductType;
+    totalPackedKg: bigint;
+    lotNumber: string;
+    spinningUnit: SpinningUnit;
+    availableKg: bigint;
+    endUse: EndUse;
 }
 export interface PurchaseOrder {
     id: bigint;
@@ -241,12 +262,14 @@ export interface backendInterface {
     addYarnInventory(lotNumber: string, yarnCountNe: bigint, twistDirection: TwistDirection, quantityCones: bigint, weightKg: bigint, status: InventoryStatus): Promise<bigint>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createMaterialIssue(department: string, warehouse: Warehouse, materialName: string, grade: string, issuedQty: bigint, remarks: string): Promise<bigint>;
+    createPackingEntry(lotNumber: string, quantityKg: bigint, remarks: string, packingDate: Time): Promise<bigint>;
     createProductionOrder(orderNumber: string, lotNumber: string, productType: ProductType, spinningUnit: SpinningUnit, endUse: EndUse, yarnCountNe: bigint, twistDirection: TwistDirection, quantityKg: bigint, targetDate: Time, status: OrderStatus): Promise<bigint>;
     createPurchaseOrder(poNumber: string, supplier: string, materialName: string, orderedQty: bigint, orderDate: Time, expectedDeliveryDate: Time): Promise<bigint>;
     deleteBatchStage(id: bigint): Promise<void>;
     deleteInwardEntry(id: bigint): Promise<void>;
     deleteMachine(id: bigint): Promise<void>;
     deleteMaterialIssue(id: bigint): Promise<void>;
+    deletePackingEntry(id: bigint): Promise<void>;
     deleteProductionLog(id: bigint): Promise<void>;
     deleteProductionOrder(id: bigint): Promise<void>;
     deletePurchaseOrder(id: bigint): Promise<void>;
@@ -257,6 +280,7 @@ export interface backendInterface {
     getAllInwardEntries(): Promise<Array<InwardEntry>>;
     getAllMachines(): Promise<Array<Machine>>;
     getAllMaterialIssues(): Promise<Array<MaterialIssue>>;
+    getAllPackingEntries(): Promise<Array<PackingEntry>>;
     getAllProductionLogs(): Promise<Array<ProductionLog>>;
     getAllProductionOrders(): Promise<Array<ProductionOrder>>;
     getAllPurchaseOrders(): Promise<Array<PurchaseOrder>>;
@@ -274,7 +298,10 @@ export interface backendInterface {
     getNextInwardNumber(): Promise<string>;
     getNextIssueNumber(): Promise<string>;
     getNextPONumber(): Promise<string>;
+    getNextPackingNumber(): Promise<string>;
+    getNextProductionOrderNumber(): Promise<string>;
     getPOBalance(purchaseOrderId: bigint): Promise<POBalance | null>;
+    getPackingBalance(lotNumber: string): Promise<PackingBalance | null>;
     getProductionLog(id: bigint): Promise<ProductionLog | null>;
     getProductionOrder(id: bigint): Promise<ProductionOrder | null>;
     getProductionOrderBalance(yarnCountNe: bigint, lotNumber: string): Promise<ProductionOrderBalance | null>;
