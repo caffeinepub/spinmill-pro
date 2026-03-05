@@ -51,20 +51,15 @@ import {
   useUpdateMachine,
 } from "../hooks/useQueries";
 
-const machineTypeLabels: Record<string, string> = {
-  blowroom: "Blow Room",
-  carding: "Carding",
-  drawing: "Drawing",
-  combing: "Combing",
-  roving: "Roving",
-  ringFrame: "Ring Frame",
-  winding: "Winding",
-  autocoro: "Autocoro",
+const unitLabels: Record<string, string> = {
+  oeSpinning: "OE Spinning",
+  ringSpinning: "Ring Spinning",
+  tfo: "TFO",
 };
 
 const defaultForm = {
   name: "",
-  machineType: "ringFrame" as MachineType,
+  machineType: "oeSpinning" as MachineType,
   machineNumber: "",
   status: "idle" as MachineStatus,
   currentOrderId: "",
@@ -85,6 +80,7 @@ export default function Machines() {
   const [editItem, setEditItem] = useState<Machine | null>(null);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [form, setForm] = useState(defaultForm);
+  const [unitFilter, setUnitFilter] = useState<string>("all");
 
   const running = machines.filter((m) => m.status === "running").length;
   const idle = machines.filter((m) => m.status === "idle").length;
@@ -170,6 +166,11 @@ export default function Machines() {
 
   const isPending = registerMutation.isPending || updateMutation.isPending;
 
+  const filteredMachines =
+    unitFilter === "all"
+      ? machines
+      : machines.filter((m) => m.machineType === unitFilter);
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <PageHeader
@@ -226,6 +227,38 @@ export default function Machines() {
         </div>
       )}
 
+      {/* Unit Filter */}
+      {!isLoading && machines.length > 0 && (
+        <div className="flex items-center gap-3 mb-4">
+          <Select value={unitFilter} onValueChange={setUnitFilter}>
+            <SelectTrigger
+              className="w-48"
+              data-ocid="machines.unit_filter.select"
+            >
+              <SelectValue placeholder="All Units" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Units</SelectItem>
+              {Object.entries(unitLabels).map(([val, label]) => (
+                <SelectItem key={val} value={val}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {unitFilter !== "all" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setUnitFilter("all")}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Clear Filters
+            </Button>
+          )}
+        </div>
+      )}
+
       <div className="rounded-lg border border-border/60 bg-card shadow-card overflow-hidden">
         {isLoading ? (
           <div className="p-4 space-y-3">
@@ -253,7 +286,7 @@ export default function Machines() {
                   Name
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">
-                  Type
+                  Unit
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">
                   Status
@@ -273,7 +306,7 @@ export default function Machines() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {machines.map((machine, idx) => {
+              {filteredMachines.map((machine, idx) => {
                 const currentOrder = machine.currentOrderId
                   ? orders.find((o) => o.id === machine.currentOrderId)
                   : null;
@@ -290,8 +323,7 @@ export default function Machines() {
                       {machine.name}
                     </TableCell>
                     <TableCell>
-                      {machineTypeLabels[machine.machineType] ??
-                        machine.machineType}
+                      {unitLabels[machine.machineType] ?? machine.machineType}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={machine.status} />
@@ -392,7 +424,7 @@ export default function Machines() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="mc-type">Machine Type</Label>
+                <Label htmlFor="mc-type">Unit</Label>
                 <Select
                   value={form.machineType}
                   onValueChange={(v) =>
@@ -403,7 +435,7 @@ export default function Machines() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(machineTypeLabels).map(([val, label]) => (
+                    {Object.entries(unitLabels).map(([val, label]) => (
                       <SelectItem key={val} value={val}>
                         {label}
                       </SelectItem>
