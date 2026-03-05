@@ -118,7 +118,7 @@ const navItems: NavItem[] = [
     id: "yarn-inventory",
     label: "Yarn Inventory",
     icon: <Package2 className="w-4 h-4" />,
-    group: "Reports",
+    group: "Packing",
   },
 ];
 

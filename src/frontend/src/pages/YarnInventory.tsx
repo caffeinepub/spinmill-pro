@@ -16,102 +16,128 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { FilterX, Info, Package2, Trash2 } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
-import type { EndUse, ProductType, SpinningUnit } from "../backend.d";
-import { ConfirmDialog } from "../components/ConfirmDialog";
+import { FilterX, Info, Package2, Weight } from "lucide-react";
+import { useMemo, useState } from "react";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
-import { StatusBadge } from "../components/StatusBadge";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import {
-  useDeleteYarnInventory,
-  useProductionOrders,
-  useYarnInventory,
-} from "../hooks/useQueries";
+import { useActor } from "../hooks/useActor";
+import { usePackingEntries } from "../hooks/useQueries";
 
-function getUnit(su: SpinningUnit): string {
-  return su === "openend" ? "Openend" : "Ring Spinning";
+// ─── Formatters ───────────────────────────────────────────────────────────────
+
+function formatUnit(su: string): string {
+  if (su === "openend") return "Openend";
+  if (su === "ringSpinning") return "Ring Spinning";
+  return su;
 }
 
-function getProductType(pt: ProductType): string {
-  return pt === "lt"
-    ? "LT"
-    : (pt as string).charAt(0).toUpperCase() + (pt as string).slice(1);
+function formatProductType(pt: string): string {
+  if (pt === "lt") return "LT";
+  return pt.charAt(0).toUpperCase() + pt.slice(1);
 }
 
-function getEndUse(eu: EndUse): string {
-  return eu === "tfo"
-    ? "TFO"
-    : (eu as string).charAt(0).toUpperCase() + (eu as string).slice(1);
+function formatEndUse(eu: string): string {
+  if (eu === "tfo") return "TFO";
+  return eu.charAt(0).toUpperCase() + eu.slice(1);
+}
+
+// ─── Aggregation ──────────────────────────────────────────────────────────────
+
+interface AggregatedLot {
+  key: string;
+  lotNumber: string;
+  yarnCountNe: number;
+  spinningUnit: string;
+  productType: string;
+  endUse: string;
+  totalPackedKg: number;
 }
 
 export default function YarnInventory() {
-  const { identity } = useInternetIdentity();
-  const isLoggedIn = !!identity;
-  const { data: inventory = [], isLoading } = useYarnInventory();
-  const { data: productionOrders = [] } = useProductionOrders();
-  const deleteMutation = useDeleteYarnInventory();
+  const { isFetching: actorFetching } = useActor();
+  const { data: packingEntries = [], isLoading } = usePackingEntries();
+  const isLoadingData = isLoading || actorFetching;
 
-  const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [filterUnit, setFilterUnit] = useState<string>("");
   const [filterProductType, setFilterProductType] = useState<string>("");
   const [filterEndUse, setFilterEndUse] = useState<string>("");
 
-  function matchOrder(lotNumber: string, yarnCountNe: bigint) {
-    return (
-      productionOrders.find(
-        (o) =>
-          o.lotNumber === lotNumber &&
-          Number(o.yarnCountNe) === Number(yarnCountNe),
-      ) ?? null
+  // Aggregate packing entries by lotNumber + yarnCountNe + spinningUnit + productType + endUse
+  const aggregatedLots = useMemo<AggregatedLot[]>(() => {
+    const map = new Map<string, AggregatedLot>();
+
+    for (const entry of packingEntries) {
+      const key = [
+        entry.lotNumber,
+        String(entry.yarnCountNe),
+        String(entry.spinningUnit),
+        String(entry.productType),
+        String(entry.endUse),
+      ].join("|");
+
+      const existing = map.get(key);
+      if (existing) {
+        existing.totalPackedKg += Number(entry.quantityKg);
+      } else {
+        map.set(key, {
+          key,
+          lotNumber: entry.lotNumber,
+          yarnCountNe: Number(entry.yarnCountNe),
+          spinningUnit: String(entry.spinningUnit),
+          productType: String(entry.productType),
+          endUse: String(entry.endUse),
+          totalPackedKg: Number(entry.quantityKg),
+        });
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) =>
+      a.lotNumber.localeCompare(b.lotNumber),
     );
-  }
+  }, [packingEntries]);
 
   const hasActiveFilters =
     filterUnit !== "" || filterProductType !== "" || filterEndUse !== "";
 
-  const filteredInventory = inventory.filter((item) => {
-    if (!hasActiveFilters) return true;
-    const order = matchOrder(item.lotNumber, item.yarnCountNe);
-    if (!order) return false;
-    if (filterUnit !== "" && order.spinningUnit !== filterUnit) return false;
-    if (filterProductType !== "" && order.productType !== filterProductType)
+  const filteredLots = aggregatedLots.filter((lot) => {
+    if (filterUnit !== "" && lot.spinningUnit !== filterUnit) return false;
+    if (filterProductType !== "" && lot.productType !== filterProductType)
       return false;
-    if (filterEndUse !== "" && order.endUse !== filterEndUse) return false;
+    if (filterEndUse !== "" && lot.endUse !== filterEndUse) return false;
     return true;
   });
 
-  const totalWeight = inventory.reduce((sum, i) => sum + Number(i.weightKg), 0);
-  const inStockCount = inventory.filter((i) => i.status === "inStock").length;
-
-  async function handleDelete() {
-    if (!deleteId) return;
-    try {
-      await deleteMutation.mutateAsync(deleteId);
-      toast.success("Yarn lot removed");
-    } catch {
-      toast.error(isLoggedIn ? "Delete failed" : "Please sign in to save data");
-    } finally {
-      setDeleteId(null);
-    }
-  }
+  const totalLots = filteredLots.length;
+  const totalWeight = filteredLots.reduce(
+    (sum, lot) => sum + lot.totalPackedKg,
+    0,
+  );
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <PageHeader
         title="Yarn Inventory"
-        description="Finished yarn stock auto-populated from production logs"
+        description="Automatically built from packing entries — no manual entry required"
       />
 
       {/* Summary Cards */}
-      {!isLoading && inventory.length > 0 && (
+      {!isLoadingData && aggregatedLots.length > 0 && (
         <div className="grid grid-cols-2 gap-4 mb-6">
           <Card className="border-border/60 shadow-card">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center">
                 <Package2 className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold font-display">{totalLots}</p>
+                <p className="text-xs text-muted-foreground">Total Lots</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-border/60 shadow-card">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-500/15 flex items-center justify-center">
+                <Weight className="w-5 h-5 text-amber-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold font-display">
@@ -123,19 +149,6 @@ export default function YarnInventory() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-border/60 shadow-card">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-amber-500/15 flex items-center justify-center">
-                <Package2 className="w-5 h-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold font-display">
-                  {inStockCount}
-                </p>
-                <p className="text-xs text-muted-foreground">Lots In Stock</p>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       )}
 
@@ -143,14 +156,14 @@ export default function YarnInventory() {
       <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 mb-4 text-blue-700">
         <Info className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-500" />
         <p className="text-sm">
-          Yarn stock is automatically updated when production logs are added. No
-          manual entry is required.
+          Yarn inventory is automatically built from packing entries. No manual
+          entry required.
         </p>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <Select value={filterUnit} onValueChange={(val) => setFilterUnit(val)}>
+        <Select value={filterUnit} onValueChange={setFilterUnit}>
           <SelectTrigger className="w-44" data-ocid="yarn.unit_filter">
             <SelectValue placeholder="Unit: All" />
           </SelectTrigger>
@@ -161,10 +174,7 @@ export default function YarnInventory() {
           </SelectContent>
         </Select>
 
-        <Select
-          value={filterProductType}
-          onValueChange={(val) => setFilterProductType(val)}
-        >
+        <Select value={filterProductType} onValueChange={setFilterProductType}>
           <SelectTrigger className="w-48" data-ocid="yarn.product_type_filter">
             <SelectValue placeholder="Product Type: All" />
           </SelectTrigger>
@@ -179,10 +189,7 @@ export default function YarnInventory() {
           </SelectContent>
         </Select>
 
-        <Select
-          value={filterEndUse}
-          onValueChange={(val) => setFilterEndUse(val)}
-        >
+        <Select value={filterEndUse} onValueChange={setFilterEndUse}>
           <SelectTrigger className="w-44" data-ocid="yarn.end_use_filter">
             <SelectValue placeholder="End Use: All" />
           </SelectTrigger>
@@ -215,20 +222,20 @@ export default function YarnInventory() {
       </div>
 
       <div className="rounded-lg border border-border/60 bg-card shadow-card overflow-hidden">
-        {isLoading ? (
+        {isLoadingData ? (
           <div className="p-4 space-y-3">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
-        ) : inventory.length === 0 ? (
+        ) : aggregatedLots.length === 0 ? (
           <EmptyState
             data-ocid="yarn.empty_state"
             icon={<Package2 className="w-7 h-7" />}
             title="No yarn inventory"
-            description="Yarn inventory will appear here automatically as production logs are recorded."
+            description="Yarn inventory will appear here automatically as packing entries are recorded."
           />
-        ) : filteredInventory.length === 0 ? (
+        ) : filteredLots.length === 0 ? (
           <EmptyState
             data-ocid="yarn.empty_state"
             icon={<Package2 className="w-7 h-7" />}
@@ -255,91 +262,39 @@ export default function YarnInventory() {
                   End Use
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">
-                  Weight (kg)
-                </TableHead>
-                <TableHead className="font-semibold text-xs uppercase tracking-wider">
-                  Status
-                </TableHead>
-                <TableHead className="font-semibold text-xs uppercase tracking-wider text-right">
-                  Actions
+                  Total Packed (kg)
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredInventory.map((item, idx) => {
-                const order = matchOrder(item.lotNumber, item.yarnCountNe);
-                return (
-                  <TableRow
-                    key={String(item.id)}
-                    data-ocid={`yarn.item.${idx + 1}`}
-                    className="border-border/40 hover:bg-muted/40 transition-colors"
-                  >
-                    <TableCell className="font-mono-nums font-medium">
-                      {item.lotNumber}
-                    </TableCell>
-                    <TableCell className="font-mono-nums">
-                      {Number(item.yarnCountNe)}
-                    </TableCell>
-                    <TableCell>
-                      {order ? (
-                        <span className="text-sm">
-                          {getUnit(order.spinningUnit)}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {order ? (
-                        <span className="text-sm">
-                          {getProductType(order.productType)}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {order ? (
-                        <span className="text-sm">
-                          {getEndUse(order.endUse)}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-mono-nums">
-                      {Number(item.weightKg).toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={item.status} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        data-ocid={`yarn.delete_button.${idx + 1}`}
-                        onClick={() => setDeleteId(item.id)}
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {filteredLots.map((lot, idx) => (
+                <TableRow
+                  key={lot.key}
+                  data-ocid={`yarn.item.${idx + 1}`}
+                  className="border-border/40 hover:bg-muted/40 transition-colors"
+                >
+                  <TableCell className="font-mono font-medium">
+                    {lot.lotNumber}
+                  </TableCell>
+                  <TableCell className="font-mono">{lot.yarnCountNe}</TableCell>
+                  <TableCell className="text-sm">
+                    {formatUnit(lot.spinningUnit)}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {formatProductType(lot.productType)}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {formatEndUse(lot.endUse)}
+                  </TableCell>
+                  <TableCell className="font-mono font-medium">
+                    {lot.totalPackedKg.toLocaleString()}
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         )}
       </div>
-
-      <ConfirmDialog
-        open={!!deleteId}
-        onOpenChange={(o) => !o && setDeleteId(null)}
-        title="Remove Yarn Lot"
-        description="This will permanently remove this yarn lot from inventory."
-        onConfirm={handleDelete}
-        isPending={deleteMutation.isPending}
-      />
     </div>
   );
 }
