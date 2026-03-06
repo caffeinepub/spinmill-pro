@@ -296,7 +296,9 @@ export interface backendInterface {
     addProductionLog(shift: Shift, date: Time, machineId: bigint, quantityKg: bigint, efficiencyPercent: bigint, operatorName: string): Promise<bigint>;
     addQualityTest(batchId: bigint, csp: bigint, elongationPercent: bigint, evennessPercent: bigint, thinPlaces: bigint, thickPlaces: bigint, neps: bigint, hairinessIndex: bigint, pass: boolean): Promise<bigint>;
     addRawMaterial(lotNumber: string, supplier: string, grade: string, weightKg: bigint, warehouse: Warehouse, inwardEntryId: bigint | null): Promise<bigint>;
+    addRawMaterialOpeningStock(materialName: string, supplier: string, grade: string, weightKg: bigint, warehouse: Warehouse, date: Time): Promise<bigint>;
     addYarnInventory(lotNumber: string, yarnCountNe: bigint, twistDirection: TwistDirection, quantityCones: bigint, weightKg: bigint, status: InventoryStatus): Promise<bigint>;
+    addYarnOpeningStock(lotNumber: string, yarnCountNe: bigint, spinningUnit: SpinningUnit, productType: ProductType, endUse: EndUse, weightKg: bigint): Promise<bigint>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createDispatchEntry(lotNumber: string, destination: DispatchDestination, quantityKg: bigint, dispatchDate: Time, remarks: string): Promise<bigint>;
     createMaterialIssue(department: string, warehouse: Warehouse, materialName: string, grade: string, issuedQty: bigint, remarks: string): Promise<bigint>;
@@ -314,7 +316,9 @@ export interface backendInterface {
     deletePurchaseOrder(id: bigint): Promise<void>;
     deleteQualityTest(id: bigint): Promise<void>;
     deleteRawMaterial(id: bigint): Promise<void>;
+    deleteRawMaterialOpeningStock(id: bigint): Promise<void>;
     deleteYarnInventory(id: bigint): Promise<void>;
+    deleteYarnOpeningStock(id: bigint): Promise<void>;
     getAllBatchStages(): Promise<Array<BatchStage>>;
     getAllDispatchEntries(): Promise<Array<DispatchEntry>>;
     getAllInwardEntries(): Promise<Array<InwardEntry>>;
@@ -325,10 +329,12 @@ export interface backendInterface {
     getAllProductionOrders(): Promise<Array<ProductionOrder>>;
     getAllPurchaseOrders(): Promise<Array<PurchaseOrder>>;
     getAllQualityTests(): Promise<Array<QualityTest>>;
+    getAllRawMaterialOpeningStock(): Promise<Array<RawMaterial>>;
     getAllRawMaterials(): Promise<Array<RawMaterial>>;
     getAllUsers(): Promise<Array<UserEntry>>;
     getAllWarehouseStock(): Promise<Array<WarehouseStock>>;
     getAllYarnInventory(): Promise<Array<YarnInventory>>;
+    getAllYarnOpeningStock(): Promise<Array<YarnInventory>>;
     getBatchStage(id: bigint): Promise<BatchStage | null>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;

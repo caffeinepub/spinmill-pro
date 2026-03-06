@@ -282,8 +282,16 @@ export interface _SERVICE {
     [string, string, string, bigint, Warehouse, [] | [bigint]],
     bigint
   >,
+  'addRawMaterialOpeningStock' : ActorMethod<
+    [string, string, string, bigint, Warehouse, Time],
+    bigint
+  >,
   'addYarnInventory' : ActorMethod<
     [string, bigint, TwistDirection, bigint, bigint, InventoryStatus],
+    bigint
+  >,
+  'addYarnOpeningStock' : ActorMethod<
+    [string, bigint, SpinningUnit, ProductType, EndUse, bigint],
     bigint
   >,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
@@ -326,7 +334,9 @@ export interface _SERVICE {
   'deletePurchaseOrder' : ActorMethod<[bigint], undefined>,
   'deleteQualityTest' : ActorMethod<[bigint], undefined>,
   'deleteRawMaterial' : ActorMethod<[bigint], undefined>,
+  'deleteRawMaterialOpeningStock' : ActorMethod<[bigint], undefined>,
   'deleteYarnInventory' : ActorMethod<[bigint], undefined>,
+  'deleteYarnOpeningStock' : ActorMethod<[bigint], undefined>,
   'getAllBatchStages' : ActorMethod<[], Array<BatchStage>>,
   'getAllDispatchEntries' : ActorMethod<[], Array<DispatchEntry>>,
   'getAllInwardEntries' : ActorMethod<[], Array<InwardEntry>>,
@@ -337,10 +347,12 @@ export interface _SERVICE {
   'getAllProductionOrders' : ActorMethod<[], Array<ProductionOrder>>,
   'getAllPurchaseOrders' : ActorMethod<[], Array<PurchaseOrder>>,
   'getAllQualityTests' : ActorMethod<[], Array<QualityTest>>,
+  'getAllRawMaterialOpeningStock' : ActorMethod<[], Array<RawMaterial>>,
   'getAllRawMaterials' : ActorMethod<[], Array<RawMaterial>>,
   'getAllUsers' : ActorMethod<[], Array<UserEntry>>,
   'getAllWarehouseStock' : ActorMethod<[], Array<WarehouseStock>>,
   'getAllYarnInventory' : ActorMethod<[], Array<YarnInventory>>,
+  'getAllYarnOpeningStock' : ActorMethod<[], Array<YarnInventory>>,
   'getBatchStage' : ActorMethod<[bigint], [] | [BatchStage]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,

@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { MachineType } from "../backend.d";
 import type { ProductionLog, Shift } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
@@ -64,13 +65,21 @@ const shiftColors: Record<string, string> = {
   night: "status-inprogress",
 };
 
+// Unit labels matching what Machines.tsx uses
+const unitOptions = [
+  { value: MachineType.autocoro, label: "OE Spinning" },
+  { value: MachineType.ringFrame, label: "Ring Spinning" },
+  { value: MachineType.winding, label: "TFO" },
+];
+
 const defaultForm = {
   shift: "morning" as Shift,
   date: new Date().toISOString().substring(0, 10),
+  selectedUnit: "",
   machineId: "",
   quantityKg: "",
   efficiencyPercent: "",
-  operatorName: "",
+  shiftOfficerName: "",
 };
 
 export default function ProductionLogs() {
@@ -86,6 +95,11 @@ export default function ProductionLogs() {
   const [editItem, setEditItem] = useState<ProductionLog | null>(null);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [form, setForm] = useState(defaultForm);
+
+  // Machines filtered by selected unit
+  const filteredMachines = form.selectedUnit
+    ? machines.filter((m) => m.machineType === form.selectedUnit)
+    : [];
 
   // Derive selected machine and its running count/lot
   const selectedMachine = form.machineId
@@ -129,13 +143,15 @@ export default function ProductionLogs() {
   function openEdit(item: ProductionLog) {
     setEditItem(item);
     const d = new Date(Number(item.date) / 1_000_000);
+    const machine = machines.find((m) => m.id === item.machineId);
     setForm({
       shift: item.shift,
       date: d.toISOString().substring(0, 10),
+      selectedUnit: machine?.machineType ?? "",
       machineId: String(Number(item.machineId)),
       quantityKg: String(Number(item.quantityKg)),
       efficiencyPercent: String(Number(item.efficiencyPercent)),
-      operatorName: item.operatorName,
+      shiftOfficerName: item.operatorName,
     });
     setDialogOpen(true);
   }
@@ -151,7 +167,7 @@ export default function ProductionLogs() {
         machineId: BigInt(form.machineId),
         quantityKg: BigInt(Math.round(Number(form.quantityKg))),
         efficiencyPercent: BigInt(Math.round(Number(form.efficiencyPercent))),
-        operatorName: form.operatorName,
+        operatorName: form.shiftOfficerName,
       };
       if (editItem) {
         await updateMutation.mutateAsync({ id: editItem.id, ...args });
@@ -229,7 +245,7 @@ export default function ProductionLogs() {
                   Machine
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">
-                  Operator
+                  Shift Officer
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">
                   Qty (kg)
@@ -268,7 +284,7 @@ export default function ProductionLogs() {
                       {machine ? machine.name : `#${Number(log.machineId)}`}
                     </TableCell>
                     <TableCell className="text-sm">
-                      {log.operatorName}
+                      {log.operatorName ?? "—"}
                     </TableCell>
                     <TableCell className="font-mono-nums">
                       {Number(log.quantityKg)}
@@ -354,31 +370,69 @@ export default function ProductionLogs() {
               </div>
             </div>
 
-            {/* Machine */}
+            {/* Unit */}
             <div className="space-y-1.5">
-              <Label htmlFor="lg-machine">Machine</Label>
+              <Label htmlFor="lg-unit">Unit</Label>
               <Select
-                value={form.machineId || "none"}
+                value={form.selectedUnit || "none"}
                 onValueChange={(v) =>
                   setForm((p) => ({
                     ...p,
-                    machineId: v === "none" ? "" : v,
+                    selectedUnit: v === "none" ? "" : v,
+                    machineId: "",
                     quantityKg: "",
                   }))
                 }
               >
-                <SelectTrigger id="lg-machine">
-                  <SelectValue placeholder="Select machine..." />
+                <SelectTrigger id="lg-unit" data-ocid="logs.unit.select">
+                  <SelectValue placeholder="Select unit..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {machines.map((m) => (
-                    <SelectItem key={String(m.id)} value={String(Number(m.id))}>
-                      {m.name} ({m.machineNumber})
+                  {unitOptions.map((u) => (
+                    <SelectItem key={u.value} value={u.value}>
+                      {u.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Machine — shown only after a unit is selected */}
+            {form.selectedUnit && (
+              <div className="space-y-1.5">
+                <Label htmlFor="lg-machine">Machine</Label>
+                <Select
+                  value={form.machineId || "none"}
+                  onValueChange={(v) =>
+                    setForm((p) => ({
+                      ...p,
+                      machineId: v === "none" ? "" : v,
+                      quantityKg: "",
+                    }))
+                  }
+                >
+                  <SelectTrigger id="lg-machine">
+                    <SelectValue placeholder="Select machine..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredMachines.length === 0 ? (
+                      <SelectItem value="none" disabled>
+                        No machines in this unit
+                      </SelectItem>
+                    ) : (
+                      filteredMachines.map((m) => (
+                        <SelectItem
+                          key={String(m.id)}
+                          value={String(Number(m.id))}
+                        >
+                          {m.name} ({m.machineNumber})
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Auto-populated Count (Ne) and Lot Number */}
             {hasMachineCountLot && (
@@ -409,14 +463,14 @@ export default function ProductionLogs() {
               </div>
             )}
 
-            {/* Operator */}
+            {/* Shift Officer */}
             <div className="space-y-1.5">
-              <Label htmlFor="lg-operator">Operator Name</Label>
+              <Label htmlFor="lg-officer">Shift Officer Name</Label>
               <Input
-                id="lg-operator"
-                value={form.operatorName}
+                id="lg-officer"
+                value={form.shiftOfficerName}
                 onChange={(e) =>
-                  setForm((p) => ({ ...p, operatorName: e.target.value }))
+                  setForm((p) => ({ ...p, shiftOfficerName: e.target.value }))
                 }
                 placeholder="Rajan Kumar"
                 required
@@ -595,7 +649,12 @@ export default function ProductionLogs() {
               <Button
                 type="submit"
                 data-ocid="logs.submit_button"
-                disabled={isPending || !form.machineId || isSubmitBlocked}
+                disabled={
+                  isPending ||
+                  !form.selectedUnit ||
+                  !form.machineId ||
+                  isSubmitBlocked
+                }
               >
                 {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 {editItem ? "Update" : "Add Log"}

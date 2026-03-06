@@ -53,10 +53,17 @@ import {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatUnit(unit: string): string {
-  if (unit === "openend") return "Openend";
+  if (unit === "openend") return "OE Spinning";
   if (unit === "ringSpinning") return "Ring Spinning";
+  if (unit === "tfo") return "TFO";
   return unit.charAt(0).toUpperCase() + unit.slice(1);
 }
+
+const UNIT_OPTIONS = [
+  { value: "openend", label: "OE Spinning" },
+  { value: "ringSpinning", label: "Ring Spinning" },
+  { value: "tfo", label: "TFO" },
+];
 
 function formatProductType(pt: string): string {
   if (pt === "lt") return "LT";
@@ -237,6 +244,7 @@ function BalancePanel({ lotNumber, enteredQty }: BalancePanelProps) {
 
 const defaultForm = {
   date: new Date().toISOString().substring(0, 10),
+  unit: "",
   lotNumber: "",
   quantityKg: "",
   remarks: "",
@@ -258,9 +266,14 @@ export default function PackingEntryPage() {
   // Auto-generated packing number
   const { data: nextPackingNumber } = useNextPackingNumber(dialogOpen);
 
-  // Unique lot numbers from production orders (each PO has a lot number)
+  // Lot numbers filtered by selected unit
   const lotNumbers = Array.from(
-    new Set(productionOrders.map((po) => po.lotNumber).filter(Boolean)),
+    new Set(
+      productionOrders
+        .filter((po) => !form.unit || po.spinningUnit === form.unit)
+        .map((po) => po.lotNumber)
+        .filter(Boolean),
+    ),
   ).sort();
 
   // Balance for the selected lot
@@ -272,6 +285,7 @@ export default function PackingEntryPage() {
     availableKg !== null && enteredQty > 0 && enteredQty > availableKg;
   const isZeroBalance = availableKg !== null && availableKg <= 0;
   const isSubmitBlocked =
+    !form.unit ||
     !form.lotNumber ||
     !form.quantityKg ||
     isExceeding ||
@@ -476,11 +490,39 @@ export default function PackingEntryPage() {
               />
             </div>
 
+            {/* Unit */}
+            <div className="space-y-1.5">
+              <Label htmlFor="pk-unit">Unit</Label>
+              <Select
+                value={form.unit || "none"}
+                onValueChange={(v) =>
+                  setForm((p) => ({
+                    ...p,
+                    unit: v === "none" ? "" : v,
+                    lotNumber: "",
+                    quantityKg: "",
+                  }))
+                }
+              >
+                <SelectTrigger id="pk-unit" data-ocid="packing.unit_select">
+                  <SelectValue placeholder="Select unit..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {UNIT_OPTIONS.map((u) => (
+                    <SelectItem key={u.value} value={u.value}>
+                      {u.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Lot Number */}
             <div className="space-y-1.5">
               <Label htmlFor="pk-lot">Lot Number</Label>
               <Select
                 value={form.lotNumber || "none"}
+                disabled={!form.unit}
                 onValueChange={(v) =>
                   setForm((p) => ({
                     ...p,
@@ -490,12 +532,18 @@ export default function PackingEntryPage() {
                 }
               >
                 <SelectTrigger id="pk-lot" data-ocid="packing.select">
-                  <SelectValue placeholder="Select lot number..." />
+                  <SelectValue
+                    placeholder={
+                      form.unit
+                        ? "Select lot number..."
+                        : "Select unit first..."
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {lotNumbers.length === 0 ? (
                     <SelectItem value="none" disabled>
-                      No yarn lots available
+                      No yarn lots available for this unit
                     </SelectItem>
                   ) : (
                     lotNumbers.map((lot) => (

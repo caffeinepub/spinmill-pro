@@ -8,6 +8,7 @@ import Text "mo:core/Text";
 import Int "mo:core/Int";
 import Iter "mo:core/Iter";
 import Runtime "mo:core/Runtime";
+import Set "mo:core/Set";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
@@ -305,6 +306,9 @@ actor {
   let materialIssues = Map.empty<Nat, MaterialIssue>();
   let packingEntries = Map.empty<Nat, PackingEntry>();
 
+  let openingStockRawMaterialIds = Set.empty<Nat>();
+  let openingStockYarnIds = Set.empty<Nat>();
+
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
@@ -369,6 +373,157 @@ actor {
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
     userProfiles.add(caller, profile);
+  };
+
+  public shared ({ caller }) func addRawMaterialOpeningStock(
+    materialName : Text,
+    supplier : Text,
+    grade : Text,
+    weightKg : Nat,
+    warehouse : Warehouse,
+    date : Time.Time,
+  ) : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can add raw material opening stock");
+    };
+
+    let id = rawMaterialIdCounter;
+    let rawMaterial : RawMaterial = {
+      id;
+      lotNumber = "OPENING-" # id.toText();
+      supplier;
+      grade;
+      weightKg;
+      dateReceived = date;
+      status = #available;
+      warehouse;
+      inwardEntryId = null;
+    };
+    rawMaterials.add(id, rawMaterial);
+    openingStockRawMaterialIds.add(id);
+    rawMaterialIdCounter += 1;
+
+    await updateWarehouseStock(warehouse, grade, weightKg);
+
+    id;
+  };
+
+  public query ({ caller }) func getAllRawMaterialOpeningStock() : async [RawMaterial] {
+    let openingStockMaterials = List.empty<RawMaterial>();
+    for (id in openingStockRawMaterialIds.values()) {
+      switch (rawMaterials.get(id)) {
+        case (?material) { openingStockMaterials.add(material) };
+        case (null) {};
+      };
+    };
+    openingStockMaterials.toArray().sort(func(a: RawMaterial, b: RawMaterial): Order.Order { Nat.compare(a.id, b.id) });
+  };
+
+  public shared ({ caller }) func deleteRawMaterialOpeningStock(id : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can delete raw material opening stock");
+    };
+
+    if (not openingStockRawMaterialIds.contains(id)) {
+      Runtime.trap("Raw material is not an opening stock entry");
+    };
+
+    let material = switch (rawMaterials.get(id)) {
+      case (null) { Runtime.trap("Raw material not found") };
+      case (?m) { m };
+    };
+
+    let stockKey = warehouseToText(material.warehouse) # "_" # material.grade;
+    let currentStock = switch (warehouseStock.get(stockKey)) {
+      case (null) { Runtime.trap("Warehouse stock not found") };
+      case (?s) { s };
+    };
+
+    if (currentStock.totalQty < material.weightKg) {
+      Runtime.trap("Cannot delete: insufficient warehouse stock");
+    };
+
+    let newStock = {
+      currentStock with totalQty = currentStock.totalQty - material.weightKg;
+    };
+    warehouseStock.add(stockKey, newStock);
+
+    rawMaterials.remove(id);
+    openingStockRawMaterialIds.remove(id);
+  };
+
+  public shared ({ caller }) func addYarnOpeningStock(
+    lotNumber : Text,
+    yarnCountNe : Nat,
+    spinningUnit : SpinningUnit,
+    productType : ProductType,
+    endUse : EndUse,
+    weightKg : Nat,
+  ) : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can add yarn opening stock");
+    };
+
+    let existingInventory = yarnInventory.values().find(
+      func(y) { y.lotNumber == lotNumber and y.yarnCountNe == yarnCountNe }
+    );
+
+    switch (existingInventory) {
+      case (?existing) {
+        let updatedInventory = {
+          existing with
+          weightKg = existing.weightKg + weightKg;
+        };
+        yarnInventory.add(existing.id, updatedInventory);
+        openingStockYarnIds.add(existing.id);
+        existing.id;
+      };
+      case (null) {
+        let id = yarnInventoryIdCounter;
+        let newInventory : YarnInventory = {
+          id;
+          lotNumber;
+          yarnCountNe;
+          twistDirection = #z;
+          quantityCones = 0;
+          weightKg;
+          status = #inStock;
+        };
+        yarnInventory.add(id, newInventory);
+        openingStockYarnIds.add(id);
+        yarnInventoryIdCounter += 1;
+        id;
+      };
+    };
+  };
+
+  public query ({ caller }) func getAllYarnOpeningStock() : async [YarnInventory] {
+    let openingStockYarn = List.empty<YarnInventory>();
+    for (id in openingStockYarnIds.values()) {
+      switch (yarnInventory.get(id)) {
+        case (?yarn) { openingStockYarn.add(yarn) };
+        case (null) {};
+      };
+    };
+    openingStockYarn.toArray().sort(func(a: YarnInventory, b: YarnInventory): Order.Order { Nat.compare(a.id, b.id) });
+  };
+
+  public shared ({ caller }) func deleteYarnOpeningStock(id : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can delete yarn opening stock");
+    };
+
+    if (not openingStockYarnIds.contains(id)) {
+      Runtime.trap("Yarn inventory is not an opening stock entry");
+    };
+
+    let yarn = switch (yarnInventory.get(id)) {
+      case (null) { Runtime.trap("Yarn inventory not found") };
+      case (?y) { y };
+    };
+
+    yarnInventory.remove(id);
+    openingStockYarnIds.remove(id);
   };
 
   public shared ({ caller }) func createPackingEntry(

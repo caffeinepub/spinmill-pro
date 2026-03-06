@@ -1215,3 +1215,127 @@ export function usePackingBalance(lotNumber: string | null) {
     staleTime: 0,
   });
 }
+
+// ─── Opening Stock ─────────────────────────────────────────────────────────────
+
+export function useRawMaterialOpeningStock() {
+  const { actor } = useActor();
+  return useQuery<RawMaterial[]>({
+    queryKey: ["rawMaterialOpeningStock"],
+    queryFn: async () => {
+      if (!actor) return [];
+      const result = await fullActor(actor).getAllRawMaterialOpeningStock();
+      return normalizeRecord(result);
+    },
+    enabled: !!actor,
+    retry: 2,
+  });
+}
+
+export function useAddRawMaterialOpeningStock() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      materialName: string;
+      supplier: string;
+      grade: string;
+      weightKg: bigint;
+      warehouse: Warehouse;
+      date: bigint;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return fullActor(actor).addRawMaterialOpeningStock(
+        args.materialName,
+        args.supplier,
+        args.grade,
+        args.weightKg,
+        args.warehouse,
+        args.date,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["rawMaterialOpeningStock"] });
+      qc.invalidateQueries({ queryKey: ["rawMaterials"] });
+      qc.invalidateQueries({ queryKey: ["warehouseStock"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+}
+
+export function useDeleteRawMaterialOpeningStock() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("No actor");
+      return fullActor(actor).deleteRawMaterialOpeningStock(id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["rawMaterialOpeningStock"] });
+      qc.invalidateQueries({ queryKey: ["rawMaterials"] });
+      qc.invalidateQueries({ queryKey: ["warehouseStock"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+}
+
+export function useYarnOpeningStock() {
+  const { actor } = useActor();
+  return useQuery<YarnInventory[]>({
+    queryKey: ["yarnOpeningStock"],
+    queryFn: async () => {
+      if (!actor) return [];
+      const result = await fullActor(actor).getAllYarnOpeningStock();
+      return normalizeRecord(result);
+    },
+    enabled: !!actor,
+    retry: 2,
+  });
+}
+
+export function useAddYarnOpeningStock() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      lotNumber: string;
+      yarnCountNe: bigint;
+      spinningUnit: SpinningUnit;
+      productType: ProductType;
+      endUse: EndUse;
+      weightKg: bigint;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return fullActor(actor).addYarnOpeningStock(
+        args.lotNumber,
+        args.yarnCountNe,
+        args.spinningUnit,
+        args.productType,
+        args.endUse,
+        args.weightKg,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["yarnOpeningStock"] });
+      qc.invalidateQueries({ queryKey: ["yarnInventory"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+}
+
+export function useDeleteYarnOpeningStock() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("No actor");
+      return fullActor(actor).deleteYarnOpeningStock(id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["yarnOpeningStock"] });
+      qc.invalidateQueries({ queryKey: ["yarnInventory"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+}

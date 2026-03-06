@@ -17,6 +17,7 @@ import {
   Package,
   Package2,
   PackageOpen,
+  PackageSearch,
   Settings2,
   ShoppingCart,
   Truck,
@@ -35,11 +36,13 @@ import PackingEntry from "./pages/PackingEntry";
 import ProductionLogs from "./pages/ProductionLogs";
 import ProductionOrders from "./pages/ProductionOrders";
 import PurchaseOrders from "./pages/PurchaseOrders";
+import RawMaterialOpeningStock from "./pages/RawMaterialOpeningStock";
 import RawMaterials from "./pages/RawMaterials";
 import Reports from "./pages/Reports";
 import UserManagement from "./pages/UserManagement";
 import YarnDispatch from "./pages/YarnDispatch";
 import YarnInventory from "./pages/YarnInventory";
+import YarnOpeningStock from "./pages/YarnOpeningStock";
 
 type PageId =
   | "dashboard"
@@ -47,6 +50,8 @@ type PageId =
   | "purchase-orders"
   | "inward"
   | "material-issue"
+  | "rm-opening-stock"
+  | "yarn-opening-stock"
   | "production-orders"
   | "machines"
   | "packing-entry"
@@ -93,6 +98,18 @@ const navItems: NavItem[] = [
     label: "Material Issue",
     icon: <ArrowUpFromLine className="w-4 h-4" />,
     group: "Procurement",
+  },
+  {
+    id: "rm-opening-stock",
+    label: "RM Opening Stock",
+    icon: <PackageSearch className="w-4 h-4" />,
+    group: "Opening Stock",
+  },
+  {
+    id: "yarn-opening-stock",
+    label: "Yarn Opening Stock",
+    icon: <Package2 className="w-4 h-4" />,
+    group: "Opening Stock",
   },
   {
     id: "production-orders",
@@ -156,6 +173,8 @@ const pageComponents: Record<PageId, React.ReactNode> = {
   "purchase-orders": <PurchaseOrders />,
   inward: <InwardEntry />,
   "material-issue": <MaterialIssue />,
+  "rm-opening-stock": <RawMaterialOpeningStock />,
+  "yarn-opening-stock": <YarnOpeningStock />,
   "production-orders": <ProductionOrders />,
   machines: <Machines />,
   "packing-entry": <PackingEntry />,
@@ -167,7 +186,14 @@ const pageComponents: Record<PageId, React.ReactNode> = {
   "dropdown-options": <DropdownOptionsPage />,
 };
 
-const groups = ["Procurement", "Production", "Packing", "Reports", "Admin"];
+const groups = [
+  "Procurement",
+  "Opening Stock",
+  "Production",
+  "Packing",
+  "Reports",
+  "Admin",
+];
 
 export default function App() {
   const [activePage, setActivePage] = useState<PageId>("dashboard");

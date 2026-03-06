@@ -256,8 +256,12 @@ export default function ProductionOrders() {
                   </TableCell>
                   <TableCell className="text-sm">
                     {order.spinningUnit === "openend"
-                      ? "Openend"
-                      : "Ring Spinning"}
+                      ? "OE Spinning"
+                      : order.spinningUnit === "ringSpinning"
+                        ? "Ring Spinning"
+                        : order.spinningUnit === "tfo"
+                          ? "TFO"
+                          : order.spinningUnit}
                   </TableCell>
                   <TableCell className="text-sm">
                     {order.endUse === "tfo"
@@ -382,8 +386,9 @@ export default function ProductionOrders() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="openend">Openend</SelectItem>
+                    <SelectItem value="openend">OE Spinning</SelectItem>
                     <SelectItem value="ringSpinning">Ring Spinning</SelectItem>
+                    <SelectItem value="tfo">TFO</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

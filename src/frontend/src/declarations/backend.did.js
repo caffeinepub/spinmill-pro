@@ -34,6 +34,25 @@ export const InventoryStatus = IDL.Variant({
   'inStock' : IDL.Null,
   'dispatched' : IDL.Null,
 });
+export const SpinningUnit = IDL.Variant({
+  'openend' : IDL.Null,
+  'ringSpinning' : IDL.Null,
+});
+export const ProductType = IDL.Variant({
+  'lt' : IDL.Null,
+  'bamboo' : IDL.Null,
+  'polyester' : IDL.Null,
+  'viscose' : IDL.Null,
+  'carded' : IDL.Null,
+  'combed' : IDL.Null,
+});
+export const EndUse = IDL.Variant({
+  'tfo' : IDL.Null,
+  'ground' : IDL.Null,
+  'pile' : IDL.Null,
+  'warp' : IDL.Null,
+  'weft' : IDL.Null,
+});
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
@@ -47,25 +66,6 @@ export const DispatchDestination = IDL.Variant({
   'weaving' : IDL.Null,
   'outside' : IDL.Null,
   'softWinding' : IDL.Null,
-});
-export const ProductType = IDL.Variant({
-  'lt' : IDL.Null,
-  'bamboo' : IDL.Null,
-  'polyester' : IDL.Null,
-  'viscose' : IDL.Null,
-  'carded' : IDL.Null,
-  'combed' : IDL.Null,
-});
-export const SpinningUnit = IDL.Variant({
-  'openend' : IDL.Null,
-  'ringSpinning' : IDL.Null,
-});
-export const EndUse = IDL.Variant({
-  'tfo' : IDL.Null,
-  'ground' : IDL.Null,
-  'pile' : IDL.Null,
-  'warp' : IDL.Null,
-  'weft' : IDL.Null,
 });
 export const OrderStatus = IDL.Variant({
   'cancelled' : IDL.Null,
@@ -335,8 +335,18 @@ export const idlService = IDL.Service({
       [IDL.Nat],
       [],
     ),
+  'addRawMaterialOpeningStock' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Nat, Warehouse, Time],
+      [IDL.Nat],
+      [],
+    ),
   'addYarnInventory' : IDL.Func(
       [IDL.Text, IDL.Nat, TwistDirection, IDL.Nat, IDL.Nat, InventoryStatus],
+      [IDL.Nat],
+      [],
+    ),
+  'addYarnOpeningStock' : IDL.Func(
+      [IDL.Text, IDL.Nat, SpinningUnit, ProductType, EndUse, IDL.Nat],
       [IDL.Nat],
       [],
     ),
@@ -388,7 +398,9 @@ export const idlService = IDL.Service({
   'deletePurchaseOrder' : IDL.Func([IDL.Nat], [], []),
   'deleteQualityTest' : IDL.Func([IDL.Nat], [], []),
   'deleteRawMaterial' : IDL.Func([IDL.Nat], [], []),
+  'deleteRawMaterialOpeningStock' : IDL.Func([IDL.Nat], [], []),
   'deleteYarnInventory' : IDL.Func([IDL.Nat], [], []),
+  'deleteYarnOpeningStock' : IDL.Func([IDL.Nat], [], []),
   'getAllBatchStages' : IDL.Func([], [IDL.Vec(BatchStage)], ['query']),
   'getAllDispatchEntries' : IDL.Func([], [IDL.Vec(DispatchEntry)], ['query']),
   'getAllInwardEntries' : IDL.Func([], [IDL.Vec(InwardEntry)], ['query']),
@@ -403,10 +415,16 @@ export const idlService = IDL.Service({
     ),
   'getAllPurchaseOrders' : IDL.Func([], [IDL.Vec(PurchaseOrder)], ['query']),
   'getAllQualityTests' : IDL.Func([], [IDL.Vec(QualityTest)], ['query']),
+  'getAllRawMaterialOpeningStock' : IDL.Func(
+      [],
+      [IDL.Vec(RawMaterial)],
+      ['query'],
+    ),
   'getAllRawMaterials' : IDL.Func([], [IDL.Vec(RawMaterial)], ['query']),
   'getAllUsers' : IDL.Func([], [IDL.Vec(UserEntry)], ['query']),
   'getAllWarehouseStock' : IDL.Func([], [IDL.Vec(WarehouseStock)], ['query']),
   'getAllYarnInventory' : IDL.Func([], [IDL.Vec(YarnInventory)], ['query']),
+  'getAllYarnOpeningStock' : IDL.Func([], [IDL.Vec(YarnInventory)], ['query']),
   'getBatchStage' : IDL.Func([IDL.Nat], [IDL.Opt(BatchStage)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
@@ -601,6 +619,25 @@ export const idlFactory = ({ IDL }) => {
     'inStock' : IDL.Null,
     'dispatched' : IDL.Null,
   });
+  const SpinningUnit = IDL.Variant({
+    'openend' : IDL.Null,
+    'ringSpinning' : IDL.Null,
+  });
+  const ProductType = IDL.Variant({
+    'lt' : IDL.Null,
+    'bamboo' : IDL.Null,
+    'polyester' : IDL.Null,
+    'viscose' : IDL.Null,
+    'carded' : IDL.Null,
+    'combed' : IDL.Null,
+  });
+  const EndUse = IDL.Variant({
+    'tfo' : IDL.Null,
+    'ground' : IDL.Null,
+    'pile' : IDL.Null,
+    'warp' : IDL.Null,
+    'weft' : IDL.Null,
+  });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
@@ -614,25 +651,6 @@ export const idlFactory = ({ IDL }) => {
     'weaving' : IDL.Null,
     'outside' : IDL.Null,
     'softWinding' : IDL.Null,
-  });
-  const ProductType = IDL.Variant({
-    'lt' : IDL.Null,
-    'bamboo' : IDL.Null,
-    'polyester' : IDL.Null,
-    'viscose' : IDL.Null,
-    'carded' : IDL.Null,
-    'combed' : IDL.Null,
-  });
-  const SpinningUnit = IDL.Variant({
-    'openend' : IDL.Null,
-    'ringSpinning' : IDL.Null,
-  });
-  const EndUse = IDL.Variant({
-    'tfo' : IDL.Null,
-    'ground' : IDL.Null,
-    'pile' : IDL.Null,
-    'warp' : IDL.Null,
-    'weft' : IDL.Null,
   });
   const OrderStatus = IDL.Variant({
     'cancelled' : IDL.Null,
@@ -911,8 +929,18 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Nat],
         [],
       ),
+    'addRawMaterialOpeningStock' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Nat, Warehouse, Time],
+        [IDL.Nat],
+        [],
+      ),
     'addYarnInventory' : IDL.Func(
         [IDL.Text, IDL.Nat, TwistDirection, IDL.Nat, IDL.Nat, InventoryStatus],
+        [IDL.Nat],
+        [],
+      ),
+    'addYarnOpeningStock' : IDL.Func(
+        [IDL.Text, IDL.Nat, SpinningUnit, ProductType, EndUse, IDL.Nat],
         [IDL.Nat],
         [],
       ),
@@ -964,7 +992,9 @@ export const idlFactory = ({ IDL }) => {
     'deletePurchaseOrder' : IDL.Func([IDL.Nat], [], []),
     'deleteQualityTest' : IDL.Func([IDL.Nat], [], []),
     'deleteRawMaterial' : IDL.Func([IDL.Nat], [], []),
+    'deleteRawMaterialOpeningStock' : IDL.Func([IDL.Nat], [], []),
     'deleteYarnInventory' : IDL.Func([IDL.Nat], [], []),
+    'deleteYarnOpeningStock' : IDL.Func([IDL.Nat], [], []),
     'getAllBatchStages' : IDL.Func([], [IDL.Vec(BatchStage)], ['query']),
     'getAllDispatchEntries' : IDL.Func([], [IDL.Vec(DispatchEntry)], ['query']),
     'getAllInwardEntries' : IDL.Func([], [IDL.Vec(InwardEntry)], ['query']),
@@ -979,10 +1009,20 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getAllPurchaseOrders' : IDL.Func([], [IDL.Vec(PurchaseOrder)], ['query']),
     'getAllQualityTests' : IDL.Func([], [IDL.Vec(QualityTest)], ['query']),
+    'getAllRawMaterialOpeningStock' : IDL.Func(
+        [],
+        [IDL.Vec(RawMaterial)],
+        ['query'],
+      ),
     'getAllRawMaterials' : IDL.Func([], [IDL.Vec(RawMaterial)], ['query']),
     'getAllUsers' : IDL.Func([], [IDL.Vec(UserEntry)], ['query']),
     'getAllWarehouseStock' : IDL.Func([], [IDL.Vec(WarehouseStock)], ['query']),
     'getAllYarnInventory' : IDL.Func([], [IDL.Vec(YarnInventory)], ['query']),
+    'getAllYarnOpeningStock' : IDL.Func(
+        [],
+        [IDL.Vec(YarnInventory)],
+        ['query'],
+      ),
     'getBatchStage' : IDL.Func([IDL.Nat], [IDL.Opt(BatchStage)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
