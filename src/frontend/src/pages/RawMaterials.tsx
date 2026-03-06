@@ -16,8 +16,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { FilterX, Package, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { FilterX, Package, Printer, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { Warehouse } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -66,6 +66,169 @@ interface GradeStockEntry {
   totalKg: number;
 }
 
+const PRINT_STYLE_ID = "rawmaterials-print-style";
+
+function injectPrintStyles() {
+  if (document.getElementById(PRINT_STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = PRINT_STYLE_ID;
+  style.textContent = `
+    @media print {
+      /* Hide everything by default */
+      body > * { display: none !important; }
+
+      /* Show only the print region */
+      #rawmaterials-print-region,
+      #rawmaterials-print-region * {
+        display: revert !important;
+        visibility: visible !important;
+      }
+
+      #rawmaterials-print-region {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        padding: 24px 32px !important;
+        background: #fff !important;
+        color: #111 !important;
+        font-family: 'Outfit', sans-serif !important;
+        font-size: 11pt !important;
+        line-height: 1.5 !important;
+      }
+
+      /* Report header */
+      .print-header {
+        border-bottom: 2px solid #222 !important;
+        margin-bottom: 18px !important;
+        padding-bottom: 10px !important;
+      }
+      .print-company-name {
+        font-size: 18pt !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.02em !important;
+        color: #111 !important;
+      }
+      .print-report-title {
+        font-size: 13pt !important;
+        font-weight: 600 !important;
+        color: #333 !important;
+        margin-top: 2px !important;
+      }
+      .print-meta {
+        font-size: 9pt !important;
+        color: #666 !important;
+        margin-top: 4px !important;
+      }
+      .print-filter-note {
+        font-size: 9pt !important;
+        color: #555 !important;
+        background: #f5f5f5 !important;
+        border: 1px solid #ddd !important;
+        border-radius: 3px !important;
+        padding: 4px 8px !important;
+        display: inline-block !important;
+        margin-top: 4px !important;
+      }
+
+      /* Section headings */
+      .print-section-title {
+        font-size: 11pt !important;
+        font-weight: 700 !important;
+        color: #222 !important;
+        margin: 16px 0 8px !important;
+        padding-bottom: 4px !important;
+        border-bottom: 1px solid #ccc !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.04em !important;
+      }
+
+      /* Stock summary tables */
+      .print-summary-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        margin-bottom: 8px !important;
+        font-size: 10pt !important;
+      }
+      .print-summary-table th {
+        background: #f0f0f0 !important;
+        color: #333 !important;
+        font-weight: 700 !important;
+        padding: 5px 10px !important;
+        border: 1px solid #ccc !important;
+        text-align: left !important;
+      }
+      .print-summary-table td {
+        padding: 5px 10px !important;
+        border: 1px solid #ddd !important;
+        color: #111 !important;
+      }
+      .print-summary-table td.zero-stock {
+        color: #c00 !important;
+        font-weight: 600 !important;
+      }
+
+      /* Warehouse label badges in print */
+      .print-warehouse-oe {
+        font-weight: 700 !important;
+        color: #1a56db !important;
+      }
+      .print-warehouse-ring {
+        font-weight: 700 !important;
+        color: #7e3af2 !important;
+      }
+
+      /* Detail table */
+      .print-detail-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 9.5pt !important;
+        page-break-inside: auto !important;
+      }
+      .print-detail-table th {
+        background: #222 !important;
+        color: #fff !important;
+        font-weight: 700 !important;
+        padding: 6px 9px !important;
+        border: 1px solid #333 !important;
+        text-align: left !important;
+        text-transform: uppercase !important;
+        font-size: 8pt !important;
+        letter-spacing: 0.05em !important;
+      }
+      .print-detail-table tr {
+        page-break-inside: avoid !important;
+      }
+      .print-detail-table td {
+        padding: 5px 9px !important;
+        border: 1px solid #ddd !important;
+        color: #111 !important;
+        vertical-align: top !important;
+      }
+      .print-detail-table tr:nth-child(even) td {
+        background: #fafafa !important;
+      }
+      .print-total-row td {
+        border-top: 2px solid #444 !important;
+        font-weight: 700 !important;
+        background: #f0f0f0 !important;
+      }
+
+      /* Footer */
+      .print-footer {
+        margin-top: 20px !important;
+        padding-top: 8px !important;
+        border-top: 1px solid #ccc !important;
+        font-size: 8.5pt !important;
+        color: #888 !important;
+        display: flex !important;
+        justify-content: space-between !important;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 export default function RawMaterials() {
   const { identity } = useInternetIdentity();
   const isLoggedIn = !!identity;
@@ -74,6 +237,15 @@ export default function RawMaterials() {
   const deleteMutation = useDeleteRawMaterial();
 
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
+
+  // Inject print styles on mount, clean up on unmount
+  useEffect(() => {
+    injectPrintStyles();
+    return () => {
+      const el = document.getElementById(PRINT_STYLE_ID);
+      if (el) el.remove();
+    };
+  }, []);
 
   // Filter state
   const [supplierFilter, setSupplierFilter] = useState<string>("all");
@@ -209,6 +381,26 @@ export default function RawMaterials() {
     setMonthFilter("all");
   }
 
+  // Build filter description string for print header
+  const activeFilterDescription = useMemo(() => {
+    const parts: string[] = [];
+    if (supplierFilter !== "all") parts.push(`Supplier: ${supplierFilter}`);
+    if (gradeFilter !== "all") parts.push(`Grade: ${gradeFilter}`);
+    if (warehouseFilter !== "all")
+      parts.push(
+        `Warehouse: ${warehouseFilter === "oe" ? "OE Raw Material" : "Ring Raw Material"}`,
+      );
+    if (monthFilter !== "all") {
+      const found = monthOptions.find((o) => o.key === monthFilter);
+      if (found) parts.push(`Month: ${found.label}`);
+    }
+    return parts.join(" | ");
+  }, [supplierFilter, gradeFilter, warehouseFilter, monthFilter, monthOptions]);
+
+  const handlePrint = useCallback(() => {
+    window.print();
+  }, []);
+
   async function handleDelete() {
     if (!deleteId) return;
     try {
@@ -221,11 +413,37 @@ export default function RawMaterials() {
     }
   }
 
+  // Totals for print
+  const totalFilteredKg = useMemo(
+    () => filteredMaterials.reduce((sum, m) => sum + Number(m.weightKg), 0),
+    [filteredMaterials],
+  );
+
+  const printDate = new Date().toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <PageHeader
         title="Raw Materials"
         description="Stock is automatically updated when inward entries are recorded against a purchase order"
+        action={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrint}
+            data-ocid="rawmaterials.print.button"
+            className="gap-2 h-9 text-sm font-medium"
+          >
+            <Printer className="w-4 h-4" />
+            Print PDF
+          </Button>
+        }
       />
 
       {/* Grade-wise Stock Summary */}
@@ -530,6 +748,216 @@ export default function RawMaterials() {
         onConfirm={handleDelete}
         isPending={deleteMutation.isPending}
       />
+
+      {/* ── Hidden Print Region ── */}
+      <div id="rawmaterials-print-region" style={{ display: "none" }}>
+        {/* Report Header */}
+        <div className="print-header">
+          <div className="print-company-name">SpinMill Pro</div>
+          <div className="print-report-title">Raw Material Stock Report</div>
+          <div className="print-meta">Printed on: {printDate}</div>
+          {isAnyFilterActive && activeFilterDescription && (
+            <div className="print-filter-note">
+              Filtered by: {activeFilterDescription}
+            </div>
+          )}
+        </div>
+
+        {/* Stock Summary by Grade */}
+        {gradeStockEntries.length > 0 && (
+          <>
+            <div className="print-section-title">Current Stock by Grade</div>
+
+            {/* OE Raw Material Summary */}
+            {gradeStockEntries.some((e) => e.warehouse === "oeRawMaterial") && (
+              <>
+                <div
+                  style={{
+                    fontWeight: 700,
+                    marginBottom: 6,
+                    fontSize: "10pt",
+                    color: "#1a56db",
+                  }}
+                >
+                  OE Raw Material
+                </div>
+                <table className="print-summary-table">
+                  <thead>
+                    <tr>
+                      <th>Material / Grade</th>
+                      <th style={{ textAlign: "right" }}>Stock (kg)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gradeStockEntries
+                      .filter((e) => e.warehouse === "oeRawMaterial")
+                      .map((entry) => (
+                        <tr key={`${entry.grade}||oe`}>
+                          <td>{entry.grade}</td>
+                          <td
+                            className={
+                              entry.totalKg === 0 ? "zero-stock" : undefined
+                            }
+                            style={{ textAlign: "right", fontWeight: 600 }}
+                          >
+                            {entry.totalKg.toLocaleString()} kg
+                          </td>
+                        </tr>
+                      ))}
+                    <tr className="print-total-row">
+                      <td>Total OE Stock</td>
+                      <td style={{ textAlign: "right" }}>
+                        {gradeStockEntries
+                          .filter((e) => e.warehouse === "oeRawMaterial")
+                          .reduce((s, e) => s + e.totalKg, 0)
+                          .toLocaleString()}{" "}
+                        kg
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </>
+            )}
+
+            {/* Ring Raw Material Summary */}
+            {gradeStockEntries.some(
+              (e) => e.warehouse === "ringRawMaterial",
+            ) && (
+              <>
+                <div
+                  style={{
+                    fontWeight: 700,
+                    marginTop: 14,
+                    marginBottom: 6,
+                    fontSize: "10pt",
+                    color: "#7e3af2",
+                  }}
+                >
+                  Ring Raw Material
+                </div>
+                <table className="print-summary-table">
+                  <thead>
+                    <tr>
+                      <th>Material / Grade</th>
+                      <th style={{ textAlign: "right" }}>Stock (kg)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gradeStockEntries
+                      .filter((e) => e.warehouse === "ringRawMaterial")
+                      .map((entry) => (
+                        <tr key={`${entry.grade}||ring`}>
+                          <td>{entry.grade}</td>
+                          <td
+                            className={
+                              entry.totalKg === 0 ? "zero-stock" : undefined
+                            }
+                            style={{ textAlign: "right", fontWeight: 600 }}
+                          >
+                            {entry.totalKg.toLocaleString()} kg
+                          </td>
+                        </tr>
+                      ))}
+                    <tr className="print-total-row">
+                      <td>Total Ring Stock</td>
+                      <td style={{ textAlign: "right" }}>
+                        {gradeStockEntries
+                          .filter((e) => e.warehouse === "ringRawMaterial")
+                          .reduce((s, e) => s + e.totalKg, 0)
+                          .toLocaleString()}{" "}
+                        kg
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </>
+            )}
+          </>
+        )}
+
+        {/* Detailed Stock Table */}
+        <div className="print-section-title" style={{ marginTop: 20 }}>
+          Detailed Stock Records
+          {isAnyFilterActive
+            ? ` — ${filteredMaterials.length} of ${materials.length} records`
+            : ` — ${materials.length} records`}
+        </div>
+
+        {filteredMaterials.length === 0 ? (
+          <p style={{ color: "#666", fontStyle: "italic", fontSize: "10pt" }}>
+            No records match the current filters.
+          </p>
+        ) : (
+          <table className="print-detail-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Lot #</th>
+                <th>Supplier</th>
+                <th>Grade / Material</th>
+                <th style={{ textAlign: "right" }}>Weight (kg)</th>
+                <th>Date Received</th>
+                <th>Warehouse</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredMaterials.map((item, idx) => (
+                <tr key={String(item.id)}>
+                  <td style={{ color: "#888", fontSize: "8.5pt" }}>
+                    {idx + 1}
+                  </td>
+                  <td style={{ fontFamily: "monospace" }}>{item.lotNumber}</td>
+                  <td>{item.supplier}</td>
+                  <td>{item.grade}</td>
+                  <td style={{ textAlign: "right", fontFamily: "monospace" }}>
+                    {Number(item.weightKg).toLocaleString()}
+                  </td>
+                  <td>
+                    {new Date(
+                      Number(item.dateReceived) / 1_000_000,
+                    ).toLocaleDateString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </td>
+                  <td>
+                    <span
+                      className={
+                        (item.warehouse as string) === "oeRawMaterial"
+                          ? "print-warehouse-oe"
+                          : "print-warehouse-ring"
+                      }
+                    >
+                      {(item.warehouse as string) === "oeRawMaterial"
+                        ? "OE Raw Material"
+                        : "Ring Raw Material"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              <tr className="print-total-row">
+                <td colSpan={4} style={{ textAlign: "right" }}>
+                  Total Weight:
+                </td>
+                <td style={{ textAlign: "right", fontFamily: "monospace" }}>
+                  {totalFilteredKg.toLocaleString()} kg
+                </td>
+                <td colSpan={2} />
+              </tr>
+            </tbody>
+          </table>
+        )}
+
+        {/* Print Footer */}
+        <div className="print-footer">
+          <span>SpinMill Pro — Raw Material Stock Report</span>
+          <span>
+            © {new Date().getFullYear()} Built with caffeine.ai &nbsp;|&nbsp;
+            {printDate}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
