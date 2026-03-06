@@ -10,7 +10,6 @@ import {
   Package,
   Settings2,
   ShieldCheck,
-  TrendingUp,
   Truck,
   Warehouse,
 } from "lucide-react";
@@ -83,17 +82,6 @@ function KpiCard({
     </motion.div>
   );
 }
-
-const processStages = [
-  { label: "Blow Room", icon: "💨", desc: "Opening & cleaning raw cotton" },
-  { label: "Carding", icon: "🔀", desc: "Aligning fibers into sliver" },
-  { label: "Drawing", icon: "➡️", desc: "Straightening & blending" },
-  { label: "Combing", icon: "♾️", desc: "Removing short fibers" },
-  { label: "Roving", icon: "🌀", desc: "Attenuating sliver" },
-  { label: "Ring Spinning", icon: "💍", desc: "Converting to yarn" },
-  { label: "Winding", icon: "🎡", desc: "Winding onto cones" },
-  { label: "Quality Check", icon: "✅", desc: "Testing yarn parameters" },
-];
 
 export default function Dashboard() {
   const { data: stats, isLoading } = useDashboardStats();
@@ -228,58 +216,6 @@ export default function Dashboard() {
           accent="bg-orange-500/15"
           loading={isLoading}
         />
-      </motion.div>
-
-      {/* Process Flow */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-      >
-        <Card className="border-border/60 shadow-card overflow-hidden">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-primary" />
-              <CardTitle className="text-base font-semibold">
-                Spinning Process Flow
-              </CardTitle>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Standard cotton yarn manufacturing stages
-            </p>
-          </CardHeader>
-          <CardContent>
-            {/* Horizontal process flow */}
-            <div className="relative">
-              <div className="hidden md:block absolute top-8 left-0 right-0 h-0.5 bg-border z-0 mx-16" />
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 relative z-10">
-                {processStages.map((stage, index) => (
-                  <motion.div
-                    key={stage.label}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.4 + index * 0.06, duration: 0.3 }}
-                    className="flex flex-col items-center text-center gap-2"
-                  >
-                    <div className="w-14 h-14 rounded-xl bg-card border border-border/60 shadow-xs flex flex-col items-center justify-center text-xl font-medium hover:border-primary/50 hover:shadow-card transition-all duration-200 cursor-default">
-                      <span className="text-2xl leading-none">
-                        {stage.icon}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-foreground leading-tight">
-                        {stage.label}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground leading-tight mt-0.5 hidden lg:block">
-                        {stage.desc}
-                      </p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </motion.div>
 
       {/* Quick Stats Grid */}

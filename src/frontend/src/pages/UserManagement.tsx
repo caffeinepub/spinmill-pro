@@ -13,6 +13,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -28,7 +38,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  KeyRound,
   Loader2,
+  LogOut,
   RefreshCw,
   ShieldAlert,
   ShieldCheck,
@@ -83,35 +95,72 @@ function RoleBadge({ role }: { role: string }) {
   );
 }
 
+const RETRY_DELAY_MS = 2000;
+const MAX_RETRIES = 3;
+const LOAD_TIMEOUT_MS = 10000;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export default function UserManagement() {
-  const { identity } = useInternetIdentity();
+  const { identity, clear } = useInternetIdentity();
   const { actor, isFetching } = useActor();
   const isLoggedIn = !!identity;
 
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [users, setUsers] = useState<UserEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  // Claim admin dialog state
+  const [claimDialogOpen, setClaimDialogOpen] = useState(false);
+  const [adminTokenInput, setAdminTokenInput] = useState("");
+  const [claimLoading, setClaimLoading] = useState(false);
 
   const callerPrincipal = identity?.getPrincipal().toString() ?? null;
 
   const checkAdminAndLoad = useCallback(async () => {
     if (!isLoggedIn || !actor || isFetching) return;
     setLoading(true);
-    try {
-      const adminStatus = await fullActor(actor).isCallerAdmin();
-      setIsAdmin(adminStatus);
-      if (adminStatus) {
-        const allUsers = await fullActor(actor).getAllUsers();
-        setUsers(allUsers);
-      }
-    } catch (err) {
-      console.error(err);
-      setIsAdmin(false);
-      toast.error("Failed to load user data");
-    } finally {
+    setLoadTimedOut(false);
+
+    // Set a timeout guard — if loading takes too long, surface an error
+    const timeoutId = setTimeout(() => {
+      setLoadTimedOut(true);
       setLoading(false);
+    }, LOAD_TIMEOUT_MS);
+
+    let lastErr: unknown = null;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const adminStatus = await fullActor(actor).isCallerAdmin();
+        clearTimeout(timeoutId);
+        setIsAdmin(adminStatus);
+        if (adminStatus) {
+          const allUsers = await fullActor(actor).getAllUsers();
+          setUsers(allUsers);
+        }
+        setLoading(false);
+        setRetryCount(attempt);
+        return;
+      } catch (err) {
+        lastErr = err;
+        console.error(`isCallerAdmin attempt ${attempt + 1} failed:`, err);
+        if (attempt < MAX_RETRIES) {
+          await sleep(RETRY_DELAY_MS);
+        }
+      }
     }
+
+    // All retries exhausted
+    clearTimeout(timeoutId);
+    console.error("All retries failed:", lastErr);
+    setIsAdmin(false);
+    setLoading(false);
+    toast.error("Failed to load user data. Please try again.");
   }, [actor, isFetching, isLoggedIn]);
 
   useEffect(() => {
@@ -125,6 +174,34 @@ export default function UserManagement() {
       checkAdminAndLoad();
     }
   }, [actor, isFetching, isLoggedIn, checkAdminAndLoad]);
+
+  const handleClaimAdmin = async () => {
+    if (!actor || !adminTokenInput.trim()) return;
+    setClaimLoading(true);
+    try {
+      // Cast to any because _initializeAccessControlWithSecret is a platform
+      // method not reflected in the generated type definitions
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (actor as any)._initializeAccessControlWithSecret(
+        adminTokenInput.trim(),
+      );
+      const adminStatus = await fullActor(actor).isCallerAdmin();
+      if (adminStatus) {
+        toast.success("Admin access granted!");
+        setClaimDialogOpen(false);
+        setAdminTokenInput("");
+        // Reload the page to re-initialize the actor with proper admin context
+        window.location.reload();
+      } else {
+        toast.error("Invalid admin token");
+      }
+    } catch (err) {
+      console.error("Claim admin failed:", err);
+      toast.error("Invalid admin token");
+    } finally {
+      setClaimLoading(false);
+    }
+  };
 
   const handleRoleChange = async (user: UserEntry, newRole: string) => {
     if (!actor) return;
@@ -192,7 +269,43 @@ export default function UserManagement() {
           className="flex flex-col items-center justify-center gap-3 py-20"
         >
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Loading users...</p>
+          <p className="text-sm text-muted-foreground">
+            Checking your access
+            {retryCount > 0 ? ` (retry ${retryCount}/${MAX_RETRIES})` : "..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Timed out
+  if (loadTimedOut) {
+    return (
+      <div className="p-6">
+        <div
+          data-ocid="user-mgmt.error_state"
+          className="flex flex-col items-center justify-center gap-3 py-20 text-center"
+        >
+          <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+            <ShieldAlert className="w-6 h-6 text-amber-600" />
+          </div>
+          <h2 className="text-lg font-semibold text-foreground">
+            Taking too long
+          </h2>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            User Management is taking longer than expected to load. Please try
+            again.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            data-ocid="user-mgmt.retry_button"
+            onClick={checkAdminAndLoad}
+            className="gap-2 mt-1"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Retry
+          </Button>
         </div>
       </div>
     );
@@ -204,19 +317,159 @@ export default function UserManagement() {
       <div className="p-6">
         <div
           data-ocid="user-mgmt.error_state"
-          className="flex flex-col items-center justify-center gap-3 py-20 text-center"
+          className="flex flex-col items-center justify-center gap-4 py-20 text-center"
         >
-          <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-            <ShieldAlert className="w-6 h-6 text-red-600" />
+          <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center">
+            <ShieldAlert className="w-7 h-7 text-red-600" />
           </div>
-          <h2 className="text-lg font-semibold text-foreground">
-            Admin Access Required
-          </h2>
-          <p className="text-sm text-muted-foreground max-w-xs">
-            You do not have permission to view this page. Contact an
-            administrator.
-          </p>
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold text-foreground">
+              Admin Access Required
+            </h2>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              Your account does not have admin access.
+            </p>
+          </div>
+          <div className="max-w-sm w-full space-y-2 text-left">
+            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+              <p className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                How to get access
+              </p>
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <span className="text-xs font-bold text-primary mt-0.5 shrink-0">
+                    1.
+                  </span>
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">
+                      App owner?
+                    </span>{" "}
+                    Use the admin token from your Caffeine dashboard to claim
+                    admin access below.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-xs font-bold text-primary mt-0.5 shrink-0">
+                    2.
+                  </span>
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">
+                      Another user signed in first?
+                    </span>{" "}
+                    Ask them to go to User Management and change your role to
+                    Admin.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 w-full max-w-xs">
+            <Button
+              size="sm"
+              data-ocid="user-mgmt.open_modal_button"
+              onClick={() => setClaimDialogOpen(true)}
+              className="gap-2 w-full"
+            >
+              <KeyRound className="w-4 h-4" />
+              Claim Admin Access
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              data-ocid="user-mgmt.retry_button"
+              onClick={checkAdminAndLoad}
+              className="gap-2 w-full"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Retry
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              data-ocid="user-mgmt.secondary_button"
+              onClick={clear}
+              className="gap-2 w-full text-muted-foreground hover:text-foreground"
+            >
+              <LogOut className="w-4 h-4" />
+              Sign Out
+            </Button>
+          </div>
         </div>
+
+        {/* Claim Admin Dialog */}
+        <Dialog
+          open={claimDialogOpen}
+          onOpenChange={(open) => {
+            setClaimDialogOpen(open);
+            if (!open) setAdminTokenInput("");
+          }}
+        >
+          <DialogContent data-ocid="user-mgmt.dialog" className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <KeyRound className="w-5 h-5 text-primary" />
+                Claim Admin Access
+              </DialogTitle>
+              <DialogDescription>
+                Enter the admin token from your Caffeine dashboard to claim
+                admin access for this app.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="admin-token" className="text-sm font-medium">
+                  Admin Token
+                </Label>
+                <Input
+                  id="admin-token"
+                  type="password"
+                  placeholder="Paste your admin token here"
+                  data-ocid="user-mgmt.input"
+                  value={adminTokenInput}
+                  onChange={(e) => setAdminTokenInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === "Enter" &&
+                      !claimLoading &&
+                      adminTokenInput.trim()
+                    ) {
+                      handleClaimAdmin();
+                    }
+                  }}
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                data-ocid="user-mgmt.cancel_button"
+                onClick={() => {
+                  setClaimDialogOpen(false);
+                  setAdminTokenInput("");
+                }}
+                disabled={claimLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                data-ocid="user-mgmt.confirm_button"
+                onClick={handleClaimAdmin}
+                disabled={claimLoading || !adminTokenInput.trim()}
+                className="gap-2"
+              >
+                {claimLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <KeyRound className="w-4 h-4" />
+                )}
+                {claimLoading ? "Verifying..." : "Claim Access"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

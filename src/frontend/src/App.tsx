@@ -214,19 +214,13 @@ export default function App() {
   const sidebarContent = (
     <nav className="flex flex-col h-full" aria-label="Main navigation">
       {/* Logo */}
-      <div className="px-4 py-5 border-b border-sidebar-border/60">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-sidebar-primary/20 border border-sidebar-primary/30 flex items-center justify-center">
-            <Factory className="w-5 h-5 text-sidebar-primary" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-sidebar-foreground font-display">
-              SpinMill Pro
-            </p>
-            <p className="text-[10px] text-sidebar-foreground/50 uppercase tracking-widest">
-              Manufacturing
-            </p>
-          </div>
+      <div className="px-4 py-4 border-b border-sidebar-border/60">
+        <div className="flex items-center justify-center">
+          <img
+            src="/assets/uploads/photo_2022-07-19-14.09.01-1.jpeg"
+            alt="Sudarshan Jeans Pvt. Ltd"
+            className="h-14 w-auto object-contain"
+          />
         </div>
       </div>
 
