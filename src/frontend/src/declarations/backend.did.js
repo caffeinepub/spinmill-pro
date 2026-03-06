@@ -223,6 +223,10 @@ export const RawMaterial = IDL.Record({
   'dateReceived' : Time,
   'warehouse' : Warehouse,
 });
+export const UserEntry = IDL.Record({
+  'principal' : IDL.Principal,
+  'role' : UserRole,
+});
 export const WarehouseStock = IDL.Record({
   'totalQty' : IDL.Nat,
   'warehouse' : Warehouse,
@@ -400,6 +404,7 @@ export const idlService = IDL.Service({
   'getAllPurchaseOrders' : IDL.Func([], [IDL.Vec(PurchaseOrder)], ['query']),
   'getAllQualityTests' : IDL.Func([], [IDL.Vec(QualityTest)], ['query']),
   'getAllRawMaterials' : IDL.Func([], [IDL.Vec(RawMaterial)], ['query']),
+  'getAllUsers' : IDL.Func([], [IDL.Vec(UserEntry)], ['query']),
   'getAllWarehouseStock' : IDL.Func([], [IDL.Vec(WarehouseStock)], ['query']),
   'getAllYarnInventory' : IDL.Func([], [IDL.Vec(YarnInventory)], ['query']),
   'getBatchStage' : IDL.Func([IDL.Nat], [IDL.Opt(BatchStage)], ['query']),
@@ -464,6 +469,7 @@ export const idlService = IDL.Service({
       [IDL.Nat],
       [],
     ),
+  'removeUser' : IDL.Func([IDL.Principal], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'updateBatchStage' : IDL.Func(
       [
@@ -550,6 +556,7 @@ export const idlService = IDL.Service({
       [],
       [],
     ),
+  'updateUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'updateYarnInventory' : IDL.Func(
       [
         IDL.Nat,
@@ -783,6 +790,10 @@ export const idlFactory = ({ IDL }) => {
     'dateReceived' : Time,
     'warehouse' : Warehouse,
   });
+  const UserEntry = IDL.Record({
+    'principal' : IDL.Principal,
+    'role' : UserRole,
+  });
   const WarehouseStock = IDL.Record({
     'totalQty' : IDL.Nat,
     'warehouse' : Warehouse,
@@ -969,6 +980,7 @@ export const idlFactory = ({ IDL }) => {
     'getAllPurchaseOrders' : IDL.Func([], [IDL.Vec(PurchaseOrder)], ['query']),
     'getAllQualityTests' : IDL.Func([], [IDL.Vec(QualityTest)], ['query']),
     'getAllRawMaterials' : IDL.Func([], [IDL.Vec(RawMaterial)], ['query']),
+    'getAllUsers' : IDL.Func([], [IDL.Vec(UserEntry)], ['query']),
     'getAllWarehouseStock' : IDL.Func([], [IDL.Vec(WarehouseStock)], ['query']),
     'getAllYarnInventory' : IDL.Func([], [IDL.Vec(YarnInventory)], ['query']),
     'getBatchStage' : IDL.Func([IDL.Nat], [IDL.Opt(BatchStage)], ['query']),
@@ -1045,6 +1057,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Nat],
         [],
       ),
+    'removeUser' : IDL.Func([IDL.Principal], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'updateBatchStage' : IDL.Func(
         [
@@ -1131,6 +1144,7 @@ export const idlFactory = ({ IDL }) => {
         [],
         [],
       ),
+    'updateUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'updateYarnInventory' : IDL.Func(
         [
           IDL.Nat,

@@ -24,7 +24,11 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { useDeleteRawMaterial, useRawMaterials } from "../hooks/useQueries";
+import {
+  useDeleteRawMaterial,
+  useMaterialIssues,
+  useRawMaterials,
+} from "../hooks/useQueries";
 
 function WarehouseBadge({ warehouse }: { warehouse: Warehouse }) {
   if ((warehouse as string) === "oeRawMaterial") {
@@ -54,10 +58,19 @@ function getMonthYearKey(timestampNs: bigint): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
+// Stock summary entry grouped by material name + grade + warehouse
+interface GradeStockEntry {
+  materialName: string;
+  grade: string;
+  warehouse: string;
+  totalKg: number;
+}
+
 export default function RawMaterials() {
   const { identity } = useInternetIdentity();
   const isLoggedIn = !!identity;
   const { data: materials = [], isLoading } = useRawMaterials();
+  const { data: issues = [] } = useMaterialIssues();
   const deleteMutation = useDeleteRawMaterial();
 
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
@@ -68,17 +81,66 @@ export default function RawMaterials() {
   const [warehouseFilter, setWarehouseFilter] = useState<string>("all");
   const [monthFilter, setMonthFilter] = useState<string>("all");
 
-  // Grade-wise total stock summary
-  const gradeStock = useMemo(() => {
-    return materials.reduce(
-      (acc, m) => {
-        const key = m.grade;
-        acc[key] = (acc[key] || 0) + Number(m.weightKg);
+  // Total issued qty per (materialName + warehouse) from material issues
+  const issuedByMaterialWarehouse = useMemo(() => {
+    return issues.reduce(
+      (acc, issue) => {
+        const key = `${issue.materialName}||${issue.warehouse as string}`;
+        acc[key] = (acc[key] || 0) + Number(issue.issuedQty);
         return acc;
       },
       {} as Record<string, number>,
     );
-  }, [materials]);
+  }, [issues]);
+
+  // Grade-wise stock summary: group by materialName + grade + warehouse
+  // Show correct balance = inward total - issued total for that material+warehouse
+  const gradeStockEntries = useMemo((): GradeStockEntry[] => {
+    // Step 1: aggregate raw inward totals per (material + grade + warehouse)
+    const inwardMap: Record<
+      string,
+      {
+        materialName: string;
+        grade: string;
+        warehouse: string;
+        totalKg: number;
+      }
+    > = {};
+    for (const m of materials) {
+      const warehouse = m.warehouse as string;
+      // Use materialName from lot or grade field (inward entries store material in grade)
+      // The grade field on RawMaterial records created from inward stores the material name
+      // when no explicit grade was given. We show it as-is.
+      const key = `${m.grade}||${warehouse}`;
+      if (!inwardMap[key]) {
+        inwardMap[key] = {
+          materialName: m.grade, // grade field holds material identity
+          grade: m.grade,
+          warehouse,
+          totalKg: 0,
+        };
+      }
+      inwardMap[key].totalKg += Number(m.weightKg);
+    }
+
+    // Step 2: subtract issued quantities (issues track materialName + warehouse)
+    // Issues match on materialName (which == grade key in raw material records)
+    const entries: GradeStockEntry[] = Object.values(inwardMap).map((entry) => {
+      const issueKey = `${entry.grade}||${entry.warehouse}`;
+      const issued = issuedByMaterialWarehouse[issueKey] || 0;
+      return {
+        ...entry,
+        totalKg: Math.max(0, entry.totalKg - issued),
+      };
+    });
+
+    return entries.sort((a, b) => {
+      // Sort by warehouse then grade
+      const wCompare = a.warehouse.localeCompare(b.warehouse);
+      if (wCompare !== 0) return wCompare;
+      return a.grade.localeCompare(b.grade);
+    });
+  }, [materials, issuedByMaterialWarehouse]);
 
   // Derive unique filter options from the data
   const supplierOptions = useMemo(() => {
@@ -168,33 +230,87 @@ export default function RawMaterials() {
 
       {/* Grade-wise Stock Summary */}
       {materials.length > 0 && (
-        <div className="mb-4">
+        <div className="mb-4" data-ocid="rawmaterials.section">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Stock by Grade
+              Current Stock by Grade
+            </span>
+            <span className="text-xs text-muted-foreground/60">
+              (after deducting issues)
             </span>
           </div>
-          <div
-            className="flex flex-wrap gap-2"
-            data-ocid="rawmaterials.section"
-          >
-            {Object.entries(gradeStock)
-              .sort((a, b) => a[0].localeCompare(b[0]))
-              .map(([grade, totalKg]) => (
-                <div
-                  key={grade}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border/60 bg-card shadow-sm hover:bg-muted/40 transition-colors"
-                >
-                  <span className="text-xs font-semibold text-foreground">
-                    {grade}
-                  </span>
-                  <span className="text-muted-foreground/50 text-xs">—</span>
-                  <span className="text-xs font-bold text-primary tabular-nums">
-                    {totalKg.toLocaleString()} kg
-                  </span>
-                </div>
-              ))}
-          </div>
+          {/* OE Raw Material */}
+          {gradeStockEntries.some((e) => e.warehouse === "oeRawMaterial") && (
+            <div className="mb-3">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200 text-[11px] font-semibold px-2 py-0">
+                  OE Raw Material
+                </Badge>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {gradeStockEntries
+                  .filter((e) => e.warehouse === "oeRawMaterial")
+                  .map((entry) => (
+                    <div
+                      key={`${entry.grade}||${entry.warehouse}`}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-200/60 bg-blue-50/40 shadow-sm hover:bg-blue-50/80 transition-colors"
+                    >
+                      <span className="text-xs font-semibold text-foreground">
+                        {entry.grade}
+                      </span>
+                      <span className="text-muted-foreground/50 text-xs">
+                        —
+                      </span>
+                      <span
+                        className={`text-xs font-bold tabular-nums ${
+                          entry.totalKg === 0
+                            ? "text-destructive"
+                            : "text-blue-700"
+                        }`}
+                      >
+                        {entry.totalKg.toLocaleString()} kg
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+          {/* Ring Raw Material */}
+          {gradeStockEntries.some((e) => e.warehouse === "ringRawMaterial") && (
+            <div className="mb-3">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 border-purple-200 text-[11px] font-semibold px-2 py-0">
+                  Ring Raw Material
+                </Badge>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {gradeStockEntries
+                  .filter((e) => e.warehouse === "ringRawMaterial")
+                  .map((entry) => (
+                    <div
+                      key={`${entry.grade}||${entry.warehouse}`}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg border border-purple-200/60 bg-purple-50/40 shadow-sm hover:bg-purple-50/80 transition-colors"
+                    >
+                      <span className="text-xs font-semibold text-foreground">
+                        {entry.grade}
+                      </span>
+                      <span className="text-muted-foreground/50 text-xs">
+                        —
+                      </span>
+                      <span
+                        className={`text-xs font-bold tabular-nums ${
+                          entry.totalKg === 0
+                            ? "text-destructive"
+                            : "text-purple-700"
+                        }`}
+                      >
+                        {entry.totalKg.toLocaleString()} kg
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

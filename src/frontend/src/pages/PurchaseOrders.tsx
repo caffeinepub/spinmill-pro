@@ -32,6 +32,7 @@ import type { PurchaseOrder, PurchaseOrderStatus } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
+import { useDropdownOptionsContext } from "../hooks/DropdownOptionsContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useCreatePurchaseOrder,
@@ -90,23 +91,6 @@ function POStatusBadge({ status }: { status: PurchaseOrderStatus | string }) {
   );
 }
 
-// ─── Material Options ─────────────────────────────────────────────────────────
-
-const MATERIAL_OPTIONS = [
-  "Cotton",
-  "Comber Noil",
-  "Flat strips",
-  "Polyester",
-  "RP",
-  "Viscose",
-  "Bamboo",
-  "Silver Ionic",
-  "Break comber",
-  "Navy Blue",
-  "Further Cotton",
-  "US Cotton",
-];
-
 // ─── Default Form ─────────────────────────────────────────────────────────────
 
 function todayStr() {
@@ -133,6 +117,7 @@ const defaultForm = {
 export default function PurchaseOrders() {
   const { identity } = useInternetIdentity();
   const isLoggedIn = !!identity;
+  const { materialNames } = useDropdownOptionsContext();
 
   const { data: orders = [], isLoading } = usePurchaseOrders();
   const createMutation = useCreatePurchaseOrder();
@@ -409,7 +394,7 @@ export default function PurchaseOrders() {
                   <SelectValue placeholder="Select material" />
                 </SelectTrigger>
                 <SelectContent>
-                  {MATERIAL_OPTIONS.map((m) => (
+                  {materialNames.map((m) => (
                     <SelectItem key={m} value={m}>
                       {m}
                     </SelectItem>

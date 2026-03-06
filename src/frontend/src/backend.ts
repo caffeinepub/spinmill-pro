@@ -248,6 +248,10 @@ export interface YarnInventory {
     lotNumber: string;
     weightKg: bigint;
 }
+export interface UserEntry {
+    principal: Principal;
+    role: UserRole;
+}
 export interface ProductionOrder {
     id: bigint;
     status: OrderStatus;
@@ -405,6 +409,7 @@ export interface backendInterface {
     getAllPurchaseOrders(): Promise<Array<PurchaseOrder>>;
     getAllQualityTests(): Promise<Array<QualityTest>>;
     getAllRawMaterials(): Promise<Array<RawMaterial>>;
+    getAllUsers(): Promise<Array<UserEntry>>;
     getAllWarehouseStock(): Promise<Array<WarehouseStock>>;
     getAllYarnInventory(): Promise<Array<YarnInventory>>;
     getBatchStage(id: bigint): Promise<BatchStage | null>;
@@ -433,6 +438,7 @@ export interface backendInterface {
     getYarnInventory(id: bigint): Promise<YarnInventory | null>;
     isCallerAdmin(): Promise<boolean>;
     registerMachine(name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: bigint | null, runningLotNumber: string | null): Promise<bigint>;
+    removeUser(user: Principal): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     updateBatchStage(id: bigint, batchId: bigint, stage: ProcessStage, weightInKg: bigint, weightOutKg: bigint, machineId: bigint, startTime: Time, endTime: Time, operatorNotes: string): Promise<void>;
     updateMachine(id: bigint, name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: bigint | null, runningLotNumber: string | null): Promise<void>;
@@ -441,9 +447,10 @@ export interface backendInterface {
     updatePurchaseOrder(id: bigint, poNumber: string, supplier: string, materialName: string, orderedQty: bigint, orderDate: Time, expectedDeliveryDate: Time): Promise<void>;
     updateQualityTest(id: bigint, batchId: bigint, csp: bigint, elongationPercent: bigint, evennessPercent: bigint, thinPlaces: bigint, thickPlaces: bigint, neps: bigint, hairinessIndex: bigint, pass: boolean): Promise<void>;
     updateRawMaterial(id: bigint, lotNumber: string, supplier: string, grade: string, weightKg: bigint, status: RawMaterialStatus, warehouse: Warehouse): Promise<void>;
+    updateUserRole(user: Principal, newRole: UserRole): Promise<void>;
     updateYarnInventory(id: bigint, lotNumber: string, yarnCountNe: bigint, twistDirection: TwistDirection, quantityCones: bigint, weightKg: bigint, status: InventoryStatus): Promise<void>;
 }
-import type { BatchStage as _BatchStage, DispatchBalance as _DispatchBalance, DispatchDestination as _DispatchDestination, DispatchEntry as _DispatchEntry, EndUse as _EndUse, InventoryStatus as _InventoryStatus, InwardEntry as _InwardEntry, Machine as _Machine, MachineStatus as _MachineStatus, MachineType as _MachineType, MaterialIssue as _MaterialIssue, OrderStatus as _OrderStatus, POBalance as _POBalance, PackingBalance as _PackingBalance, PackingEntry as _PackingEntry, ProcessStage as _ProcessStage, ProductType as _ProductType, ProductionLog as _ProductionLog, ProductionOrder as _ProductionOrder, ProductionOrderBalance as _ProductionOrderBalance, PurchaseOrder as _PurchaseOrder, PurchaseOrderStatus as _PurchaseOrderStatus, QualityTest as _QualityTest, RawMaterial as _RawMaterial, RawMaterialStatus as _RawMaterialStatus, Shift as _Shift, SpinningUnit as _SpinningUnit, Time as _Time, TwistDirection as _TwistDirection, UserProfile as _UserProfile, UserRole as _UserRole, Warehouse as _Warehouse, WarehouseStock as _WarehouseStock, YarnInventory as _YarnInventory } from "./declarations/backend.did.d.ts";
+import type { BatchStage as _BatchStage, DispatchBalance as _DispatchBalance, DispatchDestination as _DispatchDestination, DispatchEntry as _DispatchEntry, EndUse as _EndUse, InventoryStatus as _InventoryStatus, InwardEntry as _InwardEntry, Machine as _Machine, MachineStatus as _MachineStatus, MachineType as _MachineType, MaterialIssue as _MaterialIssue, OrderStatus as _OrderStatus, POBalance as _POBalance, PackingBalance as _PackingBalance, PackingEntry as _PackingEntry, ProcessStage as _ProcessStage, ProductType as _ProductType, ProductionLog as _ProductionLog, ProductionOrder as _ProductionOrder, ProductionOrderBalance as _ProductionOrderBalance, PurchaseOrder as _PurchaseOrder, PurchaseOrderStatus as _PurchaseOrderStatus, QualityTest as _QualityTest, RawMaterial as _RawMaterial, RawMaterialStatus as _RawMaterialStatus, Shift as _Shift, SpinningUnit as _SpinningUnit, Time as _Time, TwistDirection as _TwistDirection, UserEntry as _UserEntry, UserProfile as _UserProfile, UserRole as _UserRole, Warehouse as _Warehouse, WarehouseStock as _WarehouseStock, YarnInventory as _YarnInventory } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
@@ -950,74 +957,88 @@ export class Backend implements backendInterface {
             return from_candid_vec_n78(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getAllWarehouseStock(): Promise<Array<WarehouseStock>> {
+    async getAllUsers(): Promise<Array<UserEntry>> {
         if (this.processError) {
             try {
-                const result = await this.actor.getAllWarehouseStock();
+                const result = await this.actor.getAllUsers();
                 return from_candid_vec_n83(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getAllWarehouseStock();
+            const result = await this.actor.getAllUsers();
             return from_candid_vec_n83(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getAllWarehouseStock(): Promise<Array<WarehouseStock>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllWarehouseStock();
+                return from_candid_vec_n88(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllWarehouseStock();
+            return from_candid_vec_n88(this._uploadFile, this._downloadFile, result);
         }
     }
     async getAllYarnInventory(): Promise<Array<YarnInventory>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getAllYarnInventory();
-                return from_candid_vec_n86(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n91(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getAllYarnInventory();
-            return from_candid_vec_n86(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n91(this._uploadFile, this._downloadFile, result);
         }
     }
     async getBatchStage(arg0: bigint): Promise<BatchStage | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getBatchStage(arg0);
-                return from_candid_opt_n91(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n96(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getBatchStage(arg0);
-            return from_candid_opt_n91(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n96(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCallerUserProfile(): Promise<UserProfile | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserProfile();
-                return from_candid_opt_n92(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n97(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserProfile();
-            return from_candid_opt_n92(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n97(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCallerUserRole(): Promise<UserRole> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserRole();
-                return from_candid_UserRole_n93(this._uploadFile, this._downloadFile, result);
+                return from_candid_UserRole_n86(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserRole();
-            return from_candid_UserRole_n93(this._uploadFile, this._downloadFile, result);
+            return from_candid_UserRole_n86(this._uploadFile, this._downloadFile, result);
         }
     }
     async getDashboardStats(): Promise<DashboardStats> {
@@ -1038,14 +1059,14 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getDispatchBalance(arg0);
-                return from_candid_opt_n95(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n98(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getDispatchBalance(arg0);
-            return from_candid_opt_n95(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n98(this._uploadFile, this._downloadFile, result);
         }
     }
     async getInwardEntriesByPO(arg0: bigint): Promise<Array<InwardEntry>> {
@@ -1066,28 +1087,28 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getInwardEntry(arg0);
-                return from_candid_opt_n98(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n101(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getInwardEntry(arg0);
-            return from_candid_opt_n98(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n101(this._uploadFile, this._downloadFile, result);
         }
     }
     async getMachine(arg0: bigint): Promise<Machine | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getMachine(arg0);
-                return from_candid_opt_n99(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n102(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getMachine(arg0);
-            return from_candid_opt_n99(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n102(this._uploadFile, this._downloadFile, result);
         }
     }
     async getNextDispatchNumber(): Promise<string> {
@@ -1178,140 +1199,140 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getPOBalance(arg0);
-                return from_candid_opt_n100(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n103(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getPOBalance(arg0);
-            return from_candid_opt_n100(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n103(this._uploadFile, this._downloadFile, result);
         }
     }
     async getPackingBalance(arg0: string): Promise<PackingBalance | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getPackingBalance(arg0);
-                return from_candid_opt_n101(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getPackingBalance(arg0);
-            return from_candid_opt_n101(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async getProductionLog(arg0: bigint): Promise<ProductionLog | null> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getProductionLog(arg0);
                 return from_candid_opt_n104(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getProductionLog(arg0);
+            const result = await this.actor.getPackingBalance(arg0);
             return from_candid_opt_n104(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getProductionOrder(arg0: bigint): Promise<ProductionOrder | null> {
+    async getProductionLog(arg0: bigint): Promise<ProductionLog | null> {
         if (this.processError) {
             try {
-                const result = await this.actor.getProductionOrder(arg0);
-                return from_candid_opt_n105(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getProductionOrder(arg0);
-            return from_candid_opt_n105(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async getProductionOrderBalance(arg0: bigint, arg1: string): Promise<ProductionOrderBalance | null> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getProductionOrderBalance(arg0, arg1);
-                return from_candid_opt_n106(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getProductionOrderBalance(arg0, arg1);
-            return from_candid_opt_n106(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async getPurchaseOrder(arg0: bigint): Promise<PurchaseOrder | null> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getPurchaseOrder(arg0);
+                const result = await this.actor.getProductionLog(arg0);
                 return from_candid_opt_n107(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getPurchaseOrder(arg0);
+            const result = await this.actor.getProductionLog(arg0);
             return from_candid_opt_n107(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getQualityTest(arg0: bigint): Promise<QualityTest | null> {
+    async getProductionOrder(arg0: bigint): Promise<ProductionOrder | null> {
         if (this.processError) {
             try {
-                const result = await this.actor.getQualityTest(arg0);
+                const result = await this.actor.getProductionOrder(arg0);
                 return from_candid_opt_n108(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getQualityTest(arg0);
+            const result = await this.actor.getProductionOrder(arg0);
             return from_candid_opt_n108(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getRawMaterial(arg0: bigint): Promise<RawMaterial | null> {
+    async getProductionOrderBalance(arg0: bigint, arg1: string): Promise<ProductionOrderBalance | null> {
         if (this.processError) {
             try {
-                const result = await this.actor.getRawMaterial(arg0);
+                const result = await this.actor.getProductionOrderBalance(arg0, arg1);
                 return from_candid_opt_n109(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getRawMaterial(arg0);
+            const result = await this.actor.getProductionOrderBalance(arg0, arg1);
             return from_candid_opt_n109(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
+    async getPurchaseOrder(arg0: bigint): Promise<PurchaseOrder | null> {
         if (this.processError) {
             try {
-                const result = await this.actor.getUserProfile(arg0);
-                return from_candid_opt_n92(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getUserProfile(arg0);
-            return from_candid_opt_n92(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async getYarnInventory(arg0: bigint): Promise<YarnInventory | null> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getYarnInventory(arg0);
+                const result = await this.actor.getPurchaseOrder(arg0);
                 return from_candid_opt_n110(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getYarnInventory(arg0);
+            const result = await this.actor.getPurchaseOrder(arg0);
             return from_candid_opt_n110(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getQualityTest(arg0: bigint): Promise<QualityTest | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getQualityTest(arg0);
+                return from_candid_opt_n111(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getQualityTest(arg0);
+            return from_candid_opt_n111(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getRawMaterial(arg0: bigint): Promise<RawMaterial | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getRawMaterial(arg0);
+                return from_candid_opt_n112(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getRawMaterial(arg0);
+            return from_candid_opt_n112(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getUserProfile(arg0);
+                return from_candid_opt_n97(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getUserProfile(arg0);
+            return from_candid_opt_n97(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getYarnInventory(arg0: bigint): Promise<YarnInventory | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getYarnInventory(arg0);
+                return from_candid_opt_n113(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getYarnInventory(arg0);
+            return from_candid_opt_n113(this._uploadFile, this._downloadFile, result);
         }
     }
     async isCallerAdmin(): Promise<boolean> {
@@ -1331,14 +1352,28 @@ export class Backend implements backendInterface {
     async registerMachine(arg0: string, arg1: MachineType, arg2: string, arg3: MachineStatus, arg4: bigint | null, arg5: bigint | null, arg6: string | null): Promise<bigint> {
         if (this.processError) {
             try {
-                const result = await this.actor.registerMachine(arg0, to_candid_MachineType_n111(this._uploadFile, this._downloadFile, arg1), arg2, to_candid_MachineStatus_n113(this._uploadFile, this._downloadFile, arg3), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n115(this._uploadFile, this._downloadFile, arg6));
+                const result = await this.actor.registerMachine(arg0, to_candid_MachineType_n114(this._uploadFile, this._downloadFile, arg1), arg2, to_candid_MachineStatus_n116(this._uploadFile, this._downloadFile, arg3), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n118(this._uploadFile, this._downloadFile, arg6));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.registerMachine(arg0, to_candid_MachineType_n111(this._uploadFile, this._downloadFile, arg1), arg2, to_candid_MachineStatus_n113(this._uploadFile, this._downloadFile, arg3), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n115(this._uploadFile, this._downloadFile, arg6));
+            const result = await this.actor.registerMachine(arg0, to_candid_MachineType_n114(this._uploadFile, this._downloadFile, arg1), arg2, to_candid_MachineStatus_n116(this._uploadFile, this._downloadFile, arg3), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n118(this._uploadFile, this._downloadFile, arg6));
+            return result;
+        }
+    }
+    async removeUser(arg0: Principal): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.removeUser(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.removeUser(arg0);
             return result;
         }
     }
@@ -1373,14 +1408,14 @@ export class Backend implements backendInterface {
     async updateMachine(arg0: bigint, arg1: string, arg2: MachineType, arg3: string, arg4: MachineStatus, arg5: bigint | null, arg6: bigint | null, arg7: string | null): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateMachine(arg0, arg1, to_candid_MachineType_n111(this._uploadFile, this._downloadFile, arg2), arg3, to_candid_MachineStatus_n113(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg6), to_candid_opt_n115(this._uploadFile, this._downloadFile, arg7));
+                const result = await this.actor.updateMachine(arg0, arg1, to_candid_MachineType_n114(this._uploadFile, this._downloadFile, arg2), arg3, to_candid_MachineStatus_n116(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg6), to_candid_opt_n118(this._uploadFile, this._downloadFile, arg7));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateMachine(arg0, arg1, to_candid_MachineType_n111(this._uploadFile, this._downloadFile, arg2), arg3, to_candid_MachineStatus_n113(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg6), to_candid_opt_n115(this._uploadFile, this._downloadFile, arg7));
+            const result = await this.actor.updateMachine(arg0, arg1, to_candid_MachineType_n114(this._uploadFile, this._downloadFile, arg2), arg3, to_candid_MachineStatus_n116(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg6), to_candid_opt_n118(this._uploadFile, this._downloadFile, arg7));
             return result;
         }
     }
@@ -1443,14 +1478,28 @@ export class Backend implements backendInterface {
     async updateRawMaterial(arg0: bigint, arg1: string, arg2: string, arg3: string, arg4: bigint, arg5: RawMaterialStatus, arg6: Warehouse): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateRawMaterial(arg0, arg1, arg2, arg3, arg4, to_candid_RawMaterialStatus_n116(this._uploadFile, this._downloadFile, arg5), to_candid_Warehouse_n3(this._uploadFile, this._downloadFile, arg6));
+                const result = await this.actor.updateRawMaterial(arg0, arg1, arg2, arg3, arg4, to_candid_RawMaterialStatus_n119(this._uploadFile, this._downloadFile, arg5), to_candid_Warehouse_n3(this._uploadFile, this._downloadFile, arg6));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateRawMaterial(arg0, arg1, arg2, arg3, arg4, to_candid_RawMaterialStatus_n116(this._uploadFile, this._downloadFile, arg5), to_candid_Warehouse_n3(this._uploadFile, this._downloadFile, arg6));
+            const result = await this.actor.updateRawMaterial(arg0, arg1, arg2, arg3, arg4, to_candid_RawMaterialStatus_n119(this._uploadFile, this._downloadFile, arg5), to_candid_Warehouse_n3(this._uploadFile, this._downloadFile, arg6));
+            return result;
+        }
+    }
+    async updateUserRole(arg0: Principal, arg1: UserRole): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateUserRole(arg0, to_candid_UserRole_n12(this._uploadFile, this._downloadFile, arg1));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateUserRole(arg0, to_candid_UserRole_n12(this._uploadFile, this._downloadFile, arg1));
             return result;
         }
     }
@@ -1472,8 +1521,8 @@ export class Backend implements backendInterface {
 function from_candid_BatchStage_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _BatchStage): BatchStage {
     return from_candid_record_n26(_uploadFile, _downloadFile, value);
 }
-function from_candid_DispatchBalance_n96(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _DispatchBalance): DispatchBalance {
-    return from_candid_record_n97(_uploadFile, _downloadFile, value);
+function from_candid_DispatchBalance_n99(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _DispatchBalance): DispatchBalance {
+    return from_candid_record_n100(_uploadFile, _downloadFile, value);
 }
 function from_candid_DispatchDestination_n32(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _DispatchDestination): DispatchDestination {
     return from_candid_variant_n33(_uploadFile, _downloadFile, value);
@@ -1484,8 +1533,8 @@ function from_candid_DispatchEntry_n30(_uploadFile: (file: ExternalBlob) => Prom
 function from_candid_EndUse_n38(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _EndUse): EndUse {
     return from_candid_variant_n39(_uploadFile, _downloadFile, value);
 }
-function from_candid_InventoryStatus_n89(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _InventoryStatus): InventoryStatus {
-    return from_candid_variant_n90(_uploadFile, _downloadFile, value);
+function from_candid_InventoryStatus_n94(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _InventoryStatus): InventoryStatus {
+    return from_candid_variant_n95(_uploadFile, _downloadFile, value);
 }
 function from_candid_InwardEntry_n41(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _InwardEntry): InwardEntry {
     return from_candid_record_n42(_uploadFile, _downloadFile, value);
@@ -1505,8 +1554,8 @@ function from_candid_MaterialIssue_n56(_uploadFile: (file: ExternalBlob) => Prom
 function from_candid_OrderStatus_n69(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _OrderStatus): OrderStatus {
     return from_candid_variant_n70(_uploadFile, _downloadFile, value);
 }
-function from_candid_PackingBalance_n102(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PackingBalance): PackingBalance {
-    return from_candid_record_n103(_uploadFile, _downloadFile, value);
+function from_candid_PackingBalance_n105(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PackingBalance): PackingBalance {
+    return from_candid_record_n106(_uploadFile, _downloadFile, value);
 }
 function from_candid_PackingEntry_n59(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PackingEntry): PackingEntry {
     return from_candid_record_n60(_uploadFile, _downloadFile, value);
@@ -1544,44 +1593,53 @@ function from_candid_SpinningUnit_n36(_uploadFile: (file: ExternalBlob) => Promi
 function from_candid_TwistDirection_n71(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _TwistDirection): TwistDirection {
     return from_candid_variant_n72(_uploadFile, _downloadFile, value);
 }
-function from_candid_UserRole_n93(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
-    return from_candid_variant_n94(_uploadFile, _downloadFile, value);
-}
-function from_candid_WarehouseStock_n84(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _WarehouseStock): WarehouseStock {
+function from_candid_UserEntry_n84(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserEntry): UserEntry {
     return from_candid_record_n85(_uploadFile, _downloadFile, value);
+}
+function from_candid_UserRole_n86(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
+    return from_candid_variant_n87(_uploadFile, _downloadFile, value);
+}
+function from_candid_WarehouseStock_n89(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _WarehouseStock): WarehouseStock {
+    return from_candid_record_n90(_uploadFile, _downloadFile, value);
 }
 function from_candid_Warehouse_n43(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Warehouse): Warehouse {
     return from_candid_variant_n44(_uploadFile, _downloadFile, value);
 }
-function from_candid_YarnInventory_n87(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _YarnInventory): YarnInventory {
-    return from_candid_record_n88(_uploadFile, _downloadFile, value);
+function from_candid_YarnInventory_n92(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _YarnInventory): YarnInventory {
+    return from_candid_record_n93(_uploadFile, _downloadFile, value);
 }
-function from_candid_opt_n100(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_POBalance]): POBalance | null {
+function from_candid_opt_n101(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_InwardEntry]): InwardEntry | null {
+    return value.length === 0 ? null : from_candid_InwardEntry_n41(_uploadFile, _downloadFile, value[0]);
+}
+function from_candid_opt_n102(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Machine]): Machine | null {
+    return value.length === 0 ? null : from_candid_Machine_n46(_uploadFile, _downloadFile, value[0]);
+}
+function from_candid_opt_n103(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_POBalance]): POBalance | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n101(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_PackingBalance]): PackingBalance | null {
-    return value.length === 0 ? null : from_candid_PackingBalance_n102(_uploadFile, _downloadFile, value[0]);
+function from_candid_opt_n104(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_PackingBalance]): PackingBalance | null {
+    return value.length === 0 ? null : from_candid_PackingBalance_n105(_uploadFile, _downloadFile, value[0]);
 }
-function from_candid_opt_n104(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_ProductionLog]): ProductionLog | null {
+function from_candid_opt_n107(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_ProductionLog]): ProductionLog | null {
     return value.length === 0 ? null : from_candid_ProductionLog_n62(_uploadFile, _downloadFile, value[0]);
 }
-function from_candid_opt_n105(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_ProductionOrder]): ProductionOrder | null {
+function from_candid_opt_n108(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_ProductionOrder]): ProductionOrder | null {
     return value.length === 0 ? null : from_candid_ProductionOrder_n67(_uploadFile, _downloadFile, value[0]);
 }
-function from_candid_opt_n106(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_ProductionOrderBalance]): ProductionOrderBalance | null {
+function from_candid_opt_n109(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_ProductionOrderBalance]): ProductionOrderBalance | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n107(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_PurchaseOrder]): PurchaseOrder | null {
+function from_candid_opt_n110(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_PurchaseOrder]): PurchaseOrder | null {
     return value.length === 0 ? null : from_candid_PurchaseOrder_n74(_uploadFile, _downloadFile, value[0]);
 }
-function from_candid_opt_n108(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_QualityTest]): QualityTest | null {
+function from_candid_opt_n111(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_QualityTest]): QualityTest | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n109(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_RawMaterial]): RawMaterial | null {
+function from_candid_opt_n112(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_RawMaterial]): RawMaterial | null {
     return value.length === 0 ? null : from_candid_RawMaterial_n79(_uploadFile, _downloadFile, value[0]);
 }
-function from_candid_opt_n110(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_YarnInventory]): YarnInventory | null {
-    return value.length === 0 ? null : from_candid_YarnInventory_n87(_uploadFile, _downloadFile, value[0]);
+function from_candid_opt_n113(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_YarnInventory]): YarnInventory | null {
+    return value.length === 0 ? null : from_candid_YarnInventory_n92(_uploadFile, _downloadFile, value[0]);
 }
 function from_candid_opt_n50(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Time]): Time | null {
     return value.length === 0 ? null : value[0];
@@ -1592,22 +1650,46 @@ function from_candid_opt_n51(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
 function from_candid_opt_n52(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [bigint]): bigint | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n91(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_BatchStage]): BatchStage | null {
+function from_candid_opt_n96(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_BatchStage]): BatchStage | null {
     return value.length === 0 ? null : from_candid_BatchStage_n25(_uploadFile, _downloadFile, value[0]);
 }
-function from_candid_opt_n92(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
+function from_candid_opt_n97(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n95(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_DispatchBalance]): DispatchBalance | null {
-    return value.length === 0 ? null : from_candid_DispatchBalance_n96(_uploadFile, _downloadFile, value[0]);
+function from_candid_opt_n98(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_DispatchBalance]): DispatchBalance | null {
+    return value.length === 0 ? null : from_candid_DispatchBalance_n99(_uploadFile, _downloadFile, value[0]);
 }
-function from_candid_opt_n98(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_InwardEntry]): InwardEntry | null {
-    return value.length === 0 ? null : from_candid_InwardEntry_n41(_uploadFile, _downloadFile, value[0]);
+function from_candid_record_n100(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    yarnCountNe: bigint;
+    productType: _ProductType;
+    totalPackedKg: bigint;
+    lotNumber: string;
+    spinningUnit: _SpinningUnit;
+    totalDispatchedKg: bigint;
+    availableKg: bigint;
+    endUse: _EndUse;
+}): {
+    yarnCountNe: bigint;
+    productType: ProductType;
+    totalPackedKg: bigint;
+    lotNumber: string;
+    spinningUnit: SpinningUnit;
+    totalDispatchedKg: bigint;
+    availableKg: bigint;
+    endUse: EndUse;
+} {
+    return {
+        yarnCountNe: value.yarnCountNe,
+        productType: from_candid_ProductType_n34(_uploadFile, _downloadFile, value.productType),
+        totalPackedKg: value.totalPackedKg,
+        lotNumber: value.lotNumber,
+        spinningUnit: from_candid_SpinningUnit_n36(_uploadFile, _downloadFile, value.spinningUnit),
+        totalDispatchedKg: value.totalDispatchedKg,
+        availableKg: value.availableKg,
+        endUse: from_candid_EndUse_n38(_uploadFile, _downloadFile, value.endUse)
+    };
 }
-function from_candid_opt_n99(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Machine]): Machine | null {
-    return value.length === 0 ? null : from_candid_Machine_n46(_uploadFile, _downloadFile, value[0]);
-}
-function from_candid_record_n103(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_record_n106(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     yarnCountNe: bigint;
     productType: _ProductType;
     totalPackedKg: bigint;
@@ -1974,6 +2056,18 @@ function from_candid_record_n80(_uploadFile: (file: ExternalBlob) => Promise<Uin
     };
 }
 function from_candid_record_n85(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    principal: Principal;
+    role: _UserRole;
+}): {
+    principal: Principal;
+    role: UserRole;
+} {
+    return {
+        principal: value.principal,
+        role: from_candid_UserRole_n86(_uploadFile, _downloadFile, value.role)
+    };
+}
+function from_candid_record_n90(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     totalQty: bigint;
     warehouse: _Warehouse;
     materialName: string;
@@ -1988,7 +2082,7 @@ function from_candid_record_n85(_uploadFile: (file: ExternalBlob) => Promise<Uin
         materialName: value.materialName
     };
 }
-function from_candid_record_n88(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_record_n93(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     id: bigint;
     status: _InventoryStatus;
     yarnCountNe: bigint;
@@ -2007,42 +2101,12 @@ function from_candid_record_n88(_uploadFile: (file: ExternalBlob) => Promise<Uin
 } {
     return {
         id: value.id,
-        status: from_candid_InventoryStatus_n89(_uploadFile, _downloadFile, value.status),
+        status: from_candid_InventoryStatus_n94(_uploadFile, _downloadFile, value.status),
         yarnCountNe: value.yarnCountNe,
         twistDirection: from_candid_TwistDirection_n71(_uploadFile, _downloadFile, value.twistDirection),
         quantityCones: value.quantityCones,
         lotNumber: value.lotNumber,
         weightKg: value.weightKg
-    };
-}
-function from_candid_record_n97(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    yarnCountNe: bigint;
-    productType: _ProductType;
-    totalPackedKg: bigint;
-    lotNumber: string;
-    spinningUnit: _SpinningUnit;
-    totalDispatchedKg: bigint;
-    availableKg: bigint;
-    endUse: _EndUse;
-}): {
-    yarnCountNe: bigint;
-    productType: ProductType;
-    totalPackedKg: bigint;
-    lotNumber: string;
-    spinningUnit: SpinningUnit;
-    totalDispatchedKg: bigint;
-    availableKg: bigint;
-    endUse: EndUse;
-} {
-    return {
-        yarnCountNe: value.yarnCountNe,
-        productType: from_candid_ProductType_n34(_uploadFile, _downloadFile, value.productType),
-        totalPackedKg: value.totalPackedKg,
-        lotNumber: value.lotNumber,
-        spinningUnit: from_candid_SpinningUnit_n36(_uploadFile, _downloadFile, value.spinningUnit),
-        totalDispatchedKg: value.totalDispatchedKg,
-        availableKg: value.availableKg,
-        endUse: from_candid_EndUse_n38(_uploadFile, _downloadFile, value.endUse)
     };
 }
 function from_candid_variant_n28(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
@@ -2198,14 +2262,7 @@ function from_candid_variant_n82(_uploadFile: (file: ExternalBlob) => Promise<Ui
 }): RawMaterialStatus {
     return "available" in value ? RawMaterialStatus.available : "consumed" in value ? RawMaterialStatus.consumed : "inUse" in value ? RawMaterialStatus.inUse : value;
 }
-function from_candid_variant_n90(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    inStock: null;
-} | {
-    dispatched: null;
-}): InventoryStatus {
-    return "inStock" in value ? InventoryStatus.inStock : "dispatched" in value ? InventoryStatus.dispatched : value;
-}
-function from_candid_variant_n94(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n87(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     admin: null;
 } | {
     user: null;
@@ -2213,6 +2270,13 @@ function from_candid_variant_n94(_uploadFile: (file: ExternalBlob) => Promise<Ui
     guest: null;
 }): UserRole {
     return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
+}
+function from_candid_variant_n95(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    inStock: null;
+} | {
+    dispatched: null;
+}): InventoryStatus {
+    return "inStock" in value ? InventoryStatus.inStock : "dispatched" in value ? InventoryStatus.dispatched : value;
 }
 function from_candid_vec_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_BatchStage>): Array<BatchStage> {
     return value.map((x)=>from_candid_BatchStage_n25(_uploadFile, _downloadFile, x));
@@ -2244,11 +2308,14 @@ function from_candid_vec_n73(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
 function from_candid_vec_n78(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_RawMaterial>): Array<RawMaterial> {
     return value.map((x)=>from_candid_RawMaterial_n79(_uploadFile, _downloadFile, x));
 }
-function from_candid_vec_n83(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_WarehouseStock>): Array<WarehouseStock> {
-    return value.map((x)=>from_candid_WarehouseStock_n84(_uploadFile, _downloadFile, x));
+function from_candid_vec_n83(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_UserEntry>): Array<UserEntry> {
+    return value.map((x)=>from_candid_UserEntry_n84(_uploadFile, _downloadFile, x));
 }
-function from_candid_vec_n86(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_YarnInventory>): Array<YarnInventory> {
-    return value.map((x)=>from_candid_YarnInventory_n87(_uploadFile, _downloadFile, x));
+function from_candid_vec_n88(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_WarehouseStock>): Array<WarehouseStock> {
+    return value.map((x)=>from_candid_WarehouseStock_n89(_uploadFile, _downloadFile, x));
+}
+function from_candid_vec_n91(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_YarnInventory>): Array<YarnInventory> {
+    return value.map((x)=>from_candid_YarnInventory_n92(_uploadFile, _downloadFile, x));
 }
 function to_candid_DispatchDestination_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: DispatchDestination): _DispatchDestination {
     return to_candid_variant_n15(_uploadFile, _downloadFile, value);
@@ -2259,11 +2326,11 @@ function to_candid_EndUse_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8
 function to_candid_InventoryStatus_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: InventoryStatus): _InventoryStatus {
     return to_candid_variant_n11(_uploadFile, _downloadFile, value);
 }
-function to_candid_MachineStatus_n113(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: MachineStatus): _MachineStatus {
-    return to_candid_variant_n114(_uploadFile, _downloadFile, value);
+function to_candid_MachineStatus_n116(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: MachineStatus): _MachineStatus {
+    return to_candid_variant_n117(_uploadFile, _downloadFile, value);
 }
-function to_candid_MachineType_n111(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: MachineType): _MachineType {
-    return to_candid_variant_n112(_uploadFile, _downloadFile, value);
+function to_candid_MachineType_n114(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: MachineType): _MachineType {
+    return to_candid_variant_n115(_uploadFile, _downloadFile, value);
 }
 function to_candid_OrderStatus_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: OrderStatus): _OrderStatus {
     return to_candid_variant_n23(_uploadFile, _downloadFile, value);
@@ -2274,8 +2341,8 @@ function to_candid_ProcessStage_n1(_uploadFile: (file: ExternalBlob) => Promise<
 function to_candid_ProductType_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ProductType): _ProductType {
     return to_candid_variant_n17(_uploadFile, _downloadFile, value);
 }
-function to_candid_RawMaterialStatus_n116(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: RawMaterialStatus): _RawMaterialStatus {
-    return to_candid_variant_n117(_uploadFile, _downloadFile, value);
+function to_candid_RawMaterialStatus_n119(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: RawMaterialStatus): _RawMaterialStatus {
+    return to_candid_variant_n120(_uploadFile, _downloadFile, value);
 }
 function to_candid_Shift_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Shift): _Shift {
     return to_candid_variant_n6(_uploadFile, _downloadFile, value);
@@ -2292,7 +2359,7 @@ function to_candid_UserRole_n12(_uploadFile: (file: ExternalBlob) => Promise<Uin
 function to_candid_Warehouse_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Warehouse): _Warehouse {
     return to_candid_variant_n4(_uploadFile, _downloadFile, value);
 }
-function to_candid_opt_n115(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: string | null): [] | [string] {
+function to_candid_opt_n118(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: string | null): [] | [string] {
     return value === null ? candid_none() : candid_some(value);
 }
 function to_candid_opt_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: bigint | null): [] | [bigint] {
@@ -2309,7 +2376,7 @@ function to_candid_variant_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint
         dispatched: null
     } : value;
 }
-function to_candid_variant_n112(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: MachineType): {
+function to_candid_variant_n115(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: MachineType): {
     ringFrame: null;
 } | {
     autocoro: null;
@@ -2344,7 +2411,7 @@ function to_candid_variant_n112(_uploadFile: (file: ExternalBlob) => Promise<Uin
         drawing: null
     } : value;
 }
-function to_candid_variant_n114(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: MachineStatus): {
+function to_candid_variant_n117(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: MachineStatus): {
     idle: null;
 } | {
     maintenance: null;
@@ -2359,7 +2426,7 @@ function to_candid_variant_n114(_uploadFile: (file: ExternalBlob) => Promise<Uin
         running: null
     } : value;
 }
-function to_candid_variant_n117(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: RawMaterialStatus): {
+function to_candid_variant_n120(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: RawMaterialStatus): {
     available: null;
 } | {
     consumed: null;

@@ -3,6 +3,7 @@ import type {
   BatchStage,
   DashboardStats,
   EndUse,
+  backendInterface as FullBackendInterface,
   InventoryStatus,
   InwardEntry,
   Machine,
@@ -31,6 +32,12 @@ import type {
 import { normalizeRecord } from "../utils/candid";
 import { useActor } from "./useActor";
 
+// Helper to cast actor to full backend interface (backend.ts has a minimal stub
+// but the deployed canister exposes all methods defined in backend.d.ts)
+function fullActor(actor: unknown): FullBackendInterface {
+  return actor as FullBackendInterface;
+}
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export function useDashboardStats() {
@@ -39,7 +46,7 @@ export function useDashboardStats() {
     queryKey: ["dashboardStats"],
     queryFn: async () => {
       if (!actor) throw new Error("No actor");
-      const result = await actor.getDashboardStats();
+      const result = await fullActor(actor).getDashboardStats();
       return normalizeRecord(result);
     },
     enabled: !!actor,
@@ -55,7 +62,7 @@ export function useRawMaterials() {
     queryKey: ["rawMaterials"],
     queryFn: async () => {
       if (!actor) return [];
-      const result = await actor.getAllRawMaterials();
+      const result = await fullActor(actor).getAllRawMaterials();
       return normalizeRecord(result);
     },
     enabled: !!actor,
@@ -76,7 +83,7 @@ export function useAddRawMaterial() {
       inwardEntryId: bigint | null;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.addRawMaterial(
+      return fullActor(actor).addRawMaterial(
         args.lotNumber,
         args.supplier,
         args.grade,
@@ -106,7 +113,7 @@ export function useUpdateRawMaterial() {
       warehouse: Warehouse;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.updateRawMaterial(
+      return fullActor(actor).updateRawMaterial(
         args.id,
         args.lotNumber,
         args.supplier,
@@ -129,7 +136,7 @@ export function useDeleteRawMaterial() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("No actor");
-      return actor.deleteRawMaterial(id);
+      return fullActor(actor).deleteRawMaterial(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["rawMaterials"] });
@@ -146,7 +153,7 @@ export function useProductionOrders() {
     queryKey: ["productionOrders"],
     queryFn: async () => {
       if (!actor) return [];
-      const result = await actor.getAllProductionOrders();
+      const result = await fullActor(actor).getAllProductionOrders();
       return normalizeRecord(result);
     },
     enabled: !!actor,
@@ -171,7 +178,7 @@ export function useCreateProductionOrder() {
       status: OrderStatus;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.createProductionOrder(
+      return fullActor(actor).createProductionOrder(
         args.orderNumber,
         args.lotNumber,
         args.productType,
@@ -209,7 +216,7 @@ export function useUpdateProductionOrder() {
       status: OrderStatus;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.updateProductionOrder(
+      return fullActor(actor).updateProductionOrder(
         args.id,
         args.orderNumber,
         args.lotNumber,
@@ -236,7 +243,7 @@ export function useDeleteProductionOrder() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("No actor");
-      return actor.deleteProductionOrder(id);
+      return fullActor(actor).deleteProductionOrder(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["productionOrders"] });
@@ -253,7 +260,7 @@ export function useMachines() {
     queryKey: ["machines"],
     queryFn: async () => {
       if (!actor) return [];
-      const result = await actor.getAllMachines();
+      const result = await fullActor(actor).getAllMachines();
       return normalizeRecord(result);
     },
     enabled: !!actor,
@@ -275,7 +282,7 @@ export function useRegisterMachine() {
       runningLotNumber: string | null;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.registerMachine(
+      return fullActor(actor).registerMachine(
         args.name,
         args.machineType,
         args.machineNumber,
@@ -307,7 +314,7 @@ export function useUpdateMachine() {
       runningLotNumber: string | null;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.updateMachine(
+      return fullActor(actor).updateMachine(
         args.id,
         args.name,
         args.machineType,
@@ -331,7 +338,7 @@ export function useDeleteMachine() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("No actor");
-      return actor.deleteMachine(id);
+      return fullActor(actor).deleteMachine(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["machines"] });
@@ -348,7 +355,7 @@ export function useBatchStages() {
     queryKey: ["batchStages"],
     queryFn: async () => {
       if (!actor) return [];
-      const result = await actor.getAllBatchStages();
+      const result = await fullActor(actor).getAllBatchStages();
       return normalizeRecord(result);
     },
     enabled: !!actor,
@@ -371,7 +378,7 @@ export function useAddBatchStage() {
       operatorNotes: string;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.addBatchStage(
+      return fullActor(actor).addBatchStage(
         args.batchId,
         args.stage,
         args.weightInKg,
@@ -402,7 +409,7 @@ export function useUpdateBatchStage() {
       operatorNotes: string;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.updateBatchStage(
+      return fullActor(actor).updateBatchStage(
         args.id,
         args.batchId,
         args.stage,
@@ -424,7 +431,7 @@ export function useDeleteBatchStage() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("No actor");
-      return actor.deleteBatchStage(id);
+      return fullActor(actor).deleteBatchStage(id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["batchStages"] }),
   });
@@ -438,7 +445,7 @@ export function useQualityTests() {
     queryKey: ["qualityTests"],
     queryFn: async () => {
       if (!actor) return [];
-      const result = await actor.getAllQualityTests();
+      const result = await fullActor(actor).getAllQualityTests();
       return normalizeRecord(result);
     },
     enabled: !!actor,
@@ -462,7 +469,7 @@ export function useAddQualityTest() {
       pass: boolean;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.addQualityTest(
+      return fullActor(actor).addQualityTest(
         args.batchId,
         args.csp,
         args.elongationPercent,
@@ -498,7 +505,7 @@ export function useUpdateQualityTest() {
       pass: boolean;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.updateQualityTest(
+      return fullActor(actor).updateQualityTest(
         args.id,
         args.batchId,
         args.csp,
@@ -524,7 +531,7 @@ export function useDeleteQualityTest() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("No actor");
-      return actor.deleteQualityTest(id);
+      return fullActor(actor).deleteQualityTest(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["qualityTests"] });
@@ -541,7 +548,7 @@ export function useProductionLogs() {
     queryKey: ["productionLogs"],
     queryFn: async () => {
       if (!actor) return [];
-      const result = await actor.getAllProductionLogs();
+      const result = await fullActor(actor).getAllProductionLogs();
       return normalizeRecord(result);
     },
     enabled: !!actor,
@@ -562,7 +569,7 @@ export function useAddProductionLog() {
       operatorName: string;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.addProductionLog(
+      return fullActor(actor).addProductionLog(
         args.shift,
         args.date,
         args.machineId,
@@ -589,7 +596,7 @@ export function useUpdateProductionLog() {
       operatorName: string;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.updateProductionLog(
+      return fullActor(actor).updateProductionLog(
         args.id,
         args.shift,
         args.date,
@@ -609,7 +616,7 @@ export function useDeleteProductionLog() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("No actor");
-      return actor.deleteProductionLog(id);
+      return fullActor(actor).deleteProductionLog(id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["productionLogs"] }),
   });
@@ -623,7 +630,7 @@ export function useYarnInventory() {
     queryKey: ["yarnInventory"],
     queryFn: async () => {
       if (!actor) return [];
-      const result = await actor.getAllYarnInventory();
+      const result = await fullActor(actor).getAllYarnInventory();
       return normalizeRecord(result);
     },
     enabled: !!actor,
@@ -644,7 +651,7 @@ export function useAddYarnInventory() {
       status: InventoryStatus;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.addYarnInventory(
+      return fullActor(actor).addYarnInventory(
         args.lotNumber,
         args.yarnCountNe,
         args.twistDirection,
@@ -674,7 +681,7 @@ export function useUpdateYarnInventory() {
       status: InventoryStatus;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.updateYarnInventory(
+      return fullActor(actor).updateYarnInventory(
         args.id,
         args.lotNumber,
         args.yarnCountNe,
@@ -697,7 +704,7 @@ export function useDeleteYarnInventory() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("No actor");
-      return actor.deleteYarnInventory(id);
+      return fullActor(actor).deleteYarnInventory(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["yarnInventory"] });
@@ -714,7 +721,7 @@ export function usePurchaseOrders() {
     queryKey: ["purchaseOrders"],
     queryFn: async () => {
       if (!actor) return [];
-      const result = await actor.getAllPurchaseOrders();
+      const result = await fullActor(actor).getAllPurchaseOrders();
       return normalizeRecord(result);
     },
     enabled: !!actor,
@@ -735,7 +742,7 @@ export function useCreatePurchaseOrder() {
       expectedDeliveryDate: bigint;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.createPurchaseOrder(
+      return fullActor(actor).createPurchaseOrder(
         args.poNumber,
         args.supplier,
         args.materialName,
@@ -766,7 +773,7 @@ export function useUpdatePurchaseOrder() {
       expectedDeliveryDate: bigint;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.updatePurchaseOrder(
+      return fullActor(actor).updatePurchaseOrder(
         args.id,
         args.poNumber,
         args.supplier,
@@ -789,7 +796,7 @@ export function useDeletePurchaseOrder() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("No actor");
-      return actor.deletePurchaseOrder(id);
+      return fullActor(actor).deletePurchaseOrder(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
@@ -806,7 +813,7 @@ export function useInwardEntries() {
     queryKey: ["inwardEntries"],
     queryFn: async () => {
       if (!actor) return [];
-      const result = await actor.getAllInwardEntries();
+      const result = await fullActor(actor).getAllInwardEntries();
       return normalizeRecord(result);
     },
     enabled: !!actor,
@@ -829,7 +836,7 @@ export function useAddInwardEntry() {
       remarks: string;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.addInwardEntry(
+      return fullActor(actor).addInwardEntry(
         args.inwardNumber,
         args.purchaseOrderId,
         args.inwardDate,
@@ -857,7 +864,7 @@ export function useDeleteInwardEntry() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("No actor");
-      return actor.deleteInwardEntry(id);
+      return fullActor(actor).deleteInwardEntry(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inwardEntries"] });
@@ -877,7 +884,7 @@ export function useWarehouseStock() {
     queryKey: ["warehouseStock"],
     queryFn: async () => {
       if (!actor) return [];
-      const result = await actor.getAllWarehouseStock();
+      const result = await fullActor(actor).getAllWarehouseStock();
       return normalizeRecord(result);
     },
     enabled: !!actor,
@@ -893,7 +900,7 @@ export function useNextPONumber(enabled: boolean) {
     queryKey: ["nextPONumber"],
     queryFn: async () => {
       if (!actor) throw new Error("No actor");
-      return actor.getNextPONumber();
+      return fullActor(actor).getNextPONumber();
     },
     enabled: !!actor && enabled,
     retry: false,
@@ -907,7 +914,7 @@ export function useNextInwardNumber(enabled: boolean) {
     queryKey: ["nextInwardNumber"],
     queryFn: async () => {
       if (!actor) throw new Error("No actor");
-      return actor.getNextInwardNumber();
+      return fullActor(actor).getNextInwardNumber();
     },
     enabled: !!actor && enabled,
     retry: false,
@@ -921,7 +928,7 @@ export function usePOBalance(purchaseOrderId: bigint | null) {
     queryKey: ["poBalance", String(purchaseOrderId)],
     queryFn: async () => {
       if (!actor || purchaseOrderId === null) throw new Error("No actor or id");
-      const result = await actor.getPOBalance(purchaseOrderId);
+      const result = await fullActor(actor).getPOBalance(purchaseOrderId);
       return result ? normalizeRecord(result) : null;
     },
     enabled: !!actor && purchaseOrderId !== null,
@@ -940,7 +947,7 @@ export function useProductionOrderBalance(
     queryFn: async () => {
       if (!actor || yarnCountNe === null || !lotNumber)
         throw new Error("No params");
-      const result = await actor.getProductionOrderBalance(
+      const result = await fullActor(actor).getProductionOrderBalance(
         yarnCountNe,
         lotNumber,
       );
@@ -960,7 +967,7 @@ export function useMaterialIssues() {
     queryKey: ["materialIssues"],
     queryFn: async () => {
       if (!actor) return [];
-      const result = await actor.getAllMaterialIssues();
+      const result = await fullActor(actor).getAllMaterialIssues();
       return normalizeRecord(result);
     },
     enabled: !!actor,
@@ -981,7 +988,7 @@ export function useCreateMaterialIssue() {
       remarks: string;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.createMaterialIssue(
+      return fullActor(actor).createMaterialIssue(
         args.department,
         args.warehouse,
         args.materialName,
@@ -1006,7 +1013,7 @@ export function useDeleteMaterialIssue() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("No actor");
-      return actor.deleteMaterialIssue(id);
+      return fullActor(actor).deleteMaterialIssue(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["materialIssues"] });
@@ -1023,7 +1030,7 @@ export function useNextIssueNumber(enabled: boolean) {
     queryKey: ["nextIssueNumber"],
     queryFn: async () => {
       if (!actor) throw new Error("No actor");
-      return actor.getNextIssueNumber();
+      return fullActor(actor).getNextIssueNumber();
     },
     enabled: !!actor && enabled,
     retry: false,
@@ -1039,7 +1046,7 @@ export function useDispatchEntries() {
     queryKey: ["dispatchEntries"],
     queryFn: async () => {
       if (!actor) return [];
-      const result = await actor.getAllDispatchEntries();
+      const result = await fullActor(actor).getAllDispatchEntries();
       return normalizeRecord(result);
     },
     enabled: !!actor,
@@ -1059,7 +1066,7 @@ export function useCreateDispatchEntry() {
       remarks: string;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.createDispatchEntry(
+      return fullActor(actor).createDispatchEntry(
         args.lotNumber,
         args.destination,
         args.quantityKg,
@@ -1082,7 +1089,7 @@ export function useDeleteDispatchEntry() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("No actor");
-      return actor.deleteDispatchEntry(id);
+      return fullActor(actor).deleteDispatchEntry(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dispatchEntries"] });
@@ -1098,7 +1105,7 @@ export function useNextDispatchNumber(enabled: boolean) {
     queryKey: ["nextDispatchNumber"],
     queryFn: async () => {
       if (!actor) throw new Error("No actor");
-      return actor.getNextDispatchNumber();
+      return fullActor(actor).getNextDispatchNumber();
     },
     enabled: !!actor && enabled,
     retry: false,
@@ -1112,7 +1119,7 @@ export function useDispatchBalance(lotNumber: string | null) {
     queryKey: ["dispatchBalance", lotNumber],
     queryFn: async () => {
       if (!actor || !lotNumber) throw new Error("No params");
-      const result = await actor.getDispatchBalance(lotNumber);
+      const result = await fullActor(actor).getDispatchBalance(lotNumber);
       return result ? normalizeRecord(result) : null;
     },
     enabled: !!actor && !!lotNumber,
@@ -1129,7 +1136,7 @@ export function usePackingEntries() {
     queryKey: ["packingEntries"],
     queryFn: async () => {
       if (!actor) return [];
-      const result = await actor.getAllPackingEntries();
+      const result = await fullActor(actor).getAllPackingEntries();
       return normalizeRecord(result);
     },
     enabled: !!actor,
@@ -1148,7 +1155,7 @@ export function useCreatePackingEntry() {
       packingDate: bigint;
     }) => {
       if (!actor) throw new Error("No actor");
-      return actor.createPackingEntry(
+      return fullActor(actor).createPackingEntry(
         args.lotNumber,
         args.quantityKg,
         args.remarks,
@@ -1170,7 +1177,7 @@ export function useDeletePackingEntry() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("No actor");
-      return actor.deletePackingEntry(id);
+      return fullActor(actor).deletePackingEntry(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["packingEntries"] });
@@ -1186,7 +1193,7 @@ export function useNextPackingNumber(enabled: boolean) {
     queryKey: ["nextPackingNumber"],
     queryFn: async () => {
       if (!actor) throw new Error("No actor");
-      return actor.getNextPackingNumber();
+      return fullActor(actor).getNextPackingNumber();
     },
     enabled: !!actor && enabled,
     retry: false,
@@ -1200,7 +1207,7 @@ export function usePackingBalance(lotNumber: string | null) {
     queryKey: ["packingBalance", lotNumber],
     queryFn: async () => {
       if (!actor || !lotNumber) throw new Error("No params");
-      const result = await actor.getPackingBalance(lotNumber);
+      const result = await fullActor(actor).getPackingBalance(lotNumber);
       return result ? normalizeRecord(result) : null;
     },
     enabled: !!actor && !!lotNumber,

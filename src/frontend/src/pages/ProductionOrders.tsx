@@ -39,6 +39,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
+import { useDropdownOptionsContext } from "../hooks/DropdownOptionsContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useCreateProductionOrder,
@@ -63,6 +64,7 @@ const defaultForm = {
 export default function ProductionOrders() {
   const { identity } = useInternetIdentity();
   const isLoggedIn = !!identity;
+  const { productTypes, endUses } = useDropdownOptionsContext();
   const { data: orders = [], isLoading } = useProductionOrders();
   const createMutation = useCreateProductionOrder();
   const updateMutation = useUpdateProductionOrder();
@@ -360,12 +362,11 @@ export default function ProductionOrders() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="carded">Carded</SelectItem>
-                    <SelectItem value="combed">Combed</SelectItem>
-                    <SelectItem value="polyester">Polyester</SelectItem>
-                    <SelectItem value="bamboo">Bamboo</SelectItem>
-                    <SelectItem value="viscose">Viscose</SelectItem>
-                    <SelectItem value="lt">LT</SelectItem>
+                    {productTypes.map((pt) => (
+                      <SelectItem key={pt.value} value={pt.value}>
+                        {pt.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -401,11 +402,11 @@ export default function ProductionOrders() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="warp">Warp</SelectItem>
-                    <SelectItem value="weft">Weft</SelectItem>
-                    <SelectItem value="pile">Pile</SelectItem>
-                    <SelectItem value="ground">Ground</SelectItem>
-                    <SelectItem value="tfo">TFO</SelectItem>
+                    {endUses.map((eu) => (
+                      <SelectItem key={eu.value} value={eu.value}>
+                        {eu.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

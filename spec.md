@@ -1,25 +1,24 @@
 # SpinMill Pro
 
 ## Current State
-The Material Issue section exists under Procurement. Users can create a new issue, which deducts stock from the warehouse and performs FIFO deduction from raw materials. However, users are getting "Operation failed" when trying to submit a new material issue entry.
+Full textile spinning mill management app with: Raw Materials, Purchase Orders, Inward Entry, Material Issue, Production Orders, Machines, Production Logs, Packing Entry, Yarn Inventory, Yarn Dispatch, Reports, User Management, and Dropdown Options pages.
+
+Raw Materials stock is stored as individual records (per inward entry) with `grade` field = material name. A "Stock by Grade" summary is shown at the top of Raw Materials page, computed by summing `weightKg` across all records grouped by `grade`.
+
+When a Material Issue is created, the backend deducts from `warehouseStock` (keyed by warehouse + materialName) AND does a FIFO deduction from individual `rawMaterials` records.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Nothing new to add
+- Nothing new
 
 ### Modify
-- **Backend**: Fix `createMaterialIssue` so the operation succeeds when valid stock exists
-  - The FIFO deduction checks `material.grade == grade`, but raw materials created from inward entries use `materialName` as the `grade` field. The grade filter must be removed or made optional so the FIFO deduction works based on warehouse match alone.
-  - The backend `getNextIssueNumber` and `getPackingBalance` are `query` functions that call `AccessControl.hasPermission` with `caller` -- but `query` functions cannot authenticate the caller (no identity verification). Move the auth check to only `shared` (update) functions. For `query` functions that need caller identity, change to `shared query` or remove the auth guard.
-  - `getAllMaterialIssues` also has an unnecessary auth check for a read-only function -- allow anonymous reads similar to other list functions.
-- **Frontend**: In MaterialIssue.tsx, show the actual backend error message in the toast (not just "Operation failed") to help diagnose future issues.
+- **Backend `createMaterialIssue` FIFO deduction**: The FIFO loop currently matches raw material records by warehouse only. It must ALSO match by `material.grade == materialName` so that only records for the same material are deducted. This ensures the "Stock by Grade" summary remains accurate after an issue is done.
 
 ### Remove
-- Nothing to remove
+- Nothing
 
 ## Implementation Plan
-1. In `main.mo`, change `createMaterialIssue` FIFO deduction to match on warehouse only (not grade), since raw material `grade` = `materialName` from inward, not a separate grade field.
-2. Change `getAllMaterialIssues` from requiring auth to allowing anonymous reads (consistent with other getAll functions).
-3. Change `getNextIssueNumber` from `query` with caller auth check to removing the auth guard (it's a safe read).
-4. In `MaterialIssue.tsx`, update the catch block to extract and display the real error message from the backend trap.
+1. In `createMaterialIssue`, change the FIFO deduction condition from matching on warehouse only to matching on BOTH warehouse AND `material.grade == materialName`.
+2. The `warehouseStock` deduction (keyed by `warehouse + materialName`) already works correctly and does not need changes.
+3. No frontend changes needed.

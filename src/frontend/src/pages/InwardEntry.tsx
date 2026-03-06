@@ -33,6 +33,7 @@ import type { InwardEntry as InwardEntryType, Warehouse } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
+import { useDropdownOptionsContext } from "../hooks/DropdownOptionsContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAddInwardEntry,
@@ -103,6 +104,7 @@ const defaultForm = {
 export default function InwardEntry() {
   const { identity } = useInternetIdentity();
   const isLoggedIn = !!identity;
+  const { materialNames } = useDropdownOptionsContext();
 
   const { data: entries = [], isLoading: entriesLoading } = useInwardEntries();
   const { data: purchaseOrders = [], isLoading: poLoading } =
@@ -437,20 +439,7 @@ export default function InwardEntry() {
                   <SelectValue placeholder="Select material..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {[
-                    "Cotton",
-                    "Comber Noil",
-                    "Flat strips",
-                    "Polyester",
-                    "RP",
-                    "Viscose",
-                    "Bamboo",
-                    "Silver Ionic",
-                    "Break comber",
-                    "Navy Blue",
-                    "Further Cotton",
-                    "US Cotton",
-                  ].map((m) => (
+                  {materialNames.map((m) => (
                     <SelectItem key={m} value={m}>
                       {m}
                     </SelectItem>

@@ -42,6 +42,7 @@ import type { DispatchDestination } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
+import { useDropdownOptionsContext } from "../hooks/DropdownOptionsContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useCreateDispatchEntry,
@@ -54,25 +55,7 @@ import {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DESTINATION_OPTIONS: { value: string; label: string }[] = [
-  { value: "weaving", label: "Weaving" },
-  { value: "kolhapur", label: "Kolhapur" },
-  { value: "ambala", label: "Ambala" },
-  { value: "outside", label: "Outside" },
-  { value: "amravati", label: "Amravati" },
-  { value: "softWinding", label: "Soft Winding" },
-  { value: "tfo", label: "TFO" },
-];
-
-const DESTINATION_LABEL: Record<string, string> = {
-  weaving: "Weaving",
-  kolhapur: "Kolhapur",
-  ambala: "Ambala",
-  outside: "Outside",
-  amravati: "Amravati",
-  softWinding: "Soft Winding",
-  tfo: "TFO",
-};
+// Destination label map is now dynamic — built from context in the component
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -92,8 +75,11 @@ function formatEndUse(eu: string): string {
   return eu.charAt(0).toUpperCase() + eu.slice(1);
 }
 
-function formatDestination(dest: string): string {
-  return DESTINATION_LABEL[dest] ?? dest;
+function formatDestination(
+  dest: string,
+  labelMap: Record<string, string>,
+): string {
+  return labelMap[dest] ?? dest;
 }
 
 // ─── Dispatch Balance Panel ───────────────────────────────────────────────────
@@ -287,6 +273,12 @@ const defaultForm = {
 export default function YarnDispatch() {
   const { identity } = useInternetIdentity();
   const isLoggedIn = !!identity;
+  const { destinations } = useDropdownOptionsContext();
+
+  // Build label map from context options
+  const destinationLabelMap = Object.fromEntries(
+    destinations.map((d) => [d.value, d.label]),
+  );
 
   const { data: entries = [], isLoading } = useDispatchEntries();
   const { data: packingEntries = [] } = usePackingEntries();
@@ -474,7 +466,10 @@ export default function YarnDispatch() {
                       <div className="flex items-center gap-1.5">
                         <MapPin className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                         <span className="text-sm font-medium">
-                          {formatDestination(entry.destination)}
+                          {formatDestination(
+                            entry.destination,
+                            destinationLabelMap,
+                          )}
                         </span>
                       </div>
                     </TableCell>
@@ -593,7 +588,7 @@ export default function YarnDispatch() {
                   <SelectValue placeholder="Select destination..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {DESTINATION_OPTIONS.map((opt) => (
+                  {destinations.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
                     </SelectItem>

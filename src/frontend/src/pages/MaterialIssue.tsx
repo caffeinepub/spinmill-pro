@@ -40,6 +40,7 @@ import type { Warehouse } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
+import { useDropdownOptionsContext } from "../hooks/DropdownOptionsContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useCreateMaterialIssue,
@@ -50,32 +51,6 @@ import {
 } from "../hooks/useQueries";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
-
-const MATERIAL_NAMES = [
-  "Cotton",
-  "Comber Noil",
-  "Flat strips",
-  "Polyester",
-  "RP",
-  "Viscose",
-  "Bamboo",
-  "Silver Ionic",
-  "Break comber",
-  "Navy Blue",
-  "Further Cotton",
-  "US Cotton",
-];
-
-const DEPARTMENTS = [
-  "Blowroom",
-  "Carding",
-  "Drawing",
-  "Combing",
-  "Roving",
-  "Ring Frame",
-  "Autocoro",
-  "OE",
-];
 
 const WAREHOUSE_OPTIONS: { value: string; label: string }[] = [
   { value: "oeRawMaterial", label: "OE Raw Material" },
@@ -138,6 +113,7 @@ const defaultForm = {
 export default function MaterialIssue() {
   const { identity } = useInternetIdentity();
   const isLoggedIn = !!identity;
+  const { materialNames, departments } = useDropdownOptionsContext();
 
   const { data: issues = [], isLoading } = useMaterialIssues();
   const { data: warehouseStock = [] } = useWarehouseStock();
@@ -468,7 +444,7 @@ export default function MaterialIssue() {
                     <SelectValue placeholder="Select department..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {DEPARTMENTS.map((d) => (
+                    {departments.map((d) => (
                       <SelectItem key={d} value={d}>
                         {d}
                       </SelectItem>
@@ -547,7 +523,7 @@ export default function MaterialIssue() {
                     <SelectValue placeholder="Select material..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {MATERIAL_NAMES.map((m) => (
+                    {materialNames.map((m) => (
                       <SelectItem key={m} value={m}>
                         {m}
                       </SelectItem>

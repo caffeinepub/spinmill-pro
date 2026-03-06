@@ -235,6 +235,7 @@ export type SpinningUnit = { 'openend' : null } |
 export type Time = bigint;
 export type TwistDirection = { 's' : null } |
   { 'z' : null };
+export interface UserEntry { 'principal' : Principal, 'role' : UserRole }
 export interface UserProfile {
   'name' : string,
   'role' : string,
@@ -337,6 +338,7 @@ export interface _SERVICE {
   'getAllPurchaseOrders' : ActorMethod<[], Array<PurchaseOrder>>,
   'getAllQualityTests' : ActorMethod<[], Array<QualityTest>>,
   'getAllRawMaterials' : ActorMethod<[], Array<RawMaterial>>,
+  'getAllUsers' : ActorMethod<[], Array<UserEntry>>,
   'getAllWarehouseStock' : ActorMethod<[], Array<WarehouseStock>>,
   'getAllYarnInventory' : ActorMethod<[], Array<YarnInventory>>,
   'getBatchStage' : ActorMethod<[bigint], [] | [BatchStage]>,
@@ -379,6 +381,7 @@ export interface _SERVICE {
     ],
     bigint
   >,
+  'removeUser' : ActorMethod<[Principal], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'updateBatchStage' : ActorMethod<
     [bigint, bigint, ProcessStage, bigint, bigint, bigint, Time, Time, string],
@@ -440,6 +443,7 @@ export interface _SERVICE {
     [bigint, string, string, string, bigint, RawMaterialStatus, Warehouse],
     undefined
   >,
+  'updateUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'updateYarnInventory' : ActorMethod<
     [bigint, string, bigint, TwistDirection, bigint, bigint, InventoryStatus],
     undefined
