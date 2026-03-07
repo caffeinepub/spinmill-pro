@@ -18,6 +18,7 @@ import {
   Package2,
   PackageOpen,
   PackageSearch,
+  RefreshCw,
   Settings2,
   ShoppingCart,
   Truck,
@@ -198,6 +199,14 @@ const groups = [
 export default function App() {
   const [activePage, setActivePage] = useState<PageId>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  function handleRefresh() {
+    setIsRefreshing(true);
+    setRefreshKey((k) => k + 1);
+    setTimeout(() => setIsRefreshing(false), 800);
+  }
   const { identity, login, clear, isLoggingIn, isInitializing } =
     useInternetIdentity();
   const isLoggedIn = !!identity;
@@ -337,21 +346,35 @@ export default function App() {
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Top Bar (mobile + breadcrumb) */}
-          <header className="flex items-center h-12 px-4 border-b border-border/60 bg-card/50 backdrop-blur-sm flex-shrink-0">
+          <header className="flex items-center h-12 px-4 border-b border-border/60 bg-card/50 backdrop-blur-sm flex-shrink-0 gap-2">
             <button
               type="button"
-              className="md:hidden mr-3 w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="md:hidden mr-1 w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               onClick={() => setSidebarOpen(true)}
               aria-label="Open navigation"
               data-ocid="nav.toggle"
             >
               <Menu className="w-4 h-4" />
             </button>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-1">
               <span>SpinMill Pro</span>
               <ChevronRight className="w-3 h-3" />
               <span className="text-foreground font-medium">{activeLabel}</span>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              data-ocid="nav.refresh_button"
+              className="h-7 px-2.5 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              aria-label="Refresh"
+            >
+              <RefreshCw
+                className={cn("w-3.5 h-3.5", isRefreshing && "animate-spin")}
+              />
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
           </header>
 
           {/* Login Banner */}
@@ -375,7 +398,7 @@ export default function App() {
           )}
 
           {/* Page Content */}
-          <main className="flex-1 overflow-y-auto">
+          <main className="flex-1 overflow-y-auto" key={refreshKey}>
             {pageComponents[activePage]}
           </main>
         </div>

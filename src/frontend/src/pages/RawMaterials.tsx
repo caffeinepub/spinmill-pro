@@ -265,11 +265,11 @@ export default function RawMaterials() {
     );
   }, [issues]);
 
-  // Grade-wise stock summary: group by materialName (lotNumber) + warehouse
-  // lotNumber holds the material name for opening stock entries (set by backend)
-  // Show correct balance = total received - issued for that material+warehouse
+  // Grade-wise stock summary: group by grade (material name) + warehouse
+  // For both inward entries and opening stock entries, m.grade holds the material name
+  // (e.g. "Cotton", "Comber Noil"). Never use lotNumber (which is "IW-2026-xxx" for inward).
   const gradeStockEntries = useMemo((): GradeStockEntry[] => {
-    // Step 1: aggregate raw totals per (materialName = lotNumber + warehouse)
+    // Step 1: aggregate raw totals per (grade/material name + warehouse)
     const inwardMap: Record<
       string,
       {
@@ -281,10 +281,9 @@ export default function RawMaterials() {
     > = {};
     for (const m of materials) {
       const warehouse = m.warehouse as string;
-      // lotNumber stores the material name (e.g. "Cotton", "Viscose") for opening
-      // stock entries. Use it as the primary identifier, fall back to grade.
+      // m.grade always holds the material name for both inward entries and opening stock
       const displayName =
-        m.lotNumber && m.lotNumber.trim() !== "" ? m.lotNumber : m.grade;
+        m.grade && m.grade.trim() !== "" ? m.grade : m.lotNumber;
       const key = `${displayName}||${warehouse}`;
       if (!inwardMap[key]) {
         inwardMap[key] = {
@@ -298,7 +297,7 @@ export default function RawMaterials() {
     }
 
     // Step 2: subtract issued quantities
-    // Issues track materialName + warehouse; materialName matches lotNumber (the material name)
+    // Issues track materialName + warehouse; materialName matches the grade field
     const entries: GradeStockEntry[] = Object.values(inwardMap).map((entry) => {
       const issueKey = `${entry.materialName}||${entry.warehouse}`;
       const issued = issuedByMaterialWarehouse[issueKey] || 0;
