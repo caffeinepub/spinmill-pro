@@ -1,9 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { RawMaterial, RawMaterialStatus, Warehouse } from "../backend.d";
 import type {
   BatchStage,
   DashboardStats,
+  DispatchBalance,
+  DispatchDestination,
+  DispatchEntry,
   EndUse,
-  backendInterface as FullBackendInterface,
+  FullBackendInterface,
   InventoryStatus,
   InwardEntry,
   Machine,
@@ -18,17 +22,16 @@ import type {
   ProductType,
   ProductionLog,
   ProductionOrder,
+  ProductionOrderBalance,
   PurchaseOrder,
   QualityTest,
-  RawMaterial,
-  RawMaterialStatus,
   Shift,
   SpinningUnit,
   TwistDirection,
-  Warehouse,
   WarehouseStock,
   YarnInventory,
-} from "../backend.d";
+  YarnOpeningStockRecord,
+} from "../types";
 import { normalizeRecord } from "../utils/candid";
 import { useActor } from "./useActor";
 
@@ -942,7 +945,7 @@ export function useProductionOrderBalance(
   lotNumber: string | null,
 ) {
   const { actor } = useActor();
-  return useQuery<import("../backend.d").ProductionOrderBalance | null>({
+  return useQuery<ProductionOrderBalance | null>({
     queryKey: ["productionOrderBalance", String(yarnCountNe), lotNumber],
     queryFn: async () => {
       if (!actor || yarnCountNe === null || !lotNumber)
@@ -1042,7 +1045,7 @@ export function useNextIssueNumber(enabled: boolean) {
 
 export function useDispatchEntries() {
   const { actor } = useActor();
-  return useQuery<import("../backend.d").DispatchEntry[]>({
+  return useQuery<DispatchEntry[]>({
     queryKey: ["dispatchEntries"],
     queryFn: async () => {
       if (!actor) return [];
@@ -1060,7 +1063,7 @@ export function useCreateDispatchEntry() {
   return useMutation({
     mutationFn: async (args: {
       lotNumber: string;
-      destination: import("../backend.d").DispatchDestination;
+      destination: DispatchDestination;
       quantityKg: bigint;
       dispatchDate: bigint;
       remarks: string;
@@ -1115,7 +1118,7 @@ export function useNextDispatchNumber(enabled: boolean) {
 
 export function useDispatchBalance(lotNumber: string | null) {
   const { actor } = useActor();
-  return useQuery<import("../backend.d").DispatchBalance | null>({
+  return useQuery<DispatchBalance | null>({
     queryKey: ["dispatchBalance", lotNumber],
     queryFn: async () => {
       if (!actor || !lotNumber) throw new Error("No params");
@@ -1282,12 +1285,12 @@ export function useDeleteRawMaterialOpeningStock() {
 
 export function useYarnOpeningStock() {
   const { actor } = useActor();
-  return useQuery<YarnInventory[]>({
+  return useQuery<YarnOpeningStockRecord[]>({
     queryKey: ["yarnOpeningStock"],
     queryFn: async () => {
       if (!actor) return [];
       const result = await fullActor(actor).getAllYarnOpeningStock();
-      return normalizeRecord(result);
+      return normalizeRecord(result) as YarnOpeningStockRecord[];
     },
     enabled: !!actor,
     retry: 2,

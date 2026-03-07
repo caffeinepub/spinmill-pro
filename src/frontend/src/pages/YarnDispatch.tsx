@@ -38,7 +38,6 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { DispatchDestination } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
@@ -52,6 +51,7 @@ import {
   useNextDispatchNumber,
   usePackingEntries,
 } from "../hooks/useQueries";
+import type { DispatchDestination } from "../types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

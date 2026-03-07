@@ -10,209 +10,17 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface BatchStage {
-  'id' : bigint,
-  'startTime' : Time,
-  'operatorNotes' : string,
-  'endTime' : Time,
-  'weightInKg' : bigint,
-  'weightOutKg' : bigint,
-  'stage' : ProcessStage,
-  'batchId' : bigint,
-  'machineId' : bigint,
-}
-export interface DashboardStats {
-  'totalRawMaterialWeightAvailable' : bigint,
-  'ringWarehouseStockKg' : bigint,
-  'recentQualityTestPassRate' : bigint,
-  'totalDispatchedTodayKg' : bigint,
-  'totalYarnInventoryWeight' : bigint,
-  'oeWarehouseStockKg' : bigint,
-  'totalActiveOrders' : bigint,
-  'totalMachinesRunning' : bigint,
-  'totalInwardTodayKg' : bigint,
-}
-export interface DispatchBalance {
-  'yarnCountNe' : bigint,
-  'productType' : ProductType,
-  'totalPackedKg' : bigint,
-  'lotNumber' : string,
-  'spinningUnit' : SpinningUnit,
-  'totalDispatchedKg' : bigint,
-  'availableKg' : bigint,
-  'endUse' : EndUse,
-}
-export type DispatchDestination = { 'tfo' : null } |
-  { 'amravati' : null } |
-  { 'kolhapur' : null } |
-  { 'ambala' : null } |
-  { 'weaving' : null } |
-  { 'outside' : null } |
-  { 'softWinding' : null };
-export interface DispatchEntry {
-  'id' : bigint,
-  'destination' : DispatchDestination,
-  'yarnCountNe' : bigint,
-  'dispatchDate' : Time,
-  'productType' : ProductType,
-  'lotNumber' : string,
-  'spinningUnit' : SpinningUnit,
-  'dispatchNumber' : string,
-  'remarks' : string,
-  'quantityKg' : bigint,
-  'endUse' : EndUse,
-}
 export type EndUse = { 'tfo' : null } |
   { 'ground' : null } |
   { 'pile' : null } |
   { 'warp' : null } |
   { 'weft' : null };
-export type InventoryStatus = { 'inStock' : null } |
-  { 'dispatched' : null };
-export interface InwardEntry {
-  'id' : bigint,
-  'receivedQty' : bigint,
-  'inwardDate' : Time,
-  'inwardNumber' : string,
-  'vehicleNumber' : string,
-  'purchaseOrderId' : bigint,
-  'warehouse' : Warehouse,
-  'materialName' : string,
-  'remarks' : string,
-}
-export interface Machine {
-  'id' : bigint,
-  'status' : MachineStatus,
-  'maintenanceStartTime' : [] | [Time],
-  'runningLotNumber' : [] | [string],
-  'name' : string,
-  'currentOrderId' : [] | [bigint],
-  'totalMaintenanceDurationMins' : bigint,
-  'runningCount' : [] | [bigint],
-  'machineNumber' : string,
-  'machineType' : MachineType,
-}
-export type MachineStatus = { 'idle' : null } |
-  { 'maintenance' : null } |
-  { 'running' : null };
-export type MachineType = { 'ringFrame' : null } |
-  { 'autocoro' : null } |
-  { 'combing' : null } |
-  { 'blowroom' : null } |
-  { 'carding' : null } |
-  { 'roving' : null } |
-  { 'winding' : null } |
-  { 'drawing' : null };
-export interface MaterialIssue {
-  'id' : bigint,
-  'issueDate' : Time,
-  'issuedQty' : bigint,
-  'issueNumber' : string,
-  'grade' : string,
-  'department' : string,
-  'warehouse' : Warehouse,
-  'materialName' : string,
-  'remarks' : string,
-}
-export type OrderStatus = { 'cancelled' : null } |
-  { 'pending' : null } |
-  { 'completed' : null } |
-  { 'inProgress' : null };
-export interface POBalance {
-  'receivedQty' : bigint,
-  'orderedQty' : bigint,
-  'balanceQty' : bigint,
-}
-export interface PackingBalance {
-  'yarnCountNe' : bigint,
-  'productType' : ProductType,
-  'totalPackedKg' : bigint,
-  'lotNumber' : string,
-  'spinningUnit' : SpinningUnit,
-  'availableKg' : bigint,
-  'endUse' : EndUse,
-}
-export interface PackingEntry {
-  'id' : bigint,
-  'yarnCountNe' : bigint,
-  'packingDate' : Time,
-  'packingNumber' : string,
-  'productType' : ProductType,
-  'lotNumber' : string,
-  'spinningUnit' : SpinningUnit,
-  'remarks' : string,
-  'quantityKg' : bigint,
-  'endUse' : EndUse,
-}
-export type ProcessStage = { 'qualityCheck' : null } |
-  { 'combing' : null } |
-  { 'finished' : null } |
-  { 'blowroom' : null } |
-  { 'carding' : null } |
-  { 'roving' : null } |
-  { 'winding' : null } |
-  { 'ringSpinning' : null } |
-  { 'drawing' : null };
 export type ProductType = { 'lt' : null } |
   { 'bamboo' : null } |
   { 'polyester' : null } |
   { 'viscose' : null } |
   { 'carded' : null } |
   { 'combed' : null };
-export interface ProductionLog {
-  'id' : bigint,
-  'date' : Time,
-  'operatorName' : string,
-  'shift' : Shift,
-  'efficiencyPercent' : bigint,
-  'machineId' : bigint,
-  'quantityKg' : bigint,
-}
-export interface ProductionOrder {
-  'id' : bigint,
-  'status' : OrderStatus,
-  'yarnCountNe' : bigint,
-  'twistDirection' : TwistDirection,
-  'productType' : ProductType,
-  'lotNumber' : string,
-  'spinningUnit' : SpinningUnit,
-  'targetDate' : Time,
-  'orderNumber' : string,
-  'quantityKg' : bigint,
-  'endUse' : EndUse,
-}
-export interface ProductionOrderBalance {
-  'isFulfilled' : boolean,
-  'orderId' : bigint,
-  'balanceQty' : bigint,
-  'orderQty' : bigint,
-  'producedQty' : bigint,
-}
-export interface PurchaseOrder {
-  'id' : bigint,
-  'status' : PurchaseOrderStatus,
-  'orderedQty' : bigint,
-  'expectedDeliveryDate' : Time,
-  'supplier' : string,
-  'orderDate' : Time,
-  'materialName' : string,
-  'poNumber' : string,
-}
-export type PurchaseOrderStatus = { 'closed' : null } |
-  { 'open' : null } |
-  { 'partiallyReceived' : null };
-export interface QualityTest {
-  'id' : bigint,
-  'csp' : bigint,
-  'evennessPercent' : bigint,
-  'neps' : bigint,
-  'pass' : boolean,
-  'elongationPercent' : bigint,
-  'thinPlaces' : bigint,
-  'batchId' : bigint,
-  'hairinessIndex' : bigint,
-  'thickPlaces' : bigint,
-}
 export interface RawMaterial {
   'id' : bigint,
   'status' : RawMaterialStatus,
@@ -227,14 +35,9 @@ export interface RawMaterial {
 export type RawMaterialStatus = { 'available' : null } |
   { 'consumed' : null } |
   { 'inUse' : null };
-export type Shift = { 'morning' : null } |
-  { 'night' : null } |
-  { 'afternoon' : null };
 export type SpinningUnit = { 'openend' : null } |
   { 'ringSpinning' : null };
 export type Time = bigint;
-export type TwistDirection = { 's' : null } |
-  { 'z' : null };
 export interface UserEntry { 'principal' : Principal, 'role' : UserRole }
 export interface UserProfile {
   'name' : string,
@@ -246,48 +49,20 @@ export type UserRole = { 'admin' : null } |
   { 'guest' : null };
 export type Warehouse = { 'oeRawMaterial' : null } |
   { 'ringRawMaterial' : null };
-export interface WarehouseStock {
-  'totalQty' : bigint,
-  'warehouse' : Warehouse,
-  'materialName' : string,
-}
-export interface YarnInventory {
+export interface YarnOpeningStockRecord {
   'id' : bigint,
-  'status' : InventoryStatus,
   'yarnCountNe' : bigint,
-  'twistDirection' : TwistDirection,
-  'quantityCones' : bigint,
+  'createdAt' : Time,
+  'productType' : ProductType,
   'lotNumber' : string,
   'weightKg' : bigint,
+  'spinningUnit' : SpinningUnit,
+  'endUse' : EndUse,
 }
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
-  'addBatchStage' : ActorMethod<
-    [bigint, ProcessStage, bigint, bigint, bigint, Time, Time, string],
-    bigint
-  >,
-  'addInwardEntry' : ActorMethod<
-    [string, bigint, Time, string, bigint, Warehouse, string, string],
-    bigint
-  >,
-  'addProductionLog' : ActorMethod<
-    [Shift, Time, bigint, bigint, bigint, string],
-    bigint
-  >,
-  'addQualityTest' : ActorMethod<
-    [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, boolean],
-    bigint
-  >,
-  'addRawMaterial' : ActorMethod<
-    [string, string, string, bigint, Warehouse, [] | [bigint]],
-    bigint
-  >,
   'addRawMaterialOpeningStock' : ActorMethod<
     [string, string, string, bigint, Warehouse, Time],
-    bigint
-  >,
-  'addYarnInventory' : ActorMethod<
-    [string, bigint, TwistDirection, bigint, bigint, InventoryStatus],
     bigint
   >,
   'addYarnOpeningStock' : ActorMethod<
@@ -295,171 +70,19 @@ export interface _SERVICE {
     bigint
   >,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'createDispatchEntry' : ActorMethod<
-    [string, DispatchDestination, bigint, Time, string],
-    bigint
-  >,
-  'createMaterialIssue' : ActorMethod<
-    [string, Warehouse, string, string, bigint, string],
-    bigint
-  >,
-  'createPackingEntry' : ActorMethod<[string, bigint, string, Time], bigint>,
-  'createProductionOrder' : ActorMethod<
-    [
-      string,
-      string,
-      ProductType,
-      SpinningUnit,
-      EndUse,
-      bigint,
-      TwistDirection,
-      bigint,
-      Time,
-      OrderStatus,
-    ],
-    bigint
-  >,
-  'createPurchaseOrder' : ActorMethod<
-    [string, string, string, bigint, Time, Time],
-    bigint
-  >,
-  'deleteBatchStage' : ActorMethod<[bigint], undefined>,
-  'deleteDispatchEntry' : ActorMethod<[bigint], undefined>,
-  'deleteInwardEntry' : ActorMethod<[bigint], undefined>,
-  'deleteMachine' : ActorMethod<[bigint], undefined>,
-  'deleteMaterialIssue' : ActorMethod<[bigint], undefined>,
-  'deletePackingEntry' : ActorMethod<[bigint], undefined>,
-  'deleteProductionLog' : ActorMethod<[bigint], undefined>,
-  'deleteProductionOrder' : ActorMethod<[bigint], undefined>,
-  'deletePurchaseOrder' : ActorMethod<[bigint], undefined>,
-  'deleteQualityTest' : ActorMethod<[bigint], undefined>,
-  'deleteRawMaterial' : ActorMethod<[bigint], undefined>,
   'deleteRawMaterialOpeningStock' : ActorMethod<[bigint], undefined>,
-  'deleteYarnInventory' : ActorMethod<[bigint], undefined>,
   'deleteYarnOpeningStock' : ActorMethod<[bigint], undefined>,
-  'getAllBatchStages' : ActorMethod<[], Array<BatchStage>>,
-  'getAllDispatchEntries' : ActorMethod<[], Array<DispatchEntry>>,
-  'getAllInwardEntries' : ActorMethod<[], Array<InwardEntry>>,
-  'getAllMachines' : ActorMethod<[], Array<Machine>>,
-  'getAllMaterialIssues' : ActorMethod<[], Array<MaterialIssue>>,
-  'getAllPackingEntries' : ActorMethod<[], Array<PackingEntry>>,
-  'getAllProductionLogs' : ActorMethod<[], Array<ProductionLog>>,
-  'getAllProductionOrders' : ActorMethod<[], Array<ProductionOrder>>,
-  'getAllPurchaseOrders' : ActorMethod<[], Array<PurchaseOrder>>,
-  'getAllQualityTests' : ActorMethod<[], Array<QualityTest>>,
   'getAllRawMaterialOpeningStock' : ActorMethod<[], Array<RawMaterial>>,
   'getAllRawMaterials' : ActorMethod<[], Array<RawMaterial>>,
   'getAllUsers' : ActorMethod<[], Array<UserEntry>>,
-  'getAllWarehouseStock' : ActorMethod<[], Array<WarehouseStock>>,
-  'getAllYarnInventory' : ActorMethod<[], Array<YarnInventory>>,
-  'getAllYarnOpeningStock' : ActorMethod<[], Array<YarnInventory>>,
-  'getBatchStage' : ActorMethod<[bigint], [] | [BatchStage]>,
+  'getAllYarnOpeningStock' : ActorMethod<[], Array<YarnOpeningStockRecord>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  'getDashboardStats' : ActorMethod<[], DashboardStats>,
-  'getDispatchBalance' : ActorMethod<[string], [] | [DispatchBalance]>,
-  'getInwardEntriesByPO' : ActorMethod<[bigint], Array<InwardEntry>>,
-  'getInwardEntry' : ActorMethod<[bigint], [] | [InwardEntry]>,
-  'getMachine' : ActorMethod<[bigint], [] | [Machine]>,
-  'getNextDispatchNumber' : ActorMethod<[], string>,
-  'getNextInwardNumber' : ActorMethod<[], string>,
-  'getNextIssueNumber' : ActorMethod<[], string>,
-  'getNextPONumber' : ActorMethod<[], string>,
-  'getNextPackingNumber' : ActorMethod<[], string>,
-  'getNextProductionOrderNumber' : ActorMethod<[], string>,
-  'getPOBalance' : ActorMethod<[bigint], [] | [POBalance]>,
-  'getPackingBalance' : ActorMethod<[string], [] | [PackingBalance]>,
-  'getProductionLog' : ActorMethod<[bigint], [] | [ProductionLog]>,
-  'getProductionOrder' : ActorMethod<[bigint], [] | [ProductionOrder]>,
-  'getProductionOrderBalance' : ActorMethod<
-    [bigint, string],
-    [] | [ProductionOrderBalance]
-  >,
-  'getPurchaseOrder' : ActorMethod<[bigint], [] | [PurchaseOrder]>,
-  'getQualityTest' : ActorMethod<[bigint], [] | [QualityTest]>,
-  'getRawMaterial' : ActorMethod<[bigint], [] | [RawMaterial]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
-  'getYarnInventory' : ActorMethod<[bigint], [] | [YarnInventory]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'registerMachine' : ActorMethod<
-    [
-      string,
-      MachineType,
-      string,
-      MachineStatus,
-      [] | [bigint],
-      [] | [bigint],
-      [] | [string],
-    ],
-    bigint
-  >,
   'removeUser' : ActorMethod<[Principal], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
-  'updateBatchStage' : ActorMethod<
-    [bigint, bigint, ProcessStage, bigint, bigint, bigint, Time, Time, string],
-    undefined
-  >,
-  'updateMachine' : ActorMethod<
-    [
-      bigint,
-      string,
-      MachineType,
-      string,
-      MachineStatus,
-      [] | [bigint],
-      [] | [bigint],
-      [] | [string],
-    ],
-    undefined
-  >,
-  'updateProductionLog' : ActorMethod<
-    [bigint, Shift, Time, bigint, bigint, bigint, string],
-    undefined
-  >,
-  'updateProductionOrder' : ActorMethod<
-    [
-      bigint,
-      string,
-      string,
-      ProductType,
-      SpinningUnit,
-      EndUse,
-      bigint,
-      TwistDirection,
-      bigint,
-      Time,
-      OrderStatus,
-    ],
-    undefined
-  >,
-  'updatePurchaseOrder' : ActorMethod<
-    [bigint, string, string, string, bigint, Time, Time],
-    undefined
-  >,
-  'updateQualityTest' : ActorMethod<
-    [
-      bigint,
-      bigint,
-      bigint,
-      bigint,
-      bigint,
-      bigint,
-      bigint,
-      bigint,
-      bigint,
-      boolean,
-    ],
-    undefined
-  >,
-  'updateRawMaterial' : ActorMethod<
-    [bigint, string, string, string, bigint, RawMaterialStatus, Warehouse],
-    undefined
-  >,
   'updateUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'updateYarnInventory' : ActorMethod<
-    [bigint, string, bigint, TwistDirection, bigint, bigint, InventoryStatus],
-    undefined
-  >,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

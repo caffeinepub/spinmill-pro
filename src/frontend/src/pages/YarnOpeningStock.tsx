@@ -28,7 +28,6 @@ import {
 import { Loader2, Package2, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { EndUse, ProductType, SpinningUnit } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
@@ -38,6 +37,12 @@ import {
   useDeleteYarnOpeningStock,
   useYarnOpeningStock,
 } from "../hooks/useQueries";
+import type {
+  EndUse,
+  ProductType,
+  SpinningUnit,
+  YarnOpeningStockRecord,
+} from "../types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -90,7 +95,10 @@ export default function YarnOpeningStock() {
   const { identity } = useInternetIdentity();
   const isLoggedIn = !!identity;
 
-  const { data: entries = [], isLoading } = useYarnOpeningStock();
+  const { data: entries = [], isLoading } = useYarnOpeningStock() as {
+    data: YarnOpeningStockRecord[];
+    isLoading: boolean;
+  };
   const addMutation = useAddYarnOpeningStock();
   const deleteMutation = useDeleteYarnOpeningStock();
 
@@ -219,51 +227,47 @@ export default function YarnOpeningStock() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {entries.map((entry, idx) => {
-                // The backend returns YarnInventory shape but opening stock records
-                // carry spinningUnit / productType / endUse in the same record at runtime.
-                const r = entry as unknown as Record<string, unknown>;
-                const spinUnit = String(r.spinningUnit ?? "");
-                const prodType = String(r.productType ?? "");
-                const endUseVal = String(r.endUse ?? "");
-                return (
-                  <TableRow
-                    key={String(entry.id)}
-                    data-ocid={`yarn-opening.item.${idx + 1}`}
-                    className="border-border/40 hover:bg-muted/40 transition-colors"
-                  >
-                    <TableCell className="font-mono font-medium text-sm">
-                      {entry.lotNumber}
-                    </TableCell>
-                    <TableCell className="font-mono text-sm">
-                      {Number(entry.yarnCountNe)}
-                    </TableCell>
-                    <TableCell>
-                      <UnitBadge unit={spinUnit} />
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {prodType ? formatProductType(prodType) : "—"}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {endUseVal ? formatEndUse(endUseVal) : "—"}
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-sm font-semibold">
-                      {Number(entry.weightKg).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        data-ocid={`yarn-opening.delete_button.${idx + 1}`}
-                        onClick={() => setDeleteId(entry.id)}
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {entries.map((entry, idx) => (
+                <TableRow
+                  key={String(entry.id)}
+                  data-ocid={`yarn-opening.item.${idx + 1}`}
+                  className="border-border/40 hover:bg-muted/40 transition-colors"
+                >
+                  <TableCell className="font-mono font-medium text-sm">
+                    {entry.lotNumber}
+                  </TableCell>
+                  <TableCell className="font-mono text-sm">
+                    {Number(entry.yarnCountNe)}
+                  </TableCell>
+                  <TableCell>
+                    <UnitBadge unit={String(entry.spinningUnit)} />
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {String(entry.productType)
+                      ? formatProductType(String(entry.productType))
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {String(entry.endUse)
+                      ? formatEndUse(String(entry.endUse))
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm font-semibold">
+                    {Number(entry.weightKg).toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      data-ocid={`yarn-opening.delete_button.${idx + 1}`}
+                      onClick={() => setDeleteId(entry.id)}
+                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         )}

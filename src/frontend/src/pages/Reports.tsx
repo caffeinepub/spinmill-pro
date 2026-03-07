@@ -35,16 +35,6 @@ import {
   Zap,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import type {
-  DispatchEntry,
-  InwardEntry,
-  Machine,
-  MaterialIssue,
-  PackingEntry,
-  ProductionLog,
-  ProductionOrder,
-  PurchaseOrder,
-} from "../backend.d";
 import {
   useDispatchEntries,
   useInwardEntries,
@@ -55,6 +45,16 @@ import {
   useProductionOrders,
   usePurchaseOrders,
 } from "../hooks/useQueries";
+import type {
+  DispatchEntry,
+  InwardEntry,
+  Machine,
+  MaterialIssue,
+  PackingEntry,
+  ProductionLog,
+  ProductionOrder,
+  PurchaseOrder,
+} from "../types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

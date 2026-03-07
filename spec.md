@@ -1,24 +1,28 @@
 # SpinMill Pro
 
 ## Current State
-Full textile spinning mill management app with: Raw Materials, Purchase Orders, Inward Entry, Material Issue, Production Orders, Machines, Production Logs, Packing Entry, Yarn Inventory, Yarn Dispatch, Reports, User Management, and Dropdown Options pages.
 
-Raw Materials stock is stored as individual records (per inward entry) with `grade` field = material name. A "Stock by Grade" summary is shown at the top of Raw Materials page, computed by summing `weightKg` across all records grouped by `grade`.
-
-When a Material Issue is created, the backend deducts from `warehouseStock` (keyed by warehouse + materialName) AND does a FIFO deduction from individual `rawMaterials` records.
+The app is a full-stack textile spinning mill management system. The backend (main.mo) has raw material opening stock functions (addRawMaterialOpeningStock, getAllRawMaterialOpeningStock, deleteRawMaterialOpeningStock), but the yarn opening stock functions (addYarnOpeningStock, getAllYarnOpeningStock, deleteYarnOpeningStock) are missing from the backend entirely. The frontend has hooks and a UI page (YarnOpeningStock.tsx) wired to call these backend functions, so every add/delete operation fails with "operation failed". Additionally, Yarn Inventory (YarnInventory.tsx) only aggregates from packing entries and does not include yarn opening stock.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Nothing new
+- Backend: `addYarnOpeningStock(lotNumber, yarnCountNe, spinningUnit, productType, endUse, weightKg)` -- stores a yarn opening stock record in a separate set (openingStockYarnIds), persists a YarnInventory-shaped record so it can be retrieved and displayed. Requires auth (user role). Returns the new record id.
+- Backend: `getAllYarnOpeningStock()` -- returns all yarn inventory records whose IDs are in openingStockYarnIds, sorted by id. Public (no auth required).
+- Backend: `deleteYarnOpeningStock(id)` -- removes the yarn inventory record and its id from openingStockYarnIds. Requires auth (user role).
+- Backend: SpinningUnit type must include `#tfo` variant alongside existing `#openend` and `#ringSpinning`.
 
 ### Modify
-- **Backend `createMaterialIssue` FIFO deduction**: The FIFO loop currently matches raw material records by warehouse only. It must ALSO match by `material.grade == materialName` so that only records for the same material are deducted. This ensures the "Stock by Grade" summary remains accurate after an issue is done.
+- Backend: All existing yarn opening stock-related code paths (openingStockYarnIds Set is already declared but unused -- wire it up).
+- Frontend (YarnInventory.tsx): Include yarn opening stock entries in the aggregated inventory view, alongside packing entries. Each opening stock entry should be merged/summed by the same key (lotNumber|yarnCountNe|spinningUnit|productType|endUse) as packing entries.
+- Frontend (YarnOpeningStock.tsx): Add TFO as a Unit option in the add form (value "tfo") matching the new backend SpinningUnit.
 
 ### Remove
-- Nothing
+- Nothing removed.
 
 ## Implementation Plan
-1. In `createMaterialIssue`, change the FIFO deduction condition from matching on warehouse only to matching on BOTH warehouse AND `material.grade == materialName`.
-2. The `warehouseStock` deduction (keyed by `warehouse + materialName`) already works correctly and does not need changes.
-3. No frontend changes needed.
+
+1. Regenerate backend with addYarnOpeningStock, getAllYarnOpeningStock, deleteYarnOpeningStock functions and SpinningUnit including #tfo.
+2. Update YarnInventory.tsx to fetch yarn opening stock entries (useYarnOpeningStock hook) and merge them into the aggregated lots alongside packing entries.
+3. Update YarnOpeningStock.tsx form to include TFO as a Unit option.
+4. Validate and deploy.

@@ -28,7 +28,6 @@ import {
 import { Loader2, Pencil, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { PurchaseOrder, PurchaseOrderStatus } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
@@ -41,6 +40,7 @@ import {
   usePurchaseOrders,
   useUpdatePurchaseOrder,
 } from "../hooks/useQueries";
+import type { PurchaseOrder, PurchaseOrderStatus } from "../types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

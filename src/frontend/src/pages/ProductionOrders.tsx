@@ -27,14 +27,6 @@ import {
 import { ClipboardList, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type {
-  EndUse,
-  OrderStatus,
-  ProductType,
-  ProductionOrder,
-  SpinningUnit,
-  TwistDirection,
-} from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
@@ -47,6 +39,14 @@ import {
   useProductionOrders,
   useUpdateProductionOrder,
 } from "../hooks/useQueries";
+import type {
+  EndUse,
+  OrderStatus,
+  ProductType,
+  ProductionOrder,
+  SpinningUnit,
+  TwistDirection,
+} from "../types";
 
 const defaultForm = {
   orderNumber: "",

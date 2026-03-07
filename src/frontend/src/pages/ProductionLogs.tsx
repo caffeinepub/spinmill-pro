@@ -38,8 +38,6 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { MachineType } from "../backend.d";
-import type { ProductionLog, Shift } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
@@ -50,8 +48,11 @@ import {
   useMachines,
   useProductionLogs,
   useProductionOrderBalance,
+  useProductionOrders,
   useUpdateProductionLog,
 } from "../hooks/useQueries";
+import { MachineType, OrderStatus } from "../types";
+import type { ProductionLog, Shift } from "../types";
 
 const shiftLabels: Record<string, string> = {
   morning: "Morning",
@@ -87,6 +88,7 @@ export default function ProductionLogs() {
   const isLoggedIn = !!identity;
   const { data: logs = [], isLoading } = useProductionLogs();
   const { data: machines = [] } = useMachines();
+  const { data: productionOrders = [] } = useProductionOrders();
   const addMutation = useAddProductionLog();
   const updateMutation = useUpdateProductionLog();
   const deleteMutation = useDeleteProductionLog();
@@ -115,12 +117,26 @@ export default function ProductionLogs() {
   const hasMachineCountLot =
     machineRunningCount !== null && machineRunningLot !== null;
 
+  // Check if there's an "inProgress" production order for the machine's count+lot
+  const hasInProgressOrder = hasMachineCountLot
+    ? productionOrders.some(
+        (o) =>
+          o.status === OrderStatus.inProgress &&
+          Number(o.yarnCountNe) === Number(machineRunningCount) &&
+          o.lotNumber === machineRunningLot,
+      )
+    : false;
+
   // Fetch production order balance based on machine's count + lot
+  // (only fetch if there is an in-progress order)
   const {
     data: orderBalance,
     isLoading: isBalanceLoading,
     isError: isBalanceError,
-  } = useProductionOrderBalance(machineRunningCount, machineRunningLot);
+  } = useProductionOrderBalance(
+    hasInProgressOrder ? machineRunningCount : null,
+    hasInProgressOrder ? machineRunningLot : null,
+  );
 
   const enteredQty = form.quantityKg ? Number(form.quantityKg) : 0;
   const balanceQty = orderBalance ? Number(orderBalance.balanceQty) : null;
@@ -129,10 +145,13 @@ export default function ProductionLogs() {
   const isOrderFulfilled = orderBalance?.isFulfilled === true;
   const isExceedingBalance =
     balanceQty !== null && enteredQty > 0 && enteredQty > balanceQty;
+  // Also block if no in-progress order found for this machine's count+lot
+  const isNoInProgressOrder = hasMachineCountLot && !hasInProgressOrder;
   const isSubmitBlocked =
-    hasMachineCountLot && orderBalance !== undefined && orderBalance !== null
+    isNoInProgressOrder ||
+    (hasMachineCountLot && orderBalance !== undefined && orderBalance !== null
       ? isOrderFulfilled || isExceedingBalance
-      : false;
+      : false);
 
   function openAdd() {
     setEditItem(null);
@@ -518,14 +537,30 @@ export default function ProductionLogs() {
               <div
                 data-ocid="logs.panel"
                 className={`rounded-md border p-3 space-y-2 text-sm transition-colors ${
-                  isOrderFulfilled
-                    ? "bg-destructive/5 border-destructive/30"
-                    : isExceedingBalance
-                      ? "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/40"
-                      : "bg-muted/40 border-border/60"
+                  isNoInProgressOrder
+                    ? "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/40"
+                    : isOrderFulfilled
+                      ? "bg-destructive/5 border-destructive/30"
+                      : isExceedingBalance
+                        ? "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/40"
+                        : "bg-muted/40 border-border/60"
                 }`}
               >
-                {isBalanceLoading ? (
+                {isNoInProgressOrder ? (
+                  <div
+                    data-ocid="logs.error_state"
+                    className="flex items-start gap-2 text-amber-700 dark:text-amber-400"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                    <span className="text-xs">
+                      No <strong>In Progress</strong> production order found for
+                      Count Ne&nbsp;
+                      <strong>{String(machineRunningCount)}</strong> / Lot&nbsp;
+                      <strong>{machineRunningLot}</strong>. Only orders with
+                      status "In Progress" can be used for production entry.
+                    </span>
+                  </div>
+                ) : isBalanceLoading ? (
                   <div
                     data-ocid="logs.loading_state"
                     className="flex items-center gap-2 text-muted-foreground"

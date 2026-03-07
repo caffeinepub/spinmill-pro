@@ -37,8 +37,6 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { BatchStage, ProcessStage } from "../backend.d";
-import { ProcessStage as PS } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
@@ -51,6 +49,8 @@ import {
   useMachines,
   useUpdateBatchStage,
 } from "../hooks/useQueries";
+import type { BatchStage, ProcessStage } from "../types";
+import { ProcessStage as PS } from "../types";
 
 const PROCESS_STAGES_ORDER: ProcessStage[] = [
   PS.blowroom,

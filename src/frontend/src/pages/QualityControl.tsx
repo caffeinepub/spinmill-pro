@@ -30,7 +30,6 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { QualityTest } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
@@ -42,6 +41,7 @@ import {
   useQualityTests,
   useUpdateQualityTest,
 } from "../hooks/useQueries";
+import type { QualityTest } from "../types";
 
 const defaultForm = {
   batchId: "",

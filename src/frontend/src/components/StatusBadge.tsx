@@ -1,12 +1,12 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import type { RawMaterialStatus } from "../backend.d";
 import type {
   InventoryStatus,
   MachineStatus,
   OrderStatus,
   ProcessStage,
-  RawMaterialStatus,
-} from "../backend.d";
+} from "../types";
 
 type AnyStatus =
   | RawMaterialStatus

@@ -29,7 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, PackageOpen, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { InwardEntry as InwardEntryType, Warehouse } from "../backend.d";
+import type { Warehouse } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
@@ -43,6 +43,7 @@ import {
   usePOBalance,
   usePurchaseOrders,
 } from "../hooks/useQueries";
+import type { InwardEntry as InwardEntryType } from "../types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

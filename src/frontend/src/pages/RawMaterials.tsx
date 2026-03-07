@@ -58,7 +58,7 @@ function getMonthYearKey(timestampNs: bigint): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
-// Stock summary entry grouped by material name + grade + warehouse
+// Stock summary entry grouped by material name + warehouse
 interface GradeStockEntry {
   materialName: string;
   grade: string;
@@ -265,10 +265,11 @@ export default function RawMaterials() {
     );
   }, [issues]);
 
-  // Grade-wise stock summary: group by materialName + grade + warehouse
-  // Show correct balance = inward total - issued total for that material+warehouse
+  // Grade-wise stock summary: group by materialName (lotNumber) + warehouse
+  // lotNumber holds the material name for opening stock entries (set by backend)
+  // Show correct balance = total received - issued for that material+warehouse
   const gradeStockEntries = useMemo((): GradeStockEntry[] => {
-    // Step 1: aggregate raw inward totals per (material + grade + warehouse)
+    // Step 1: aggregate raw totals per (materialName = lotNumber + warehouse)
     const inwardMap: Record<
       string,
       {
@@ -280,13 +281,14 @@ export default function RawMaterials() {
     > = {};
     for (const m of materials) {
       const warehouse = m.warehouse as string;
-      // Use materialName from lot or grade field (inward entries store material in grade)
-      // The grade field on RawMaterial records created from inward stores the material name
-      // when no explicit grade was given. We show it as-is.
-      const key = `${m.grade}||${warehouse}`;
+      // lotNumber stores the material name (e.g. "Cotton", "Viscose") for opening
+      // stock entries. Use it as the primary identifier, fall back to grade.
+      const displayName =
+        m.lotNumber && m.lotNumber.trim() !== "" ? m.lotNumber : m.grade;
+      const key = `${displayName}||${warehouse}`;
       if (!inwardMap[key]) {
         inwardMap[key] = {
-          materialName: m.grade, // grade field holds material identity
+          materialName: displayName,
           grade: m.grade,
           warehouse,
           totalKg: 0,
@@ -295,10 +297,10 @@ export default function RawMaterials() {
       inwardMap[key].totalKg += Number(m.weightKg);
     }
 
-    // Step 2: subtract issued quantities (issues track materialName + warehouse)
-    // Issues match on materialName (which == grade key in raw material records)
+    // Step 2: subtract issued quantities
+    // Issues track materialName + warehouse; materialName matches lotNumber (the material name)
     const entries: GradeStockEntry[] = Object.values(inwardMap).map((entry) => {
-      const issueKey = `${entry.grade}||${entry.warehouse}`;
+      const issueKey = `${entry.materialName}||${entry.warehouse}`;
       const issued = issuedByMaterialWarehouse[issueKey] || 0;
       return {
         ...entry,
@@ -307,10 +309,10 @@ export default function RawMaterials() {
     });
 
     return entries.sort((a, b) => {
-      // Sort by warehouse then grade
+      // Sort by warehouse then material name
       const wCompare = a.warehouse.localeCompare(b.warehouse);
       if (wCompare !== 0) return wCompare;
-      return a.grade.localeCompare(b.grade);
+      return a.materialName.localeCompare(b.materialName);
     });
   }, [materials, issuedByMaterialWarehouse]);
 
@@ -470,11 +472,11 @@ export default function RawMaterials() {
                   .filter((e) => e.warehouse === "oeRawMaterial")
                   .map((entry) => (
                     <div
-                      key={`${entry.grade}||${entry.warehouse}`}
+                      key={`${entry.materialName}||${entry.warehouse}`}
                       className="flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-200/60 bg-blue-50/40 shadow-sm hover:bg-blue-50/80 transition-colors"
                     >
                       <span className="text-xs font-semibold text-foreground">
-                        {entry.grade}
+                        {entry.materialName}
                       </span>
                       <span className="text-muted-foreground/50 text-xs">
                         —
@@ -506,11 +508,11 @@ export default function RawMaterials() {
                   .filter((e) => e.warehouse === "ringRawMaterial")
                   .map((entry) => (
                     <div
-                      key={`${entry.grade}||${entry.warehouse}`}
+                      key={`${entry.materialName}||${entry.warehouse}`}
                       className="flex items-center gap-2 px-3 py-2 rounded-lg border border-purple-200/60 bg-purple-50/40 shadow-sm hover:bg-purple-50/80 transition-colors"
                     >
                       <span className="text-xs font-semibold text-foreground">
-                        {entry.grade}
+                        {entry.materialName}
                       </span>
                       <span className="text-muted-foreground/50 text-xs">
                         —
@@ -792,8 +794,8 @@ export default function RawMaterials() {
                     {gradeStockEntries
                       .filter((e) => e.warehouse === "oeRawMaterial")
                       .map((entry) => (
-                        <tr key={`${entry.grade}||oe`}>
-                          <td>{entry.grade}</td>
+                        <tr key={`${entry.materialName}||oe`}>
+                          <td>{entry.materialName}</td>
                           <td
                             className={
                               entry.totalKg === 0 ? "zero-stock" : undefined
@@ -846,8 +848,8 @@ export default function RawMaterials() {
                     {gradeStockEntries
                       .filter((e) => e.warehouse === "ringRawMaterial")
                       .map((entry) => (
-                        <tr key={`${entry.grade}||ring`}>
-                          <td>{entry.grade}</td>
+                        <tr key={`${entry.materialName}||ring`}>
+                          <td>{entry.materialName}</td>
                           <td
                             className={
                               entry.totalKg === 0 ? "zero-stock" : undefined

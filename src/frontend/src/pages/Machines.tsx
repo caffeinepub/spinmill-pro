@@ -37,8 +37,6 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { MachineType } from "../backend.d";
-import type { Machine, MachineStatus } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
@@ -51,6 +49,8 @@ import {
   useRegisterMachine,
   useUpdateMachine,
 } from "../hooks/useQueries";
+import { MachineType } from "../types";
+import type { Machine, MachineStatus } from "../types";
 
 const unitLabels: Record<string, string> = {
   [MachineType.autocoro]: "OE Spinning",

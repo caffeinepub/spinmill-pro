@@ -27,7 +27,7 @@ import {
 import { useMemo, useState } from "react";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
-import { usePackingEntries } from "../hooks/useQueries";
+import { usePackingEntries, useYarnOpeningStock } from "../hooks/useQueries";
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 
@@ -66,16 +66,18 @@ export default function YarnInventory() {
     isError,
     refetch,
   } = usePackingEntries();
+  const { data: openingStockEntries = [] } = useYarnOpeningStock();
   const isLoadingData = isLoading;
 
   const [filterUnit, setFilterUnit] = useState<string>("");
   const [filterProductType, setFilterProductType] = useState<string>("");
   const [filterEndUse, setFilterEndUse] = useState<string>("");
 
-  // Aggregate packing entries by lotNumber + yarnCountNe + spinningUnit + productType + endUse
+  // Aggregate packing entries + yarn opening stock by lotNumber + yarnCountNe + spinningUnit + productType + endUse
   const aggregatedLots = useMemo<AggregatedLot[]>(() => {
     const map = new Map<string, AggregatedLot>();
 
+    // Process packing entries
     for (const entry of packingEntries) {
       const key = [
         entry.lotNumber,
@@ -84,7 +86,6 @@ export default function YarnInventory() {
         String(entry.productType),
         String(entry.endUse),
       ].join("|");
-
       const existing = map.get(key);
       if (existing) {
         existing.totalPackedKg += Number(entry.quantityKg);
@@ -101,10 +102,35 @@ export default function YarnInventory() {
       }
     }
 
+    // Also include yarn opening stock entries
+    for (const entry of openingStockEntries) {
+      const key = [
+        entry.lotNumber,
+        String(entry.yarnCountNe),
+        String(entry.spinningUnit),
+        String(entry.productType),
+        String(entry.endUse),
+      ].join("|");
+      const existing = map.get(key);
+      if (existing) {
+        existing.totalPackedKg += Number(entry.weightKg);
+      } else {
+        map.set(key, {
+          key,
+          lotNumber: entry.lotNumber,
+          yarnCountNe: Number(entry.yarnCountNe),
+          spinningUnit: String(entry.spinningUnit),
+          productType: String(entry.productType),
+          endUse: String(entry.endUse),
+          totalPackedKg: Number(entry.weightKg),
+        });
+      }
+    }
+
     return Array.from(map.values()).sort((a, b) =>
       a.lotNumber.localeCompare(b.lotNumber),
     );
-  }, [packingEntries]);
+  }, [packingEntries, openingStockEntries]);
 
   const hasActiveFilters =
     filterUnit !== "" || filterProductType !== "" || filterEndUse !== "";
@@ -166,8 +192,8 @@ export default function YarnInventory() {
       <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 mb-4 text-blue-700">
         <Info className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-500" />
         <p className="text-sm">
-          Yarn inventory is automatically built from packing entries. No manual
-          entry required.
+          Yarn inventory is automatically built from packing entries and yarn
+          opening stock. No manual entry required.
         </p>
       </div>
 
@@ -265,7 +291,7 @@ export default function YarnInventory() {
             data-ocid="yarn.empty_state"
             icon={<Package2 className="w-7 h-7" />}
             title="No yarn inventory"
-            description="Yarn inventory will appear here automatically as packing entries are recorded."
+            description="Yarn inventory will appear here automatically as packing entries or yarn opening stock are recorded."
           />
         ) : filteredLots.length === 0 ? (
           <EmptyState
