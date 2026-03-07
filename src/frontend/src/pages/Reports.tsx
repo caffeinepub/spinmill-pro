@@ -44,6 +44,7 @@ import {
   useProductionLogs,
   useProductionOrders,
   usePurchaseOrders,
+  useYarnOpeningStock,
 } from "../hooks/useQueries";
 import type {
   DispatchEntry,
@@ -54,6 +55,7 @@ import type {
   ProductionLog,
   ProductionOrder,
   PurchaseOrder,
+  YarnOpeningStockRecord,
 } from "../types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -1658,10 +1660,12 @@ interface YarnStockRow {
 function YarnStockReport({
   packingEntries,
   dispatchEntries,
+  openingStockEntries,
   isLoading,
 }: {
   packingEntries: PackingEntry[];
   dispatchEntries: DispatchEntry[];
+  openingStockEntries: YarnOpeningStockRecord[];
   isLoading: boolean;
 }) {
   const [unitFilter, setUnitFilter] = useState<string>("all");
@@ -1694,6 +1698,22 @@ function YarnStockReport({
       r.totalPackedKg += Number(p.quantityKg);
     }
 
+    // Also include yarn opening stock entries as initial stock
+    for (const os of openingStockEntries) {
+      const key = os.lotNumber;
+      if (!packMap.has(key)) {
+        packMap.set(key, {
+          totalPackedKg: 0,
+          yarnCountNe: Number(os.yarnCountNe),
+          spinningUnit: os.spinningUnit as string,
+          productType: os.productType as string,
+          endUse: os.endUse as string,
+        });
+      }
+      const r = packMap.get(key)!;
+      r.totalPackedKg += Number(os.weightKg);
+    }
+
     // Aggregate dispatch per lot
     const dispatchMap = new Map<string, number>();
     for (const d of dispatchEntries) {
@@ -1721,7 +1741,7 @@ function YarnStockReport({
     }
 
     return result.sort((a, b) => a.lotNumber.localeCompare(b.lotNumber));
-  }, [packingEntries, dispatchEntries]);
+  }, [packingEntries, dispatchEntries, openingStockEntries]);
 
   const filteredRows = useMemo(() => {
     if (unitFilter === "all") return rows;
@@ -1928,12 +1948,15 @@ export default function Reports() {
     usePackingEntries();
   const { data: dispatchEntries = [], isLoading: dispatchLoading } =
     useDispatchEntries();
+  const { data: yarnOpeningStock = [], isLoading: yarnOpeningLoading } =
+    useYarnOpeningStock();
   // productionOrders not directly needed at page level but available if needed
   const { isLoading: ordersLoading } = useProductionOrders();
 
   const productionLoading = logsLoading || machinesLoading;
   const inwardReportLoading = inwardLoading || poLoading;
-  const yarnStockLoading = packingLoading || dispatchLoading || ordersLoading;
+  const yarnStockLoading =
+    packingLoading || dispatchLoading || ordersLoading || yarnOpeningLoading;
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -2041,6 +2064,7 @@ export default function Reports() {
           <YarnStockReport
             packingEntries={packingEntries}
             dispatchEntries={dispatchEntries}
+            openingStockEntries={yarnOpeningStock}
             isLoading={yarnStockLoading}
           />
         </TabsContent>
