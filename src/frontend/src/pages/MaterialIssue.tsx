@@ -123,10 +123,23 @@ export default function MaterialIssue() {
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [form, setForm] = useState(defaultForm);
 
-  // Filter warehouse stock by selected warehouse for reference
-  const stockForWarehouse = warehouseStock.filter(
-    (s) => (s.warehouse as string) === form.warehouse,
-  );
+  // Filter warehouse stock by selected warehouse and aggregate by material name
+  const stockForWarehouse = (() => {
+    const filtered = warehouseStock.filter(
+      (s) => (s.warehouse as string) === form.warehouse,
+    );
+    // Aggregate: sum totalQty for records with the same materialName
+    const aggregated = new Map<string, number>();
+    for (const s of filtered) {
+      const key = s.materialName;
+      aggregated.set(key, (aggregated.get(key) ?? 0) + Number(s.totalQty));
+    }
+    return Array.from(aggregated.entries()).map(([materialName, totalQty]) => ({
+      materialName,
+      totalQty: BigInt(Math.round(totalQty)),
+      warehouse: form.warehouse,
+    }));
+  })();
 
   function generateIssueNumber() {
     const year = new Date().getFullYear();
