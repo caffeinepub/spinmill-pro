@@ -35,8 +35,9 @@ import {
   Pencil,
   Plus,
   Trash2,
+  X,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
@@ -97,6 +98,38 @@ export default function ProductionLogs() {
   const [editItem, setEditItem] = useState<ProductionLog | null>(null);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [form, setForm] = useState(defaultForm);
+
+  // Filter state
+  const [filterMachineId, setFilterMachineId] = useState("");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
+
+  const filteredLogs = useMemo(() => {
+    return logs.filter((log) => {
+      if (filterMachineId && String(Number(log.machineId)) !== filterMachineId)
+        return false;
+      if (filterDateFrom) {
+        const logDate = new Date(Number(log.date) / 1_000_000);
+        const fromDate = new Date(filterDateFrom);
+        if (logDate < fromDate) return false;
+      }
+      if (filterDateTo) {
+        const logDate = new Date(Number(log.date) / 1_000_000);
+        const toDate = new Date(filterDateTo);
+        toDate.setHours(23, 59, 59, 999);
+        if (logDate > toDate) return false;
+      }
+      return true;
+    });
+  }, [logs, filterMachineId, filterDateFrom, filterDateTo]);
+
+  const hasActiveFilters = filterMachineId || filterDateFrom || filterDateTo;
+
+  function clearFilters() {
+    setFilterMachineId("");
+    setFilterDateFrom("");
+    setFilterDateTo("");
+  }
 
   // Machines filtered by selected unit
   const filteredMachines = form.selectedUnit
@@ -252,6 +285,82 @@ export default function ProductionLogs() {
         }
       />
 
+      {/* Filters */}
+      <div className="flex flex-wrap items-end gap-3 mb-4">
+        <div className="space-y-1">
+          <Label
+            htmlFor="filter-machine"
+            className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+          >
+            Machine
+          </Label>
+          <Select
+            value={filterMachineId || "all"}
+            onValueChange={(v) => setFilterMachineId(v === "all" ? "" : v)}
+          >
+            <SelectTrigger
+              id="filter-machine"
+              data-ocid="logs.machine.select"
+              className="w-48 h-8 text-sm"
+            >
+              <SelectValue placeholder="All Machines" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Machines</SelectItem>
+              {machines.map((m) => (
+                <SelectItem key={String(m.id)} value={String(Number(m.id))}>
+                  {m.name} ({m.machineNumber})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label
+            htmlFor="filter-date-from"
+            className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+          >
+            From Date
+          </Label>
+          <Input
+            id="filter-date-from"
+            type="date"
+            data-ocid="logs.date_from.input"
+            className="w-40 h-8 text-sm"
+            value={filterDateFrom}
+            onChange={(e) => setFilterDateFrom(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label
+            htmlFor="filter-date-to"
+            className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+          >
+            To Date
+          </Label>
+          <Input
+            id="filter-date-to"
+            type="date"
+            data-ocid="logs.date_to.input"
+            className="w-40 h-8 text-sm"
+            value={filterDateTo}
+            onChange={(e) => setFilterDateTo(e.target.value)}
+          />
+        </div>
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            data-ocid="logs.clear_filters.button"
+            onClick={clearFilters}
+            className="h-8 gap-1 text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-3.5 h-3.5" />
+            Clear Filters
+          </Button>
+        )}
+      </div>
+
       <div className="rounded-lg border border-border/60 bg-card shadow-card overflow-hidden">
         {isLoading ? (
           <div className="p-4 space-y-3">
@@ -296,7 +405,17 @@ export default function ProductionLogs() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {logs.map((log, idx) => {
+              {filteredLogs.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={7}
+                    className="text-center py-10 text-muted-foreground text-sm"
+                  >
+                    No logs match the selected filters.
+                  </TableCell>
+                </TableRow>
+              ) : null}
+              {filteredLogs.map((log, idx) => {
                 const machine = machines.find((m) => m.id === log.machineId);
                 const efficiency = Number(log.efficiencyPercent);
                 return (
