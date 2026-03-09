@@ -26,7 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Loader2, Pencil, Plus, ShoppingCart, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
@@ -36,7 +36,6 @@ import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useCreatePurchaseOrder,
   useDeletePurchaseOrder,
-  useNextPONumber,
   usePurchaseOrders,
   useUpdatePurchaseOrder,
 } from "../hooks/useQueries";
@@ -129,19 +128,15 @@ export default function PurchaseOrders() {
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [form, setForm] = useState(defaultForm);
 
-  // Fetch next PO number only when adding a new order
-  const { data: nextPOData } = useNextPONumber(dialogOpen && !editItem);
-
-  // Pre-fill PO number when it arrives
-  useEffect(() => {
-    if (nextPOData && dialogOpen && !editItem) {
-      setForm((p) => ({ ...p, poNumber: nextPOData }));
-    }
-  }, [nextPOData, dialogOpen, editItem]);
+  function generatePONumber() {
+    const year = new Date().getFullYear();
+    const nextNum = orders.length + 1;
+    return `PO-${year}-${String(nextNum).padStart(3, "0")}`;
+  }
 
   function openAdd() {
     setEditItem(null);
-    setForm(defaultForm);
+    setForm({ ...defaultForm, poNumber: generatePONumber() });
     setDialogOpen(true);
   }
 
@@ -158,35 +153,50 @@ export default function PurchaseOrders() {
     setDialogOpen(true);
   }
 
+  async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      return await fn();
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
       if (editItem) {
-        await updateMutation.mutateAsync({
-          id: editItem.id,
-          poNumber: form.poNumber,
-          supplier: form.supplier,
-          materialName: form.materialName,
-          orderedQty: BigInt(Math.round(Number(form.orderedQty))),
-          orderDate: dateStringToNs(form.orderDate),
-          expectedDeliveryDate: dateStringToNs(form.expectedDeliveryDate),
-        });
+        await withRetry(() =>
+          updateMutation.mutateAsync({
+            id: editItem.id,
+            poNumber: form.poNumber,
+            supplier: form.supplier,
+            materialName: form.materialName,
+            orderedQty: BigInt(Math.round(Number(form.orderedQty))),
+            orderDate: dateStringToNs(form.orderDate),
+            expectedDeliveryDate: dateStringToNs(form.expectedDeliveryDate),
+          }),
+        );
         toast.success("Purchase order updated");
       } else {
-        await createMutation.mutateAsync({
-          poNumber: form.poNumber,
-          supplier: form.supplier,
-          materialName: form.materialName,
-          orderedQty: BigInt(Math.round(Number(form.orderedQty))),
-          orderDate: dateStringToNs(form.orderDate),
-          expectedDeliveryDate: dateStringToNs(form.expectedDeliveryDate),
-        });
+        await withRetry(() =>
+          createMutation.mutateAsync({
+            poNumber: form.poNumber,
+            supplier: form.supplier,
+            materialName: form.materialName,
+            orderedQty: BigInt(Math.round(Number(form.orderedQty))),
+            orderDate: dateStringToNs(form.orderDate),
+            expectedDeliveryDate: dateStringToNs(form.expectedDeliveryDate),
+          }),
+        );
         toast.success("Purchase order created");
       }
       setDialogOpen(false);
-    } catch {
+    } catch (error) {
+      console.error("Operation failed:", error);
+      const msg = error instanceof Error ? error.message : String(error);
       toast.error(
-        isLoggedIn ? "Operation failed" : "Please sign in to save data",
+        isLoggedIn ? msg || "Operation failed" : "Please sign in to save data",
       );
     }
   }
@@ -194,10 +204,14 @@ export default function PurchaseOrders() {
   async function handleDelete() {
     if (!deleteId) return;
     try {
-      await deleteMutation.mutateAsync(deleteId);
+      await withRetry(() => deleteMutation.mutateAsync(deleteId));
       toast.success("Purchase order deleted");
-    } catch {
-      toast.error(isLoggedIn ? "Delete failed" : "Please sign in to save data");
+    } catch (error) {
+      console.error("Operation failed:", error);
+      const msg = error instanceof Error ? error.message : String(error);
+      toast.error(
+        isLoggedIn ? msg || "Delete failed" : "Please sign in to save data",
+      );
     } finally {
       setDeleteId(null);
     }

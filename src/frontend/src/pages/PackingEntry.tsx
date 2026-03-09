@@ -44,7 +44,6 @@ import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useCreatePackingEntry,
   useDeletePackingEntry,
-  useNextPackingNumber,
   usePackingBalance,
   usePackingEntries,
   useProductionOrders,
@@ -262,15 +261,21 @@ export default function PackingEntryPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [form, setForm] = useState(defaultForm);
+  const [nextPackingNumber, setNextPackingNumber] = useState<string>("");
 
-  // Auto-generated packing number
-  const { data: nextPackingNumber } = useNextPackingNumber(dialogOpen);
-
-  // Lot numbers filtered by selected unit
+  // Lot numbers filtered by selected unit AND only "In Progress" production orders
   const lotNumbers = Array.from(
     new Set(
       productionOrders
-        .filter((po) => !form.unit || po.spinningUnit === form.unit)
+        .filter((po) => {
+          const unitMatch = !form.unit || po.spinningUnit === form.unit;
+          const status =
+            typeof po.status === "object" && po.status !== null
+              ? Object.keys(po.status as Record<string, unknown>)[0]
+              : String(po.status);
+          const isInProgress = status === "inProgress";
+          return unitMatch && isInProgress;
+        })
         .map((po) => po.lotNumber)
         .filter(Boolean),
     ),
@@ -292,9 +297,25 @@ export default function PackingEntryPage() {
     isZeroBalance ||
     (balance === null && form.lotNumber !== "");
 
+  function generatePackingNumber() {
+    const year = new Date().getFullYear();
+    const nextNum = entries.length + 1;
+    return `PKG-${year}-${String(nextNum).padStart(3, "0")}`;
+  }
+
   function openAdd() {
+    setNextPackingNumber(generatePackingNumber());
     setForm(defaultForm);
     setDialogOpen(true);
+  }
+
+  async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      return await fn();
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -302,17 +323,21 @@ export default function PackingEntryPage() {
     if (isSubmitBlocked) return;
     const packingDateTs = BigInt(new Date(form.date).getTime() * 1_000_000);
     try {
-      await createMutation.mutateAsync({
-        lotNumber: form.lotNumber,
-        quantityKg: BigInt(Math.round(Number(form.quantityKg))),
-        remarks: form.remarks,
-        packingDate: packingDateTs,
-      });
+      await withRetry(() =>
+        createMutation.mutateAsync({
+          lotNumber: form.lotNumber,
+          quantityKg: BigInt(Math.round(Number(form.quantityKg))),
+          remarks: form.remarks,
+          packingDate: packingDateTs,
+        }),
+      );
       toast.success("Packing entry saved");
       setDialogOpen(false);
-    } catch {
+    } catch (error) {
+      console.error("Operation failed:", error);
+      const msg = error instanceof Error ? error.message : String(error);
       toast.error(
-        isLoggedIn ? "Operation failed" : "Please sign in to save data",
+        isLoggedIn ? msg || "Operation failed" : "Please sign in to save data",
       );
     }
   }
@@ -320,10 +345,14 @@ export default function PackingEntryPage() {
   async function handleDelete() {
     if (!deleteId) return;
     try {
-      await deleteMutation.mutateAsync(deleteId);
+      await withRetry(() => deleteMutation.mutateAsync(deleteId));
       toast.success("Entry deleted");
-    } catch {
-      toast.error(isLoggedIn ? "Delete failed" : "Please sign in to save data");
+    } catch (error) {
+      console.error("Operation failed:", error);
+      const msg = error instanceof Error ? error.message : String(error);
+      toast.error(
+        isLoggedIn ? msg || "Delete failed" : "Please sign in to save data",
+      );
     } finally {
       setDeleteId(null);
     }

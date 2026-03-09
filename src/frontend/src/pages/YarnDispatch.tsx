@@ -48,8 +48,8 @@ import {
   useDeleteDispatchEntry,
   useDispatchBalance,
   useDispatchEntries,
-  useNextDispatchNumber,
   usePackingEntries,
+  useProductionOrders,
 } from "../hooks/useQueries";
 import type { DispatchDestination } from "../types";
 
@@ -282,22 +282,39 @@ export default function YarnDispatch() {
 
   const { data: entries = [], isLoading } = useDispatchEntries();
   const { data: packingEntries = [] } = usePackingEntries();
+  const { data: productionOrders = [] } = useProductionOrders();
   const createMutation = useCreateDispatchEntry();
   const deleteMutation = useDeleteDispatchEntry();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [form, setForm] = useState(defaultForm);
-
-  // Auto-generated dispatch number
-  const { data: nextDispatchNumber } = useNextDispatchNumber(dialogOpen);
+  const [nextDispatchNumber, setNextDispatchNumber] = useState<string>("");
 
   // Balance for the selected lot
   const { data: balance } = useDispatchBalance(form.lotNumber || null);
 
-  // Unique lot numbers from packing entries
+  // Lot numbers from packing entries, filtered to only those whose
+  // production order status is "In Progress"
+  const inProgressLotNumbers = new Set(
+    productionOrders
+      .filter((po) => {
+        const status = String(
+          typeof po.status === "object" && po.status !== null
+            ? Object.keys(po.status)[0]
+            : po.status,
+        );
+        return status === "inProgress";
+      })
+      .map((po) => po.lotNumber),
+  );
+
   const lotNumbers = Array.from(
-    new Set(packingEntries.map((pe) => pe.lotNumber).filter(Boolean)),
+    new Set(
+      packingEntries
+        .map((pe) => pe.lotNumber)
+        .filter((lot) => Boolean(lot) && inProgressLotNumbers.has(lot)),
+    ),
   ).sort();
 
   const enteredQty = form.quantityKg ? Number(form.quantityKg) : 0;
@@ -318,9 +335,25 @@ export default function YarnDispatch() {
     (a, b) => Number(b.id) - Number(a.id),
   );
 
+  function generateDispatchNumber() {
+    const year = new Date().getFullYear();
+    const nextNum = entries.length + 1;
+    return `DSP-${year}-${String(nextNum).padStart(3, "0")}`;
+  }
+
   function openAdd() {
+    setNextDispatchNumber(generateDispatchNumber());
     setForm(defaultForm);
     setDialogOpen(true);
+  }
+
+  async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      return await fn();
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -328,28 +361,37 @@ export default function YarnDispatch() {
     if (isSubmitBlocked) return;
     const dispatchDateTs = BigInt(new Date(form.date).getTime() * 1_000_000);
     try {
-      await createMutation.mutateAsync({
-        lotNumber: form.lotNumber,
-        destination: form.destination as DispatchDestination,
-        quantityKg: BigInt(Math.round(Number(form.quantityKg))),
-        dispatchDate: dispatchDateTs,
-        remarks: form.remarks,
-      });
+      await withRetry(() =>
+        createMutation.mutateAsync({
+          lotNumber: form.lotNumber,
+          destination: form.destination as DispatchDestination,
+          quantityKg: BigInt(Math.round(Number(form.quantityKg))),
+          dispatchDate: dispatchDateTs,
+          remarks: form.remarks,
+        }),
+      );
       toast.success("Dispatch entry saved");
       setDialogOpen(false);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Operation failed";
-      toast.error(isLoggedIn ? msg : "Please sign in to save data");
+      console.error("Operation failed:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(
+        isLoggedIn ? msg || "Operation failed" : "Please sign in to save data",
+      );
     }
   }
 
   async function handleDelete() {
     if (!deleteId) return;
     try {
-      await deleteMutation.mutateAsync(deleteId);
+      await withRetry(() => deleteMutation.mutateAsync(deleteId));
       toast.success("Dispatch entry deleted");
-    } catch {
-      toast.error(isLoggedIn ? "Delete failed" : "Please sign in to save data");
+    } catch (error) {
+      console.error("Operation failed:", error);
+      const msg = error instanceof Error ? error.message : String(error);
+      toast.error(
+        isLoggedIn ? msg || "Delete failed" : "Please sign in to save data",
+      );
     } finally {
       setDeleteId(null);
     }

@@ -1669,6 +1669,7 @@ function YarnStockReport({
   isLoading: boolean;
 }) {
   const [unitFilter, setUnitFilter] = useState<string>("all");
+  const [lotFilter, setLotFilter] = useState<string>("all");
 
   // Compute per-lot totals
   const rows = useMemo(() => {
@@ -1743,16 +1744,24 @@ function YarnStockReport({
     return result.sort((a, b) => a.lotNumber.localeCompare(b.lotNumber));
   }, [packingEntries, dispatchEntries, openingStockEntries]);
 
+  // All distinct lot numbers for the dropdown
+  const allLotNumbers = useMemo(
+    () => rows.map((r) => r.lotNumber).sort((a, b) => a.localeCompare(b)),
+    [rows],
+  );
+
   const filteredRows = useMemo(() => {
-    if (unitFilter === "all") return rows;
     return rows.filter((r) => {
-      const u = r.spinningUnit.toLowerCase();
-      if (unitFilter === "openend") return u === "openend";
-      if (unitFilter === "ringSpinning") return u === "ringspinning";
-      if (unitFilter === "tfo") return u === "tfo";
+      if (unitFilter !== "all") {
+        const u = r.spinningUnit.toLowerCase();
+        if (unitFilter === "openend" && u !== "openend") return false;
+        if (unitFilter === "ringSpinning" && u !== "ringspinning") return false;
+        if (unitFilter === "tfo" && u !== "tfo") return false;
+      }
+      if (lotFilter !== "all" && r.lotNumber !== lotFilter) return false;
       return true;
     });
-  }, [rows, unitFilter]);
+  }, [rows, unitFilter, lotFilter]);
 
   const kpis = useMemo(() => {
     const totalStock = filteredRows.reduce((s, r) => s + r.availableKg, 0);
@@ -1812,6 +1821,28 @@ function YarnStockReport({
               <SelectItem value="openend">OE Spinning</SelectItem>
               <SelectItem value="ringSpinning">Ring Spinning</SelectItem>
               <SelectItem value="tfo">TFO</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="stock-lot" className="text-xs">
+            Lot Number
+          </Label>
+          <Select value={lotFilter} onValueChange={setLotFilter}>
+            <SelectTrigger
+              id="stock-lot"
+              data-ocid="reports.yarnstock.lot.select"
+              className="h-8 text-sm w-44"
+            >
+              <SelectValue placeholder="All Lots" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Lot Numbers</SelectItem>
+              {allLotNumbers.map((lot) => (
+                <SelectItem key={lot} value={lot}>
+                  {lot}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

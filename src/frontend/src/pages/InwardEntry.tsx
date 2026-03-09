@@ -39,7 +39,6 @@ import {
   useAddInwardEntry,
   useDeleteInwardEntry,
   useInwardEntries,
-  useNextInwardNumber,
   usePOBalance,
   usePurchaseOrders,
 } from "../hooks/useQueries";
@@ -122,15 +121,11 @@ export default function InwardEntry() {
   // Build a map from PO id -> PO for quick lookups
   const poMap = new Map(purchaseOrders.map((po) => [String(po.id), po]));
 
-  // Fetch next inward number whenever dialog is open
-  const { data: nextInwardData } = useNextInwardNumber(dialogOpen);
-
-  // Pre-fill inward number when it arrives
-  useEffect(() => {
-    if (nextInwardData && dialogOpen) {
-      setForm((p) => ({ ...p, inwardNumber: nextInwardData }));
-    }
-  }, [nextInwardData, dialogOpen]);
+  function generateInwardNumber() {
+    const year = new Date().getFullYear();
+    const nextNum = entries.length + 1;
+    return `IW-${year}-${String(nextNum).padStart(3, "0")}`;
+  }
 
   // Fetch PO balance when a PO is selected
   const selectedPoId = form.purchaseOrderId
@@ -152,8 +147,17 @@ export default function InwardEntry() {
   }, [form.purchaseOrderId, purchaseOrders]);
 
   function openAdd() {
-    setForm(defaultForm);
+    setForm({ ...defaultForm, inwardNumber: generateInwardNumber() });
     setDialogOpen(true);
+  }
+
+  async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      return await fn();
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -174,21 +178,25 @@ export default function InwardEntry() {
       return;
     }
     try {
-      await addMutation.mutateAsync({
-        inwardNumber: form.inwardNumber,
-        purchaseOrderId: BigInt(form.purchaseOrderId),
-        inwardDate: dateStringToNs(form.inwardDate),
-        materialName: form.materialName,
-        receivedQty: BigInt(Math.round(Number(form.receivedQty))),
-        warehouse: form.warehouse as Warehouse,
-        vehicleNumber: form.vehicleNumber,
-        remarks: form.remarks,
-      });
+      await withRetry(() =>
+        addMutation.mutateAsync({
+          inwardNumber: form.inwardNumber,
+          purchaseOrderId: BigInt(form.purchaseOrderId),
+          inwardDate: dateStringToNs(form.inwardDate),
+          materialName: form.materialName,
+          receivedQty: BigInt(Math.round(Number(form.receivedQty))),
+          warehouse: form.warehouse as Warehouse,
+          vehicleNumber: form.vehicleNumber,
+          remarks: form.remarks,
+        }),
+      );
       toast.success("Inward entry recorded");
       setDialogOpen(false);
-    } catch {
+    } catch (error) {
+      console.error("Operation failed:", error);
+      const msg = error instanceof Error ? error.message : String(error);
       toast.error(
-        isLoggedIn ? "Operation failed" : "Please sign in to save data",
+        isLoggedIn ? msg || "Operation failed" : "Please sign in to save data",
       );
     }
   }
@@ -196,10 +204,14 @@ export default function InwardEntry() {
   async function handleDelete() {
     if (!deleteId) return;
     try {
-      await deleteMutation.mutateAsync(deleteId);
+      await withRetry(() => deleteMutation.mutateAsync(deleteId));
       toast.success("Inward entry deleted");
-    } catch {
-      toast.error(isLoggedIn ? "Delete failed" : "Please sign in to save data");
+    } catch (error) {
+      console.error("Operation failed:", error);
+      const msg = error instanceof Error ? error.message : String(error);
+      toast.error(
+        isLoggedIn ? msg || "Delete failed" : "Please sign in to save data",
+      );
     } finally {
       setDeleteId(null);
     }

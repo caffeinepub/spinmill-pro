@@ -34,7 +34,7 @@ import {
   Trash2,
   Warehouse as WarehouseIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import type { Warehouse } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -46,7 +46,6 @@ import {
   useCreateMaterialIssue,
   useDeleteMaterialIssue,
   useMaterialIssues,
-  useNextIssueNumber,
   useWarehouseStock,
 } from "../hooks/useQueries";
 
@@ -124,24 +123,29 @@ export default function MaterialIssue() {
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [form, setForm] = useState(defaultForm);
 
-  // Fetch next issue number when dialog is open
-  const { data: nextIssueData } = useNextIssueNumber(dialogOpen);
-
-  // Pre-fill issue number when it arrives
-  useEffect(() => {
-    if (nextIssueData && dialogOpen) {
-      setForm((p) => ({ ...p, issueNumber: nextIssueData }));
-    }
-  }, [nextIssueData, dialogOpen]);
-
   // Filter warehouse stock by selected warehouse for reference
   const stockForWarehouse = warehouseStock.filter(
     (s) => (s.warehouse as string) === form.warehouse,
   );
 
+  function generateIssueNumber() {
+    const year = new Date().getFullYear();
+    const nextNum = issues.length + 1;
+    return `MI-${year}-${String(nextNum).padStart(3, "0")}`;
+  }
+
   function openAdd() {
-    setForm(defaultForm);
+    setForm({ ...defaultForm, issueNumber: generateIssueNumber() });
     setDialogOpen(true);
+  }
+
+  async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      return await fn();
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -165,19 +169,22 @@ export default function MaterialIssue() {
     }
 
     try {
-      await createMutation.mutateAsync({
-        department: form.department,
-        warehouse: form.warehouse as Warehouse,
-        materialName: form.materialName.trim(),
-        grade: form.grade.trim(),
-        issuedQty: BigInt(Math.round(qty)),
-        remarks: form.remarks.trim(),
-      });
+      await withRetry(() =>
+        createMutation.mutateAsync({
+          department: form.department,
+          warehouse: form.warehouse as Warehouse,
+          materialName: form.materialName.trim(),
+          grade: form.grade.trim(),
+          issuedQty: BigInt(Math.round(qty)),
+          remarks: form.remarks.trim(),
+        }),
+      );
       toast.success(
         `Issue ${form.issueNumber} created — stock deducted from ${warehouseLabel(form.warehouse as Warehouse)}`,
       );
       setDialogOpen(false);
     } catch (err) {
+      console.error("Operation failed:", err);
       if (!isLoggedIn) {
         toast.error("Please sign in to save data");
       } else {
@@ -198,10 +205,14 @@ export default function MaterialIssue() {
   async function handleDelete() {
     if (!deleteId) return;
     try {
-      await deleteMutation.mutateAsync(deleteId);
+      await withRetry(() => deleteMutation.mutateAsync(deleteId));
       toast.success("Material issue deleted — stock restored");
-    } catch {
-      toast.error(isLoggedIn ? "Delete failed" : "Please sign in to save data");
+    } catch (error) {
+      console.error("Operation failed:", error);
+      const msg = error instanceof Error ? error.message : String(error);
+      toast.error(
+        isLoggedIn ? msg || "Delete failed" : "Please sign in to save data",
+      );
     } finally {
       setDeleteId(null);
     }

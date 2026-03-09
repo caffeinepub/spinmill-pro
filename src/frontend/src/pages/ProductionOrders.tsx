@@ -24,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ClipboardList, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { ClipboardList, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -47,6 +47,13 @@ import type {
   SpinningUnit,
   TwistDirection,
 } from "../types";
+
+/** Extracts the leading numeric value from a count string like "30/1", "40@", "2/40".
+ *  Returns 1n if no valid number found. */
+function parseCountNe(val: string): bigint {
+  const match = val.match(/^(\d+(\.\d+)?)/);
+  return match ? BigInt(Math.round(Number.parseFloat(match[1]))) : 1n;
+}
 
 const defaultForm = {
   orderNumber: "",
@@ -74,6 +81,7 @@ export default function ProductionOrders() {
   const [editItem, setEditItem] = useState<ProductionOrder | null>(null);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [form, setForm] = useState(defaultForm);
+  const [filterStatus, setFilterStatus] = useState<string>("all");
 
   function generateOrderNumber() {
     const year = new Date().getFullYear();
@@ -105,44 +113,59 @@ export default function ProductionOrders() {
     setDialogOpen(true);
   }
 
+  async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      return await fn();
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const targetTs = BigInt(new Date(form.targetDate).getTime() * 1_000_000);
     try {
       if (editItem) {
-        await updateMutation.mutateAsync({
-          id: editItem.id,
-          orderNumber: form.orderNumber,
-          lotNumber: form.lotNumber,
-          productType: form.productType,
-          spinningUnit: form.spinningUnit,
-          endUse: form.endUse,
-          yarnCountNe: BigInt(Math.round(Number(form.yarnCountNe))),
-          twistDirection: form.twistDirection,
-          quantityKg: BigInt(Math.round(Number(form.quantityKg))),
-          targetDate: targetTs,
-          status: form.status,
-        });
+        await withRetry(() =>
+          updateMutation.mutateAsync({
+            id: editItem.id,
+            orderNumber: form.orderNumber,
+            lotNumber: form.lotNumber,
+            productType: form.productType,
+            spinningUnit: form.spinningUnit,
+            endUse: form.endUse,
+            yarnCountNe: parseCountNe(form.yarnCountNe),
+            twistDirection: form.twistDirection,
+            quantityKg: BigInt(Math.round(Number(form.quantityKg))),
+            targetDate: targetTs,
+            status: form.status,
+          }),
+        );
         toast.success("Order updated");
       } else {
-        await createMutation.mutateAsync({
-          orderNumber: form.orderNumber,
-          lotNumber: form.lotNumber,
-          productType: form.productType,
-          spinningUnit: form.spinningUnit,
-          endUse: form.endUse,
-          yarnCountNe: BigInt(Math.round(Number(form.yarnCountNe))),
-          twistDirection: form.twistDirection,
-          quantityKg: BigInt(Math.round(Number(form.quantityKg))),
-          targetDate: targetTs,
-          status: "pending" as OrderStatus,
-        });
+        await withRetry(() =>
+          createMutation.mutateAsync({
+            orderNumber: form.orderNumber,
+            lotNumber: form.lotNumber,
+            productType: form.productType,
+            spinningUnit: form.spinningUnit,
+            endUse: form.endUse,
+            yarnCountNe: parseCountNe(form.yarnCountNe),
+            twistDirection: form.twistDirection,
+            quantityKg: BigInt(Math.round(Number(form.quantityKg))),
+            targetDate: targetTs,
+            status: "pending" as OrderStatus,
+          }),
+        );
         toast.success("Order created");
       }
       setDialogOpen(false);
-    } catch {
+    } catch (error) {
+      console.error("Operation failed:", error);
+      const msg = error instanceof Error ? error.message : String(error);
       toast.error(
-        isLoggedIn ? "Operation failed" : "Please sign in to save data",
+        isLoggedIn ? msg || "Operation failed" : "Please sign in to save data",
       );
     }
   }
@@ -150,16 +173,25 @@ export default function ProductionOrders() {
   async function handleDelete() {
     if (!deleteId) return;
     try {
-      await deleteMutation.mutateAsync(deleteId);
+      await withRetry(() => deleteMutation.mutateAsync(deleteId));
       toast.success("Order deleted");
-    } catch {
-      toast.error(isLoggedIn ? "Delete failed" : "Please sign in to save data");
+    } catch (error) {
+      console.error("Operation failed:", error);
+      const msg = error instanceof Error ? error.message : String(error);
+      toast.error(
+        isLoggedIn ? msg || "Delete failed" : "Please sign in to save data",
+      );
     } finally {
       setDeleteId(null);
     }
   }
 
   const isPending = createMutation.isPending || updateMutation.isPending;
+
+  const filteredOrders =
+    filterStatus === "all"
+      ? orders
+      : orders.filter((o) => o.status === filterStatus);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -178,6 +210,37 @@ export default function ProductionOrders() {
         }
       />
 
+      {/* Status Filter */}
+      <div className="flex items-center gap-3 mb-4">
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger
+            className="w-48"
+            data-ocid="orders.status_filter_select"
+          >
+            <SelectValue placeholder="Filter by Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="inProgress">In Progress</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
+          </SelectContent>
+        </Select>
+        {filterStatus !== "all" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            data-ocid="orders.clear_filter_button"
+            onClick={() => setFilterStatus("all")}
+            className="gap-1 text-muted-foreground"
+          >
+            <X className="w-3.5 h-3.5" />
+            Clear Filter
+          </Button>
+        )}
+      </div>
+
       <div className="rounded-lg border border-border/60 bg-card shadow-card overflow-hidden">
         {isLoading ? (
           <div className="p-4 space-y-3">
@@ -185,14 +248,22 @@ export default function ProductionOrders() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
-        ) : orders.length === 0 ? (
+        ) : filteredOrders.length === 0 ? (
           <EmptyState
             data-ocid="orders.empty_state"
             icon={<ClipboardList className="w-7 h-7" />}
-            title="No production orders"
-            description="Create your first production order to begin tracking yarn manufacturing."
-            actionLabel="Create Order"
-            onAction={openAdd}
+            title={
+              filterStatus !== "all"
+                ? "No orders match this status"
+                : "No production orders"
+            }
+            description={
+              filterStatus !== "all"
+                ? "Try selecting a different status filter."
+                : "Create your first production order to begin tracking yarn manufacturing."
+            }
+            actionLabel={filterStatus !== "all" ? undefined : "Create Order"}
+            onAction={filterStatus !== "all" ? undefined : openAdd}
           />
         ) : (
           <Table>
@@ -234,7 +305,7 @@ export default function ProductionOrders() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.map((order, idx) => (
+              {filteredOrders.map((order, idx) => (
                 <TableRow
                   key={String(order.id)}
                   data-ocid={`orders.item.${idx + 1}`}
@@ -270,7 +341,7 @@ export default function ProductionOrders() {
                         order.endUse.slice(1)}
                   </TableCell>
                   <TableCell className="font-mono-nums">
-                    {Number(order.yarnCountNe)}
+                    {String(Number(order.yarnCountNe))}
                   </TableCell>
                   <TableCell className="font-mono-nums">
                     {order.twistDirection === "s" ? "OE" : "RS"}
@@ -421,13 +492,12 @@ export default function ProductionOrders() {
                 <Label htmlFor="ord-ne">Yarn Count (Ne)</Label>
                 <Input
                   id="ord-ne"
-                  type="number"
-                  min="1"
+                  type="text"
                   value={form.yarnCountNe}
                   onChange={(e) =>
                     setForm((p) => ({ ...p, yarnCountNe: e.target.value }))
                   }
-                  placeholder="30"
+                  placeholder="e.g. 30/1 or 40@"
                   required
                 />
               </div>

@@ -173,20 +173,32 @@ export default function UserManagement() {
     }
   }, [isAdmin, loading, checkAdminAndLoad]);
 
+  async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch {
+      await sleep(1500);
+      return await fn();
+    }
+  }
+
   const handleRoleChange = async (user: UserEntry, newRole: string) => {
     if (!actor) return;
     const principalStr = user.principal.toString();
     setActionLoading(`role-${principalStr}`);
     try {
-      await fullActor(actor).updateUserRole(
-        user.principal,
-        newRole as UserEntry["role"],
+      await withRetry(() =>
+        fullActor(actor).updateUserRole(
+          user.principal,
+          newRole as UserEntry["role"],
+        ),
       );
       toast.success("User role updated successfully");
       await checkAdminAndLoad();
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to update user role");
+      console.error("Operation failed:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(msg || "Failed to update user role");
     } finally {
       setActionLoading(null);
     }
@@ -197,12 +209,13 @@ export default function UserManagement() {
     const principalStr = user.principal.toString();
     setActionLoading(`remove-${principalStr}`);
     try {
-      await fullActor(actor).removeUser(user.principal);
+      await withRetry(() => fullActor(actor).removeUser(user.principal));
       toast.success("User removed successfully");
       await checkAdminAndLoad();
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to remove user");
+      console.error("Operation failed:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(msg || "Failed to remove user");
     } finally {
       setActionLoading(null);
     }

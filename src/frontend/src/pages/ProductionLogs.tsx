@@ -175,6 +175,15 @@ export default function ProductionLogs() {
     setDialogOpen(true);
   }
 
+  async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      return await fn();
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isSubmitBlocked) return;
@@ -189,16 +198,20 @@ export default function ProductionLogs() {
         operatorName: form.shiftOfficerName,
       };
       if (editItem) {
-        await updateMutation.mutateAsync({ id: editItem.id, ...args });
+        await withRetry(() =>
+          updateMutation.mutateAsync({ id: editItem.id, ...args }),
+        );
         toast.success("Production log updated");
       } else {
-        await addMutation.mutateAsync(args);
+        await withRetry(() => addMutation.mutateAsync(args));
         toast.success("Production log added");
       }
       setDialogOpen(false);
-    } catch {
+    } catch (error) {
+      console.error("Operation failed:", error);
+      const msg = error instanceof Error ? error.message : String(error);
       toast.error(
-        isLoggedIn ? "Operation failed" : "Please sign in to save data",
+        isLoggedIn ? msg || "Operation failed" : "Please sign in to save data",
       );
     }
   }
@@ -206,10 +219,14 @@ export default function ProductionLogs() {
   async function handleDelete() {
     if (!deleteId) return;
     try {
-      await deleteMutation.mutateAsync(deleteId);
+      await withRetry(() => deleteMutation.mutateAsync(deleteId));
       toast.success("Log deleted");
-    } catch {
-      toast.error(isLoggedIn ? "Delete failed" : "Please sign in to save data");
+    } catch (error) {
+      console.error("Operation failed:", error);
+      const msg = error instanceof Error ? error.message : String(error);
+      toast.error(
+        isLoggedIn ? msg || "Delete failed" : "Please sign in to save data",
+      );
     } finally {
       setDeleteId(null);
     }

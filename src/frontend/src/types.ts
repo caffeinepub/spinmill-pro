@@ -157,6 +157,7 @@ export enum ProductType {
 export enum SpinningUnit {
   openend = "openend",
   ringSpinning = "ringSpinning",
+  tfo = "tfo",
 }
 
 export enum EndUse {

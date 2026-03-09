@@ -46,6 +46,13 @@ import type {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/** Extracts the leading numeric value from a count string like "30/1", "40@", "2/40".
+ *  Returns 1n if no valid number found. */
+function parseCountNe(val: string): bigint {
+  const match = val.match(/^(\d+(\.\d+)?)/);
+  return match ? BigInt(Math.round(Number.parseFloat(match[1]))) : 1n;
+}
+
 function formatUnit(su: string): string {
   if (su === "openend") return "Openend";
   if (su === "ringSpinning") return "Ring Spinning";
@@ -111,6 +118,15 @@ export default function YarnOpeningStock() {
     setDialogOpen(true);
   }
 
+  async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      return await fn();
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isLoggedIn) {
@@ -130,19 +146,23 @@ export default function YarnOpeningStock() {
       return;
     }
     try {
-      await addMutation.mutateAsync({
-        lotNumber: form.lotNumber,
-        yarnCountNe: BigInt(Math.round(Number(form.yarnCountNe))),
-        spinningUnit: form.spinningUnit as SpinningUnit,
-        productType: form.productType as ProductType,
-        endUse: form.endUse as EndUse,
-        weightKg: BigInt(Math.round(Number(form.weightKg))),
-      });
+      await withRetry(() =>
+        addMutation.mutateAsync({
+          lotNumber: form.lotNumber,
+          yarnCountNe: parseCountNe(form.yarnCountNe),
+          spinningUnit: form.spinningUnit as SpinningUnit,
+          productType: form.productType as ProductType,
+          endUse: form.endUse as EndUse,
+          weightKg: BigInt(Math.round(Number(form.weightKg))),
+        }),
+      );
       toast.success("Yarn opening stock entry added");
       setDialogOpen(false);
-    } catch {
+    } catch (error) {
+      console.error("Operation failed:", error);
+      const msg = error instanceof Error ? error.message : String(error);
       toast.error(
-        isLoggedIn ? "Operation failed" : "Please sign in to save data",
+        isLoggedIn ? msg || "Operation failed" : "Please sign in to save data",
       );
     }
   }
@@ -150,10 +170,14 @@ export default function YarnOpeningStock() {
   async function handleDelete() {
     if (!deleteId) return;
     try {
-      await deleteMutation.mutateAsync(deleteId);
+      await withRetry(() => deleteMutation.mutateAsync(deleteId));
       toast.success("Yarn opening stock entry deleted");
-    } catch {
-      toast.error(isLoggedIn ? "Delete failed" : "Please sign in to save data");
+    } catch (error) {
+      console.error("Operation failed:", error);
+      const msg = error instanceof Error ? error.message : String(error);
+      toast.error(
+        isLoggedIn ? msg || "Delete failed" : "Please sign in to save data",
+      );
     } finally {
       setDeleteId(null);
     }
@@ -298,15 +322,13 @@ export default function YarnOpeningStock() {
                 <Label htmlFor="yarn-os-count">Count (Ne)</Label>
                 <Input
                   id="yarn-os-count"
-                  type="number"
-                  min="1"
-                  step="1"
+                  type="text"
                   data-ocid="yarn-opening.input"
                   value={form.yarnCountNe}
                   onChange={(e) =>
                     setForm((p) => ({ ...p, yarnCountNe: e.target.value }))
                   }
-                  placeholder="e.g. 30"
+                  placeholder="e.g. 30/1 or 40@"
                   required
                 />
               </div>

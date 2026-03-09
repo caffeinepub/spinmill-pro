@@ -52,6 +52,13 @@ import {
 import { MachineType } from "../types";
 import type { Machine, MachineStatus } from "../types";
 
+/** Extracts the leading numeric value from a count string like "30/1", "40@", "2/40".
+ *  Returns 1n if no valid number found. */
+function parseCountNe(val: string): bigint {
+  const match = val.match(/^(\d+(\.\d+)?)/);
+  return match ? BigInt(Math.round(Number.parseFloat(match[1]))) : 1n;
+}
+
 const unitLabels: Record<string, string> = {
   [MachineType.autocoro]: "OE Spinning",
   [MachineType.ringFrame]: "Ring Spinning",
@@ -112,43 +119,58 @@ export default function Machines() {
     setDialogOpen(true);
   }
 
+  async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      return await fn();
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const orderId = form.currentOrderId ? BigInt(form.currentOrderId) : null;
     const isRunning = form.status === "running";
     const runningCount =
-      isRunning && form.runningCount ? BigInt(form.runningCount) : null;
+      isRunning && form.runningCount ? parseCountNe(form.runningCount) : null;
     const runningLotNumber =
       isRunning && form.runningLotNumber ? form.runningLotNumber : null;
     try {
       if (editItem) {
-        await updateMutation.mutateAsync({
-          id: editItem.id,
-          name: form.name,
-          machineType: form.machineType,
-          machineNumber: form.machineNumber,
-          status: form.status,
-          currentOrderId: orderId,
-          runningCount,
-          runningLotNumber,
-        });
+        await withRetry(() =>
+          updateMutation.mutateAsync({
+            id: editItem.id,
+            name: form.name,
+            machineType: form.machineType,
+            machineNumber: form.machineNumber,
+            status: form.status,
+            currentOrderId: orderId,
+            runningCount,
+            runningLotNumber,
+          }),
+        );
         toast.success("Machine updated");
       } else {
-        await registerMutation.mutateAsync({
-          name: form.name,
-          machineType: form.machineType,
-          machineNumber: form.machineNumber,
-          status: form.status,
-          currentOrderId: orderId,
-          runningCount,
-          runningLotNumber,
-        });
+        await withRetry(() =>
+          registerMutation.mutateAsync({
+            name: form.name,
+            machineType: form.machineType,
+            machineNumber: form.machineNumber,
+            status: form.status,
+            currentOrderId: orderId,
+            runningCount,
+            runningLotNumber,
+          }),
+        );
         toast.success("Machine registered");
       }
       setDialogOpen(false);
-    } catch {
+    } catch (error) {
+      console.error("Operation failed:", error);
+      const msg = error instanceof Error ? error.message : String(error);
       toast.error(
-        isLoggedIn ? "Operation failed" : "Please sign in to save data",
+        isLoggedIn ? msg || "Operation failed" : "Please sign in to save data",
       );
     }
   }
@@ -156,10 +178,14 @@ export default function Machines() {
   async function handleDelete() {
     if (!deleteId) return;
     try {
-      await deleteMutation.mutateAsync(deleteId);
+      await withRetry(() => deleteMutation.mutateAsync(deleteId));
       toast.success("Machine removed");
-    } catch {
-      toast.error(isLoggedIn ? "Delete failed" : "Please sign in to save data");
+    } catch (error) {
+      console.error("Operation failed:", error);
+      const msg = error instanceof Error ? error.message : String(error);
+      toast.error(
+        isLoggedIn ? msg || "Delete failed" : "Please sign in to save data",
+      );
     } finally {
       setDeleteId(null);
     }
@@ -504,14 +530,13 @@ export default function Machines() {
                   <Label htmlFor="mc-count">Count (Ne) (optional)</Label>
                   <Input
                     id="mc-count"
-                    type="number"
-                    min="1"
+                    type="text"
                     data-ocid="machines.input"
                     value={form.runningCount}
                     onChange={(e) =>
                       setForm((p) => ({ ...p, runningCount: e.target.value }))
                     }
-                    placeholder="e.g. 30"
+                    placeholder="e.g. 30/1 or 40@"
                   />
                 </div>
                 <div className="space-y-1.5">
