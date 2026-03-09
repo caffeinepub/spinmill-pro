@@ -54,9 +54,29 @@ function parseCountNe(val: string): bigint {
 }
 
 function formatUnit(su: string): string {
-  if (su === "openend") return "Openend";
+  if (su === "openend") return "OE Spinning";
   if (su === "ringSpinning") return "Ring Spinning";
+  if (su === "tfo") return "TFO";
   return su;
+}
+
+function UnitBadge({ unit }: { unit: string }) {
+  const isOE = unit === "openend";
+  const isTFO = unit === "tfo";
+  return (
+    <Badge
+      variant="outline"
+      className={
+        isOE
+          ? "bg-emerald-50 text-emerald-700 border-emerald-200 text-xs"
+          : isTFO
+            ? "bg-violet-50 text-violet-700 border-violet-200 text-xs"
+            : "bg-sky-50 text-sky-700 border-sky-200 text-xs"
+      }
+    >
+      {formatUnit(unit)}
+    </Badge>
+  );
 }
 
 function formatProductType(pt: string): string {
@@ -67,22 +87,6 @@ function formatProductType(pt: string): string {
 function formatEndUse(eu: string): string {
   if (eu === "tfo") return "TFO";
   return eu.charAt(0).toUpperCase() + eu.slice(1);
-}
-
-function UnitBadge({ unit }: { unit: string }) {
-  const isOE = unit === "openend";
-  return (
-    <Badge
-      variant="outline"
-      className={
-        isOE
-          ? "bg-emerald-50 text-emerald-700 border-emerald-200 text-xs"
-          : "bg-sky-50 text-sky-700 border-sky-200 text-xs"
-      }
-    >
-      {formatUnit(unit)}
-    </Badge>
-  );
 }
 
 // ─── Default Form ─────────────────────────────────────────────────────────────
@@ -349,8 +353,9 @@ export default function YarnOpeningStock() {
                   <SelectValue placeholder="Select unit..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="openend">Openend</SelectItem>
+                  <SelectItem value="openend">OE Spinning</SelectItem>
                   <SelectItem value="ringSpinning">Ring Spinning</SelectItem>
+                  <SelectItem value="tfo">TFO</SelectItem>
                 </SelectContent>
               </Select>
             </div>

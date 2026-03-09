@@ -115,26 +115,27 @@ export default function ProductionLogs() {
       ? selectedMachine.runningLotNumber
       : null;
   const hasMachineCountLot =
-    machineRunningCount !== null && machineRunningLot !== null;
+    machineRunningLot !== null && machineRunningLot !== "";
 
-  // Check if there's an "inProgress" production order for the machine's count+lot
-  const hasInProgressOrder = hasMachineCountLot
+  // Check if there's an "inProgress" production order for the machine's lot number only
+  // (yarnCountNe comparison is avoided because count values like "30/1" make Number() return NaN)
+  const hasInProgressOrder = machineRunningLot
     ? productionOrders.some(
         (o) =>
           o.status === OrderStatus.inProgress &&
-          Number(o.yarnCountNe) === Number(machineRunningCount) &&
           o.lotNumber === machineRunningLot,
       )
     : false;
 
-  // Fetch production order balance based on machine's count + lot
+  // Fetch production order balance based on machine's lot number
   // (only fetch if there is an in-progress order)
+  // yarnCountNe is passed as 0n since the backend only uses lotNumber for lookup
   const {
     data: orderBalance,
     isLoading: isBalanceLoading,
     isError: isBalanceError,
   } = useProductionOrderBalance(
-    hasInProgressOrder ? machineRunningCount : null,
+    hasInProgressOrder ? BigInt(0) : null,
     hasInProgressOrder ? machineRunningLot : null,
   );
 
