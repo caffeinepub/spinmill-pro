@@ -33,10 +33,11 @@ import {
   Loader2,
   MapPin,
   Plus,
+  Search,
   Trash2,
   Truck,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
@@ -81,6 +82,81 @@ function formatDestination(
   labelMap: Record<string, string>,
 ): string {
   return labelMap[dest] ?? dest;
+}
+
+// ─── Lot Number Combobox ──────────────────────────────────────────────────────
+
+interface LotComboboxProps {
+  value: string;
+  options: string[];
+  onChange: (lot: string) => void;
+}
+
+function LotCombobox({ value, options, onChange }: LotComboboxProps) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const filtered = value
+    ? options.filter((o) => o.toLowerCase().includes(value.toLowerCase()))
+    : options;
+
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    onChange(e.target.value);
+    setOpen(true);
+  }
+
+  function handleSelect(lot: string) {
+    onChange(lot);
+    setOpen(false);
+  }
+
+  function handleBlur(e: React.FocusEvent) {
+    // Close only when focus leaves the container entirely
+    if (!containerRef.current?.contains(e.relatedTarget as Node)) {
+      setOpen(false);
+    }
+  }
+
+  return (
+    <div ref={containerRef} className="relative" onBlur={handleBlur}>
+      <div className="relative">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+        <Input
+          id="dp-lot"
+          data-ocid="dispatch.search_input"
+          value={value}
+          onChange={handleInputChange}
+          onFocus={() => setOpen(true)}
+          placeholder="Search lot number..."
+          className="pl-8"
+          autoComplete="off"
+        />
+      </div>
+      {open && filtered.length > 0 && (
+        <ul className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border border-border bg-popover shadow-md text-sm">
+          {filtered.map((lot) => (
+            <li
+              key={lot}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleSelect(lot);
+              }}
+              className={`px-3 py-2 cursor-pointer hover:bg-muted transition-colors font-mono ${
+                lot === value ? "bg-primary/10 text-primary font-semibold" : ""
+              }`}
+            >
+              {lot}
+            </li>
+          ))}
+        </ul>
+      )}
+      {open && filtered.length === 0 && value.length > 0 && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-md text-sm px-3 py-2 text-muted-foreground">
+          No matching lot numbers
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── Dispatch Balance Panel ───────────────────────────────────────────────────
@@ -325,6 +401,9 @@ export default function YarnDispatch() {
     ]),
   ).sort();
 
+  // A lot is "selected" when the typed value exactly matches a known lot number
+  const isLotSelected = lotNumbers.includes(form.lotNumber);
+
   const enteredQty = form.quantityKg ? Number(form.quantityKg) : 0;
   const availableKg = balance ? Number(balance.availableKg) : null;
   const isExceeding =
@@ -332,6 +411,7 @@ export default function YarnDispatch() {
   const isZeroBalance = availableKg !== null && availableKg <= 0;
   const isSubmitBlocked =
     !form.lotNumber ||
+    !isLotSelected ||
     !form.destination ||
     !form.quantityKg ||
     isExceeding ||
@@ -582,40 +662,20 @@ export default function YarnDispatch() {
               />
             </div>
 
-            {/* Lot Number */}
+            {/* Lot Number — combobox search */}
             <div className="space-y-1.5">
               <Label htmlFor="dp-lot">Lot Number</Label>
-              <Select
-                value={form.lotNumber || "none"}
-                onValueChange={(v) =>
-                  setForm((p) => ({
-                    ...p,
-                    lotNumber: v === "none" ? "" : v,
-                    quantityKg: "",
-                  }))
+              <LotCombobox
+                value={form.lotNumber}
+                options={lotNumbers}
+                onChange={(lot) =>
+                  setForm((p) => ({ ...p, lotNumber: lot, quantityKg: "" }))
                 }
-              >
-                <SelectTrigger id="dp-lot" data-ocid="dispatch.select">
-                  <SelectValue placeholder="Select lot number..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {lotNumbers.length === 0 ? (
-                    <SelectItem value="none" disabled>
-                      No lots available
-                    </SelectItem>
-                  ) : (
-                    lotNumbers.map((lot) => (
-                      <SelectItem key={lot} value={lot}>
-                        {lot}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+              />
             </div>
 
-            {/* Balance Panel — shown when lot is selected */}
-            {form.lotNumber && (
+            {/* Balance Panel — shown when lot exactly matches a known lot number */}
+            {isLotSelected && (
               <DispatchBalancePanel
                 lotNumber={form.lotNumber}
                 enteredQty={enteredQty}
@@ -660,7 +720,7 @@ export default function YarnDispatch() {
                   setForm((p) => ({ ...p, quantityKg: e.target.value }))
                 }
                 placeholder="e.g. 500"
-                disabled={!form.lotNumber || isZeroBalance}
+                disabled={!isLotSelected || isZeroBalance}
                 required
               />
             </div>
