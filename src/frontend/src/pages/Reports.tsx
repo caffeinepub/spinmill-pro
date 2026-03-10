@@ -1194,6 +1194,7 @@ function DailyPackingReport({
   const [fromDate, setFromDate] = useState(defaultFromDate);
   const [toDate, setToDate] = useState(defaultToDate);
   const [unitFilter, setUnitFilter] = useState<string>("all");
+  const [packingLotSearch, setPackingLotSearch] = useState<string>("");
 
   const rows = useMemo(() => {
     const from = new Date(`${fromDate}T00:00:00`).getTime();
@@ -1215,6 +1216,13 @@ function DailyPackingReport({
       return true;
     });
   }, [entries, fromDate, toDate, unitFilter]);
+
+  const displayRows = useMemo(() => {
+    if (!packingLotSearch.trim()) return rows;
+    return rows.filter((r) =>
+      r.lotNumber.toLowerCase().includes(packingLotSearch.trim().toLowerCase()),
+    );
+  }, [rows, packingLotSearch]);
 
   const kpis = useMemo(() => {
     const totalQty = rows.reduce((s, r) => s + Number(r.quantityKg), 0);
@@ -1314,6 +1322,16 @@ function DailyPackingReport({
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Lot Number</Label>
+          <Input
+            placeholder="Search lot..."
+            data-ocid="reports.packing.search_input"
+            value={packingLotSearch}
+            onChange={(e) => setPackingLotSearch(e.target.value)}
+            className="h-8 text-sm w-40"
+          />
+        </div>
         <Button
           variant="outline"
           size="sm"
@@ -1363,7 +1381,7 @@ function DailyPackingReport({
       <div className="rounded-lg border border-border/60 bg-card shadow-sm overflow-hidden">
         {isLoading ? (
           <LoadingReport />
-        ) : rows.length === 0 ? (
+        ) : displayRows.length === 0 ? (
           <EmptyReport message="No packing entries in this date range" />
         ) : (
           <div className="overflow-x-auto">
@@ -1400,7 +1418,7 @@ function DailyPackingReport({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((entry, idx) => (
+                {displayRows.map((entry, idx) => (
                   <TableRow
                     key={String(entry.id)}
                     data-ocid={`reports.packing.item.${idx + 1}`}

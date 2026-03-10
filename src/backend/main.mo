@@ -1166,7 +1166,7 @@ actor {
     };
     // Also check opening stock
     for ((_, yr) in yarnOpeningStock.entries()) {
-      if (yr.lotNumber == lotNumber and not foundPacking) {
+      if (yr.lotNumber == lotNumber) {
         packed += yr.weightKg;
         yarnCountNe := yr.yarnCountNe;
         spinningUnit := yr.spinningUnit;
@@ -1204,7 +1204,7 @@ actor {
       };
     };
     for ((_, yr) in yarnOpeningStock.entries()) {
-      if (yr.lotNumber == lotNumber and not foundPacking) {
+      if (yr.lotNumber == lotNumber) {
         packed += yr.weightKg;
         yarnCountNe := yr.yarnCountNe;
         spinningUnit := yr.spinningUnit;

@@ -82,6 +82,7 @@ export default function ProductionOrders() {
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [form, setForm] = useState(defaultForm);
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [lotSearch, setLotSearch] = useState<string>("");
 
   function generateOrderNumber() {
     const year = new Date().getFullYear();
@@ -188,10 +189,13 @@ export default function ProductionOrders() {
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
-  const filteredOrders =
-    filterStatus === "all"
-      ? orders
-      : orders.filter((o) => o.status === filterStatus);
+  const filteredOrders = orders
+    .filter((o) => filterStatus === "all" || o.status === filterStatus)
+    .filter(
+      (o) =>
+        !lotSearch.trim() ||
+        o.lotNumber.toLowerCase().includes(lotSearch.trim().toLowerCase()),
+    );
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -227,12 +231,25 @@ export default function ProductionOrders() {
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
-        {filterStatus !== "all" && (
+        <div className="space-y-1">
+          <Label className="text-xs">Lot Number</Label>
+          <Input
+            placeholder="Search lot..."
+            data-ocid="orders.lot_search_input"
+            value={lotSearch}
+            onChange={(e) => setLotSearch(e.target.value)}
+            className="h-8 text-sm w-40"
+          />
+        </div>
+        {(filterStatus !== "all" || lotSearch) && (
           <Button
             variant="ghost"
             size="sm"
             data-ocid="orders.clear_filter_button"
-            onClick={() => setFilterStatus("all")}
+            onClick={() => {
+              setFilterStatus("all");
+              setLotSearch("");
+            }}
             className="gap-1 text-muted-foreground"
           >
             <X className="w-3.5 h-3.5" />
