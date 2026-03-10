@@ -597,6 +597,15 @@ function DailyIssueReport({
   const [fromDate, setFromDate] = useState(defaultFromDate);
   const [toDate, setToDate] = useState(defaultToDate);
   const [warehouseFilter, setWarehouseFilter] = useState<string>("all");
+  const [materialFilter, setMaterialFilter] = useState<string>("all");
+
+  const materials = useMemo(
+    () =>
+      Array.from(
+        new Set(issues.map((i) => i.materialName).filter(Boolean)),
+      ).sort(),
+    [issues],
+  );
 
   const rows = useMemo(() => {
     const from = new Date(`${fromDate}T00:00:00`).getTime();
@@ -609,9 +618,11 @@ function DailyIssueReport({
         (issue.warehouse as string) !== warehouseFilter
       )
         return false;
+      if (materialFilter !== "all" && issue.materialName !== materialFilter)
+        return false;
       return true;
     });
-  }, [issues, fromDate, toDate, warehouseFilter]);
+  }, [issues, fromDate, toDate, warehouseFilter, materialFilter]);
 
   const kpis = useMemo(() => {
     const totalQty = rows.reduce((s, r) => s + Number(r.issuedQty), 0);
@@ -695,6 +706,28 @@ function DailyIssueReport({
               <SelectItem value="all">All Warehouses</SelectItem>
               <SelectItem value="oeRawMaterial">OE Raw Material</SelectItem>
               <SelectItem value="ringRawMaterial">Ring Raw Material</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="issue-material" className="text-xs">
+            Material
+          </Label>
+          <Select value={materialFilter} onValueChange={setMaterialFilter}>
+            <SelectTrigger
+              id="issue-material"
+              data-ocid="reports.issue.material_select"
+              className="h-8 text-sm w-44"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Materials</SelectItem>
+              {materials.map((m) => (
+                <SelectItem key={m} value={m}>
+                  {m}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -825,10 +858,28 @@ function DailyInwardReport({
   const [toDate, setToDate] = useState(defaultToDate);
   const [warehouseFilter, setWarehouseFilter] = useState<string>("all");
   const [poFilter, setPoFilter] = useState<string>("");
+  const [supplierFilter, setSupplierFilter] = useState<string>("all");
+  const [materialFilter, setMaterialFilter] = useState<string>("all");
 
   const poMap = useMemo(
     () => new Map(purchaseOrders.map((po) => [String(po.id), po])),
     [purchaseOrders],
+  );
+
+  const suppliers = useMemo(
+    () =>
+      Array.from(
+        new Set(purchaseOrders.map((po) => po.supplier).filter(Boolean)),
+      ).sort(),
+    [purchaseOrders],
+  );
+
+  const materials = useMemo(
+    () =>
+      Array.from(
+        new Set(entries.map((e) => e.materialName).filter(Boolean)),
+      ).sort(),
+    [entries],
   );
 
   const rows = useMemo(() => {
@@ -848,9 +899,24 @@ function DailyInwardReport({
         if (!po || !po.poNumber.toLowerCase().includes(poFilter.toLowerCase()))
           return false;
       }
+      if (supplierFilter !== "all") {
+        const po = poMap.get(String(e.purchaseOrderId));
+        if (!po || po.supplier !== supplierFilter) return false;
+      }
+      if (materialFilter !== "all" && e.materialName !== materialFilter)
+        return false;
       return true;
     });
-  }, [entries, fromDate, toDate, warehouseFilter, poFilter, poMap]);
+  }, [
+    entries,
+    fromDate,
+    toDate,
+    warehouseFilter,
+    poFilter,
+    poMap,
+    supplierFilter,
+    materialFilter,
+  ]);
 
   const kpis = useMemo(() => {
     const totalQty = rows.reduce((s, r) => s + Number(r.receivedQty), 0);
@@ -956,6 +1022,50 @@ function DailyInwardReport({
             placeholder="Filter by PO..."
             className="h-8 text-sm w-36"
           />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="iw-supplier" className="text-xs">
+            Supplier
+          </Label>
+          <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+            <SelectTrigger
+              id="iw-supplier"
+              data-ocid="reports.inward.supplier_select"
+              className="h-8 text-sm w-44"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Suppliers</SelectItem>
+              {suppliers.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="iw-material" className="text-xs">
+            Material
+          </Label>
+          <Select value={materialFilter} onValueChange={setMaterialFilter}>
+            <SelectTrigger
+              id="iw-material"
+              data-ocid="reports.inward.material_select"
+              className="h-8 text-sm w-44"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Materials</SelectItem>
+              {materials.map((m) => (
+                <SelectItem key={m} value={m}>
+                  {m}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <Button
           variant="outline"
@@ -1669,7 +1779,7 @@ function YarnStockReport({
   isLoading: boolean;
 }) {
   const [unitFilter, setUnitFilter] = useState<string>("all");
-  const [lotFilter, setLotFilter] = useState<string>("all");
+  const [lotSearch, setLotSearch] = useState<string>("");
 
   // Compute per-lot totals
   const rows = useMemo(() => {
@@ -1744,12 +1854,6 @@ function YarnStockReport({
     return result.sort((a, b) => a.lotNumber.localeCompare(b.lotNumber));
   }, [packingEntries, dispatchEntries, openingStockEntries]);
 
-  // All distinct lot numbers for the dropdown
-  const allLotNumbers = useMemo(
-    () => rows.map((r) => r.lotNumber).sort((a, b) => a.localeCompare(b)),
-    [rows],
-  );
-
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
       if (unitFilter !== "all") {
@@ -1758,10 +1862,14 @@ function YarnStockReport({
         if (unitFilter === "ringSpinning" && u !== "ringspinning") return false;
         if (unitFilter === "tfo" && u !== "tfo") return false;
       }
-      if (lotFilter !== "all" && r.lotNumber !== lotFilter) return false;
+      if (
+        lotSearch.trim() &&
+        !r.lotNumber.toLowerCase().includes(lotSearch.trim().toLowerCase())
+      )
+        return false;
       return true;
     });
-  }, [rows, unitFilter, lotFilter]);
+  }, [rows, unitFilter, lotSearch]);
 
   const kpis = useMemo(() => {
     const totalStock = filteredRows.reduce((s, r) => s + r.availableKg, 0);
@@ -1825,26 +1933,17 @@ function YarnStockReport({
           </Select>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="stock-lot" className="text-xs">
-            Lot Number
+          <Label htmlFor="stock-lot-search" className="text-xs">
+            Search Lot Number
           </Label>
-          <Select value={lotFilter} onValueChange={setLotFilter}>
-            <SelectTrigger
-              id="stock-lot"
-              data-ocid="reports.yarnstock.lot.select"
-              className="h-8 text-sm w-44"
-            >
-              <SelectValue placeholder="All Lots" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Lot Numbers</SelectItem>
-              {allLotNumbers.map((lot) => (
-                <SelectItem key={lot} value={lot}>
-                  {lot}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Input
+            id="stock-lot-search"
+            data-ocid="reports.yarnstock.search_input"
+            placeholder="Type lot number..."
+            value={lotSearch}
+            onChange={(e) => setLotSearch(e.target.value)}
+            className="h-8 text-sm w-48"
+          />
         </div>
         <Button
           variant="outline"

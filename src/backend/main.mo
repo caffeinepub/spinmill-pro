@@ -599,7 +599,8 @@ actor {
 
     // Create raw material record
     let rmId = rawMaterialIdCounter;
-    rawMaterials.add(rmId, { id = rmId; lotNumber = inwardNumber; supplier = ""; grade = materialName; weightKg = receivedQty; dateReceived = inwardDate; status = #available; warehouse; inwardEntryId = ?id });
+    let inwardSupplier = switch (purchaseOrders.get(purchaseOrderId)) { case (?po) { po.supplier }; case (null) { "" } };
+    rawMaterials.add(rmId, { id = rmId; lotNumber = inwardNumber; supplier = inwardSupplier; grade = materialName; weightKg = receivedQty; dateReceived = inwardDate; status = #available; warehouse; inwardEntryId = ?id });
     rawMaterialIdCounter += 1;
 
     // Update warehouse stock

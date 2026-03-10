@@ -50,6 +50,7 @@ import {
   useDispatchEntries,
   usePackingEntries,
   useProductionOrders,
+  useYarnOpeningStock,
 } from "../hooks/useQueries";
 import type { DispatchDestination } from "../types";
 
@@ -283,6 +284,7 @@ export default function YarnDispatch() {
   const { data: entries = [], isLoading } = useDispatchEntries();
   const { data: packingEntries = [] } = usePackingEntries();
   const { data: productionOrders = [] } = useProductionOrders();
+  const { data: yarnOpeningStockEntries = [] } = useYarnOpeningStock();
   const createMutation = useCreateDispatchEntry();
   const deleteMutation = useDeleteDispatchEntry();
 
@@ -309,12 +311,18 @@ export default function YarnDispatch() {
       .map((po) => po.lotNumber),
   );
 
+  // Lot numbers from packing entries (in progress orders) + opening stock lots
+  const openingStockLotNumbers = yarnOpeningStockEntries
+    .map((os) => os.lotNumber)
+    .filter(Boolean);
+
   const lotNumbers = Array.from(
-    new Set(
-      packingEntries
+    new Set([
+      ...packingEntries
         .map((pe) => pe.lotNumber)
         .filter((lot) => Boolean(lot) && inProgressLotNumbers.has(lot)),
-    ),
+      ...openingStockLotNumbers,
+    ]),
   ).sort();
 
   const enteredQty = form.quantityKg ? Number(form.quantityKg) : 0;
