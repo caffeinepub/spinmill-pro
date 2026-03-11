@@ -34,8 +34,9 @@ import {
   Settings2,
   Trash2,
   Wrench,
+  X,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
@@ -90,32 +91,52 @@ export default function Machines() {
   const [form, setForm] = useState(defaultForm);
   const [unitFilter, setUnitFilter] = useState<string>("all");
 
+  // Order search state
+  const [orderSearch, setOrderSearch] = useState("");
+  const [orderSearchFocused, setOrderSearchFocused] = useState(false);
+  const orderSearchRef = useRef<HTMLInputElement>(null);
+
   const running = machines.filter((m) => m.status === "running").length;
   const idle = machines.filter((m) => m.status === "idle").length;
   const maintenance = machines.filter((m) => m.status === "maintenance").length;
 
+  const selectedOrder = orders.find(
+    (o) => String(Number(o.id)) === form.currentOrderId,
+  );
+
+  const filteredOrderSuggestions = orderSearch
+    ? orders.filter((o) =>
+        o.orderNumber.toLowerCase().includes(orderSearch.toLowerCase()),
+      )
+    : orders.slice(0, 20);
+
   function openAdd() {
     setEditItem(null);
     setForm(defaultForm);
+    setOrderSearch("");
     setDialogOpen(true);
   }
 
   function openEdit(item: Machine) {
     setEditItem(item);
+    const orderId = item.currentOrderId
+      ? String(Number(item.currentOrderId))
+      : "";
     setForm({
       name: item.name,
       machineType: item.machineType,
       machineNumber: item.machineNumber,
       status: item.status,
-      currentOrderId: item.currentOrderId
-        ? String(Number(item.currentOrderId))
-        : "",
+      currentOrderId: orderId,
       runningCount:
         item.runningCount !== undefined
           ? String(Number(item.runningCount))
           : "",
       runningLotNumber: item.runningLotNumber ?? "",
     });
+    // Pre-fill search with existing order number
+    const existing = orders.find((o) => String(Number(o.id)) === orderId);
+    setOrderSearch(existing ? existing.orderNumber : "");
     setDialogOpen(true);
   }
 
@@ -495,35 +516,77 @@ export default function Machines() {
                 </Select>
               </div>
             </div>
-            {orders.length > 0 && (
-              <div className="space-y-1.5">
-                <Label htmlFor="mc-order">Current Order (optional)</Label>
-                <Select
-                  value={form.currentOrderId || "none"}
-                  onValueChange={(v) =>
-                    setForm((p) => ({
-                      ...p,
-                      currentOrderId: v === "none" ? "" : v,
-                    }))
-                  }
-                >
-                  <SelectTrigger id="mc-order">
-                    <SelectValue placeholder="Select order..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {orders.map((o) => (
-                      <SelectItem
-                        key={String(o.id)}
-                        value={String(Number(o.id))}
-                      >
-                        {o.orderNumber}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+
+            {/* Current Order Search */}
+            <div className="space-y-1.5">
+              <Label htmlFor="mc-order">Current Order (optional)</Label>
+              {selectedOrder ? (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/40">
+                  <span className="text-sm font-medium flex-1">
+                    {selectedOrder.orderNumber}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForm((p) => ({ ...p, currentOrderId: "" }));
+                      setOrderSearch("");
+                      setTimeout(() => orderSearchRef.current?.focus(), 50);
+                    }}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <Input
+                    id="mc-order"
+                    ref={orderSearchRef}
+                    data-ocid="machines.search_input"
+                    value={orderSearch}
+                    onChange={(e) => setOrderSearch(e.target.value)}
+                    onFocus={() => setOrderSearchFocused(true)}
+                    onBlur={() =>
+                      setTimeout(() => setOrderSearchFocused(false), 150)
+                    }
+                    placeholder="Search order number..."
+                    autoComplete="off"
+                  />
+                  {orderSearchFocused &&
+                    filteredOrderSuggestions.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-md max-h-48 overflow-y-auto">
+                        {filteredOrderSuggestions.map((o) => (
+                          <button
+                            key={String(o.id)}
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
+                            onMouseDown={() => {
+                              setForm((p) => ({
+                                ...p,
+                                currentOrderId: String(Number(o.id)),
+                              }));
+                              setOrderSearch(o.orderNumber);
+                              setOrderSearchFocused(false);
+                            }}
+                          >
+                            {o.orderNumber}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  {orderSearchFocused &&
+                    orderSearch &&
+                    filteredOrderSuggestions.length === 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-md">
+                        <p className="px-3 py-2 text-sm text-muted-foreground">
+                          No orders found
+                        </p>
+                      </div>
+                    )}
+                </div>
+              )}
+            </div>
+
             {form.status === "running" && (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">

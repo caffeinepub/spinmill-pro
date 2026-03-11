@@ -265,7 +265,7 @@ export default function YarnOpeningStock() {
                     {entry.lotNumber}
                   </TableCell>
                   <TableCell className="font-mono text-sm">
-                    {Number(entry.yarnCountNe)}
+                    {String(entry.yarnCountNe)}
                   </TableCell>
                   <TableCell>
                     <UnitBadge unit={String(entry.spinningUnit)} />

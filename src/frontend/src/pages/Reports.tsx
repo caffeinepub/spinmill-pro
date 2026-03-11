@@ -1257,7 +1257,7 @@ function DailyPackingReport({
       r.packingNumber,
       formatDateFromNs(r.packingDate),
       r.lotNumber,
-      Number(r.yarnCountNe),
+      String(r.yarnCountNe),
       spinningUnitLabel(r.spinningUnit as string),
       productTypeLabel(r.productType as string),
       endUseLabel(r.endUse as string),
@@ -1434,7 +1434,7 @@ function DailyPackingReport({
                       {entry.lotNumber}
                     </TableCell>
                     <TableCell className="text-right text-sm font-medium">
-                      {Number(entry.yarnCountNe)}
+                      {String(entry.yarnCountNe)}
                     </TableCell>
                     <TableCell>
                       <UnitBadge unit={entry.spinningUnit as string} />
@@ -1485,6 +1485,7 @@ function DailyDispatchReport({
   const [toDate, setToDate] = useState(defaultToDate);
   const [unitFilter, setUnitFilter] = useState<string>("all");
   const [destFilter, setDestFilter] = useState<string>("all");
+  const [dispatchLotSearch, setDispatchLotSearch] = useState<string>("");
 
   const rows = useMemo(() => {
     const from = new Date(`${fromDate}T00:00:00`).getTime();
@@ -1508,9 +1509,16 @@ function DailyDispatchReport({
         (e.destination as string).toLowerCase() !== destFilter.toLowerCase()
       )
         return false;
+      if (
+        dispatchLotSearch.trim() &&
+        !e.lotNumber
+          .toLowerCase()
+          .includes(dispatchLotSearch.trim().toLowerCase())
+      )
+        return false;
       return true;
     });
-  }, [entries, fromDate, toDate, unitFilter, destFilter]);
+  }, [entries, fromDate, toDate, unitFilter, destFilter, dispatchLotSearch]);
 
   const kpis = useMemo(() => {
     const totalQty = rows.reduce((s, r) => s + Number(r.quantityKg), 0);
@@ -1547,7 +1555,7 @@ function DailyDispatchReport({
       formatDateFromNs(r.dispatchDate),
       r.lotNumber,
       destinationLabel(r.destination as string),
-      Number(r.yarnCountNe),
+      String(r.yarnCountNe),
       spinningUnitLabel(r.spinningUnit as string),
       productTypeLabel(r.productType as string),
       endUseLabel(r.endUse as string),
@@ -1633,6 +1641,20 @@ function DailyDispatchReport({
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="disp-lot-search" className="text-xs">
+            Lot No.
+          </Label>
+          <Input
+            id="disp-lot-search"
+            type="text"
+            data-ocid="reports.dispatch.search_input"
+            placeholder="Search lot..."
+            value={dispatchLotSearch}
+            onChange={(e) => setDispatchLotSearch(e.target.value)}
+            className="h-8 text-sm w-36"
+          />
         </div>
         <Button
           variant="outline"
@@ -1744,7 +1766,7 @@ function DailyDispatchReport({
                       />
                     </TableCell>
                     <TableCell className="text-right text-sm font-medium">
-                      {Number(entry.yarnCountNe)}
+                      {String(entry.yarnCountNe)}
                     </TableCell>
                     <TableCell>
                       <UnitBadge unit={entry.spinningUnit as string} />
@@ -1776,7 +1798,7 @@ function DailyDispatchReport({
 
 interface YarnStockRow {
   lotNumber: string;
-  yarnCountNe: number;
+  yarnCountNe: string;
   spinningUnit: string;
   productType: string;
   endUse: string;
@@ -1806,7 +1828,7 @@ function YarnStockReport({
       string,
       {
         totalPackedKg: number;
-        yarnCountNe: number;
+        yarnCountNe: string;
         spinningUnit: string;
         productType: string;
         endUse: string;
@@ -1817,7 +1839,7 @@ function YarnStockReport({
       if (!packMap.has(key)) {
         packMap.set(key, {
           totalPackedKg: 0,
-          yarnCountNe: Number(p.yarnCountNe),
+          yarnCountNe: String(p.yarnCountNe),
           spinningUnit: p.spinningUnit as string,
           productType: p.productType as string,
           endUse: p.endUse as string,
@@ -1833,7 +1855,7 @@ function YarnStockReport({
       if (!packMap.has(key)) {
         packMap.set(key, {
           totalPackedKg: 0,
-          yarnCountNe: Number(os.yarnCountNe),
+          yarnCountNe: String(os.yarnCountNe),
           spinningUnit: os.spinningUnit as string,
           productType: os.productType as string,
           endUse: os.endUse as string,
@@ -1856,7 +1878,7 @@ function YarnStockReport({
     for (const [lotNumber, pack] of packMap.entries()) {
       const totalDispatchedKg = dispatchMap.get(lotNumber) ?? 0;
       const availableKg = pack.totalPackedKg - totalDispatchedKg;
-      if (availableKg <= 0) continue;
+      // Show all lots with transactions, even if stock is 0
       result.push({
         lotNumber,
         yarnCountNe: pack.yarnCountNe,
