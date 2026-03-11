@@ -55,6 +55,7 @@ function formatUnit(unit: string): string {
   if (unit === "openend") return "OE Spinning";
   if (unit === "ringSpinning") return "Ring Spinning";
   if (unit === "tfo") return "TFO";
+  if (unit === "outsideYarn") return "Outside Yarn";
   return unit.charAt(0).toUpperCase() + unit.slice(1);
 }
 
@@ -62,6 +63,7 @@ const UNIT_OPTIONS = [
   { value: "openend", label: "OE Spinning" },
   { value: "ringSpinning", label: "Ring Spinning" },
   { value: "tfo", label: "TFO" },
+  { value: "outsideYarn", label: "Outside Yarn" },
 ];
 
 function formatProductType(pt: string): string {

@@ -158,6 +158,7 @@ export enum SpinningUnit {
   openend = "openend",
   ringSpinning = "ringSpinning",
   tfo = "tfo",
+  outsideYarn = "outsideYarn",
 }
 
 export enum EndUse {
@@ -213,6 +214,7 @@ export enum MachineType {
   ringFrame = "ringFrame",
   winding = "winding",
   autocoro = "autocoro",
+  outsideYarn = "outsideYarn",
 }
 
 export enum MachineStatus {

@@ -349,7 +349,9 @@ export default function ProductionOrders() {
                         ? "Ring Spinning"
                         : order.spinningUnit === "tfo"
                           ? "TFO"
-                          : order.spinningUnit}
+                          : order.spinningUnit === "outsideYarn"
+                            ? "Outside Yarn"
+                            : order.spinningUnit}
                   </TableCell>
                   <TableCell className="text-sm">
                     {order.endUse === "tfo"
@@ -477,6 +479,7 @@ export default function ProductionOrders() {
                     <SelectItem value="openend">OE Spinning</SelectItem>
                     <SelectItem value="ringSpinning">Ring Spinning</SelectItem>
                     <SelectItem value="tfo">TFO</SelectItem>
+                    <SelectItem value="outsideYarn">Outside Yarn</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

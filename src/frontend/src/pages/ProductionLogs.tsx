@@ -72,6 +72,7 @@ const unitOptions = [
   { value: MachineType.autocoro, label: "OE Spinning" },
   { value: MachineType.ringFrame, label: "Ring Spinning" },
   { value: MachineType.winding, label: "TFO" },
+  { value: MachineType.outsideYarn, label: "Outside Yarn" },
 ];
 
 const defaultForm = {

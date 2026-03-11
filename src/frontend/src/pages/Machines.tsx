@@ -64,6 +64,7 @@ const unitLabels: Record<string, string> = {
   [MachineType.autocoro]: "OE Spinning",
   [MachineType.ringFrame]: "Ring Spinning",
   [MachineType.winding]: "TFO",
+  [MachineType.outsideYarn]: "Outside Yarn",
 };
 
 const defaultForm = {
