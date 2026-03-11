@@ -360,6 +360,7 @@ export interface backendInterface {
     getPackingBalance(lotNumber: string): Promise<PackingBalance | null>;
     getProductionOrderBalance(yarnCountNe: bigint, lotNumber: string): Promise<ProductionOrderBalance | null>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
+    claimAdminIfNoAdminExists(): Promise<boolean>;
     isCallerAdmin(): Promise<boolean>;
     registerMachine(name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: bigint | null, runningLotNumber: string | null): Promise<bigint>;
     removeUser(user: Principal): Promise<void>;

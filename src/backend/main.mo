@@ -411,6 +411,18 @@ actor {
     accessControlState.userRoles.add(user, newRole);
   };
 
+  // Grants admin to the caller if no admin exists in the system (recovery path for live deployments)
+  public shared ({ caller }) func claimAdminIfNoAdminExists() : async Bool {
+    if (caller.isAnonymous()) { return false };
+    if (AccessControl.hasNoAdmin(accessControlState)) {
+      accessControlState.userRoles.add(caller, #admin);
+      accessControlState.adminAssigned := true;
+      true;
+    } else {
+      false;
+    };
+  };
+
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     userProfiles.get(caller);
   };
