@@ -29,10 +29,10 @@ import {
 } from "@/components/ui/table";
 import {
   Loader2,
-  LogOut,
   RefreshCw,
   ShieldAlert,
   ShieldCheck,
+  ShieldPlus,
   UserX,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -86,14 +86,14 @@ function RoleBadge({ role }: { role: string }) {
 
 const RETRY_DELAY_MS = 2000;
 const MAX_RETRIES = 3;
-const LOAD_TIMEOUT_MS = 10000;
+const LOAD_TIMEOUT_MS = 12000;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export default function UserManagement() {
-  const { identity, clear } = useInternetIdentity();
+  const { identity } = useInternetIdentity();
   const { actor, isFetching } = useActor();
   const isLoggedIn = !!identity;
 
@@ -102,6 +102,7 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [loadTimedOut, setLoadTimedOut] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [claimingAdmin, setClaimingAdmin] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const autoRetriedRef = useRef(false);
 
@@ -112,7 +113,6 @@ export default function UserManagement() {
     setLoading(true);
     setLoadTimedOut(false);
 
-    // Set a timeout guard — if loading takes too long, surface an error
     const timeoutId = setTimeout(() => {
       setLoadTimedOut(true);
       setLoading(false);
@@ -133,14 +133,10 @@ export default function UserManagement() {
         return;
       } catch (err) {
         lastErr = err;
-        console.error(`isCallerAdmin attempt ${attempt + 1} failed:`, err);
-        if (attempt < MAX_RETRIES) {
-          await sleep(RETRY_DELAY_MS);
-        }
+        if (attempt < MAX_RETRIES) await sleep(RETRY_DELAY_MS);
       }
     }
 
-    // All retries exhausted
     clearTimeout(timeoutId);
     console.error("All retries failed:", lastErr);
     setIsAdmin(false);
@@ -161,14 +157,10 @@ export default function UserManagement() {
     }
   }, [actor, isFetching, isLoggedIn, checkAdminAndLoad]);
 
-  // Auto-retry once after 1 second when isAdmin resolves to false
-  // This handles the race condition where registration just completed
   useEffect(() => {
     if (isAdmin === false && !loading && !autoRetriedRef.current) {
       autoRetriedRef.current = true;
-      const timer = setTimeout(() => {
-        checkAdminAndLoad();
-      }, 1000);
+      const timer = setTimeout(() => checkAdminAndLoad(), 1000);
       return () => clearTimeout(timer);
     }
   }, [isAdmin, loading, checkAdminAndLoad]);
@@ -181,6 +173,35 @@ export default function UserManagement() {
       return await fn();
     }
   }
+
+  // One-click admin claim: works when no admin exists in the system yet
+  const handleClaimAdmin = async () => {
+    if (!actor) return;
+    setClaimingAdmin(true);
+    try {
+      const success = await withRetry(() =>
+        (
+          fullActor(actor) as unknown as {
+            claimAdminIfNoAdminExists: () => Promise<boolean>;
+          }
+        ).claimAdminIfNoAdminExists(),
+      );
+      if (success) {
+        toast.success("Admin access granted! Loading user list...");
+        autoRetriedRef.current = false;
+        await checkAdminAndLoad();
+      } else {
+        toast.error(
+          "Could not claim admin -- an admin already exists. Ask the current admin to assign your role.",
+        );
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(msg || "Failed to claim admin access");
+    } finally {
+      setClaimingAdmin(false);
+    }
+  };
 
   const handleRoleChange = async (user: UserEntry, newRole: string) => {
     if (!actor) return;
@@ -196,7 +217,6 @@ export default function UserManagement() {
       toast.success("User role updated successfully");
       await checkAdminAndLoad();
     } catch (err) {
-      console.error("Operation failed:", err);
       const msg = err instanceof Error ? err.message : String(err);
       toast.error(msg || "Failed to update user role");
     } finally {
@@ -213,7 +233,6 @@ export default function UserManagement() {
       toast.success("User removed successfully");
       await checkAdminAndLoad();
     } catch (err) {
-      console.error("Operation failed:", err);
       const msg = err instanceof Error ? err.message : String(err);
       toast.error(msg || "Failed to remove user");
     } finally {
@@ -221,7 +240,6 @@ export default function UserManagement() {
     }
   };
 
-  // Not logged in
   if (!isLoggedIn) {
     return (
       <div className="p-6">
@@ -243,7 +261,6 @@ export default function UserManagement() {
     );
   }
 
-  // Loading (actor initializing or data fetching)
   if (isFetching || loading) {
     return (
       <div className="p-6">
@@ -261,7 +278,6 @@ export default function UserManagement() {
     );
   }
 
-  // Timed out
   if (loadTimedOut) {
     return (
       <div className="p-6">
@@ -272,116 +288,95 @@ export default function UserManagement() {
           <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
             <ShieldAlert className="w-6 h-6 text-amber-600" />
           </div>
-          <h2 className="text-lg font-semibold text-foreground">
-            Taking too long
-          </h2>
+          <h2 className="text-lg font-semibold">Taking too long</h2>
           <p className="text-sm text-muted-foreground max-w-xs">
-            User Management is taking longer than expected to load. Please try
-            again.
+            User Management is taking longer than expected. Please try again.
           </p>
           <Button
             variant="outline"
             size="sm"
             data-ocid="user-mgmt.retry_button"
             onClick={checkAdminAndLoad}
-            className="gap-2 mt-1"
           >
-            <RefreshCw className="w-4 h-4" />
-            Retry
+            <RefreshCw className="w-4 h-4 mr-2" /> Retry
           </Button>
         </div>
       </div>
     );
   }
 
-  // Not admin
   if (isAdmin === false) {
     return (
       <div className="p-6">
         <div
           data-ocid="user-mgmt.error_state"
-          className="flex flex-col items-center justify-center gap-4 py-20 text-center"
+          className="flex flex-col items-center justify-center gap-4 py-16 text-center"
         >
           <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center">
             <ShieldAlert className="w-7 h-7 text-red-600" />
           </div>
           <div className="space-y-1">
-            <h2 className="text-lg font-semibold text-foreground">
-              Admin Access Required
-            </h2>
+            <h2 className="text-lg font-semibold">Admin Access Required</h2>
             <p className="text-sm text-muted-foreground max-w-sm">
-              To get admin access, open this app from the Caffeine dashboard.
-              The dashboard link automatically grants you admin rights.
+              You are currently signed in but do not have admin role.
             </p>
           </div>
-          <div className="max-w-sm w-full space-y-2 text-left">
-            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-              <p className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                How to get access
-              </p>
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <span className="text-xs font-bold text-primary mt-0.5 shrink-0">
-                    1.
-                  </span>
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">
-                      App owner?
-                    </span>{" "}
-                    Open SpinMill Pro directly from the Caffeine dashboard —
-                    this automatically grants admin access when you sign in.
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-xs font-bold text-primary mt-0.5 shrink-0">
-                    2.
-                  </span>
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">
-                      Already signed in via dashboard?
-                    </span>{" "}
-                    Click Retry below — access may have just finished
-                    activating.
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-xs font-bold text-primary mt-0.5 shrink-0">
-                    3.
-                  </span>
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">
-                      Another user signed in first?
-                    </span>{" "}
-                    Ask them to go to User Management and change your role to
-                    Admin.
-                  </p>
-                </div>
+
+          {/* Primary recovery: one-click claim when no admin exists */}
+          <div className="w-full max-w-sm space-y-3">
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-left space-y-2">
+              <div className="flex items-center gap-2">
+                <ShieldPlus className="w-4 h-4 text-blue-600 shrink-0" />
+                <p className="text-sm font-semibold text-blue-900">
+                  Are you the app owner?
+                </p>
               </div>
+              <p className="text-xs text-blue-700">
+                Click below to claim admin access. This works when no admin has
+                been set up yet in this environment.
+              </p>
+              <Button
+                className="w-full mt-1 bg-blue-600 hover:bg-blue-700 text-white"
+                size="sm"
+                data-ocid="user-mgmt.primary_button"
+                onClick={handleClaimAdmin}
+                disabled={claimingAdmin}
+              >
+                {claimingAdmin ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Claiming...
+                  </>
+                ) : (
+                  <>
+                    <ShieldPlus className="w-4 h-4 mr-2" />
+                    Claim Admin Access
+                  </>
+                )}
+              </Button>
             </div>
-          </div>
-          <div className="flex flex-col gap-2 w-full max-w-xs">
+
+            <div className="rounded-lg border border-border bg-muted/30 p-3 text-left space-y-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-foreground">
+                Other options
+              </p>
+              <p className="text-xs text-muted-foreground">
+                If another admin already exists, ask them to go to User
+                Management and change your role to Admin.
+              </p>
+            </div>
+
             <Button
               variant="outline"
               size="sm"
+              className="w-full"
               data-ocid="user-mgmt.retry_button"
               onClick={() => {
                 autoRetriedRef.current = false;
                 checkAdminAndLoad();
               }}
-              className="gap-2 w-full"
             >
-              <RefreshCw className="w-4 h-4" />
-              Retry
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              data-ocid="user-mgmt.secondary_button"
-              onClick={clear}
-              className="gap-2 w-full text-muted-foreground hover:text-foreground"
-            >
-              <LogOut className="w-4 h-4" />
-              Sign Out
+              <RefreshCw className="w-4 h-4 mr-2" /> Refresh Status
             </Button>
           </div>
         </div>
@@ -391,7 +386,6 @@ export default function UserManagement() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-foreground font-display">
@@ -414,7 +408,6 @@ export default function UserManagement() {
         </Button>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card data-ocid="user-mgmt.card">
           <CardHeader className="pb-2">
@@ -425,9 +418,7 @@ export default function UserManagement() {
           <CardContent>
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-blue-500" />
-              <span className="text-2xl font-bold text-foreground">
-                {users.length}
-              </span>
+              <span className="text-2xl font-bold">{users.length}</span>
             </div>
           </CardContent>
         </Card>
@@ -440,7 +431,7 @@ export default function UserManagement() {
           <CardContent>
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-blue-500" />
-              <span className="text-2xl font-bold text-foreground">
+              <span className="text-2xl font-bold">
                 {users.filter((u) => normalizeRole(u.role) === "admin").length}
               </span>
             </div>
@@ -455,7 +446,7 @@ export default function UserManagement() {
           <CardContent>
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-green-500" />
-              <span className="text-2xl font-bold text-foreground">
+              <span className="text-2xl font-bold">
                 {users.filter((u) => normalizeRole(u.role) === "user").length}
               </span>
             </div>
@@ -463,7 +454,6 @@ export default function UserManagement() {
         </Card>
       </div>
 
-      {/* Users Table */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold">
@@ -536,7 +526,6 @@ export default function UserManagement() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
-                            {/* Change Role Dropdown */}
                             <Select
                               defaultValue={role}
                               disabled={
@@ -572,7 +561,6 @@ export default function UserManagement() {
                               </SelectContent>
                             </Select>
 
-                            {/* Remove Button with Confirm Dialog */}
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
@@ -600,7 +588,6 @@ export default function UserManagement() {
                                   <AlertDialogDescription>
                                     Are you sure you want to remove this user?
                                     They will lose all access to SpinMill Pro.
-                                    This action cannot be undone.
                                     <br />
                                     <code className="text-xs font-mono mt-1 block text-foreground">
                                       {truncatePrincipal(principalStr)}
