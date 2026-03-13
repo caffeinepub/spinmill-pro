@@ -865,7 +865,8 @@ export default function PackingEntryPage() {
       <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
         <DialogContent
           data-ocid="packing.bulk.dialog"
-          className="max-w-4xl w-full"
+          className="max-w-4xl w-full !flex !flex-col overflow-hidden"
+          style={{ maxHeight: "90vh" }}
         >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -874,7 +875,7 @@ export default function PackingEntryPage() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-5">
+          <div className="space-y-5 overflow-y-auto flex-1 pr-1 min-h-0">
             {/* Header fields */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">

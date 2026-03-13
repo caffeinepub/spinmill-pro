@@ -1111,7 +1111,8 @@ export default function ProductionLogs() {
       <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
         <DialogContent
           data-ocid="logs.bulk.dialog"
-          className="max-w-4xl w-full"
+          className="max-w-4xl w-full !flex !flex-col overflow-hidden"
+          style={{ maxHeight: "90vh" }}
         >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1120,7 +1121,7 @@ export default function ProductionLogs() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-5">
+          <div className="space-y-5 overflow-y-auto flex-1 pr-1 min-h-0">
             {/* Common header fields */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="space-y-1.5">
@@ -1219,7 +1220,9 @@ export default function ProductionLogs() {
                           Count / Lot
                         </TableHead>
                         <TableHead className="font-semibold text-xs uppercase tracking-wider">
-                          Order Qty | Produced | Balance
+                          <span className="whitespace-normal leading-tight">
+                            Order Qty | Produced | Balance
+                          </span>
                         </TableHead>
                         <TableHead className="font-semibold text-xs uppercase tracking-wider">
                           Qty (kg)

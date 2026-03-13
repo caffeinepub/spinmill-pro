@@ -368,7 +368,7 @@ export const idlService = IDL.Service({
       [],
     ),
   'createMaterialIssue' : IDL.Func(
-      [IDL.Text, Warehouse, IDL.Text, IDL.Text, IDL.Nat, IDL.Text],
+      [IDL.Text, Warehouse, IDL.Text, IDL.Text, IDL.Nat, IDL.Text, IDL.Int],
       [IDL.Nat],
       [],
     ),
@@ -959,7 +959,7 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'createMaterialIssue' : IDL.Func(
-        [IDL.Text, Warehouse, IDL.Text, IDL.Text, IDL.Nat, IDL.Text],
+        [IDL.Text, Warehouse, IDL.Text, IDL.Text, IDL.Nat, IDL.Text, IDL.Int],
         [IDL.Nat],
         [],
       ),
