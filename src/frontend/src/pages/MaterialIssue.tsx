@@ -190,6 +190,8 @@ export default function MaterialIssue() {
           grade: form.grade.trim(),
           issuedQty: BigInt(Math.round(qty)),
           remarks: form.remarks.trim(),
+          issueDate:
+            BigInt(new Date(form.issueDate).getTime()) * BigInt(1_000_000),
         }),
       );
       toast.success(

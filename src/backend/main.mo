@@ -335,7 +335,7 @@ actor {
           warehouseStock.add(primaryKey, { s with totalQty = s.totalQty - remaining });
           remaining := 0;
         } else {
-          remaining -= s.totalQty;
+          remaining := if (remaining > s.totalQty) remaining - s.totalQty else 0;
           warehouseStock.add(primaryKey, { s with totalQty = 0 });
         };
       };
@@ -349,7 +349,7 @@ actor {
             warehouseStock.add(k, { s with totalQty = s.totalQty - remaining });
             remaining := 0;
           } else {
-            remaining -= s.totalQty;
+            remaining := if (remaining > s.totalQty) remaining - s.totalQty else 0;
             warehouseStock.add(k, { s with totalQty = 0 });
           };
         };
@@ -414,7 +414,7 @@ actor {
   // Grants admin to the caller if no admin exists in the system (recovery path for live deployments)
   public shared ({ caller }) func claimAdminIfNoAdminExists() : async Bool {
     if (caller.isAnonymous()) { return false };
-    if (AccessControl.hasNoAdmin(accessControlState)) {
+    if (not accessControlState.adminAssigned) {
       accessControlState.userRoles.add(caller, #admin);
       accessControlState.adminAssigned := true;
       true;
@@ -691,7 +691,7 @@ actor {
 
   // FIXED createMaterialIssue: compute total available across ALL warehouseStock entries
   // matching warehouse+materialName (by field value), not just a single key lookup
-  public shared ({ caller }) func createMaterialIssue(department : Text, warehouse : Warehouse, materialName : Text, grade : Text, issuedQty : Nat, remarks : Text) : async Nat {
+  public shared ({ caller }) func createMaterialIssue(department : Text, warehouse : Warehouse, materialName : Text, grade : Text, issuedQty : Nat, remarks : Text, issueDate : Int) : async Nat {
     requireUser(caller);
 
     var available : Nat = 0;
@@ -709,7 +709,7 @@ actor {
 
     let id = materialIssueIdCounter;
     let issueNumber = "ISS-" # currentYear() # "-" # padNum(id, 3);
-    materialIssues.add(id, { id; issueNumber; issueDate = Time.now(); department; warehouse; materialName; grade; issuedQty; remarks });
+    materialIssues.add(id, { id; issueNumber; issueDate = issueDate; department; warehouse; materialName; grade; issuedQty; remarks });
     materialIssueIdCounter += 1;
     id;
   };

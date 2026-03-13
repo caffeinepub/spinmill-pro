@@ -31,6 +31,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   FileText,
+  Layers,
   Loader2,
   Pencil,
   Plus,
@@ -53,7 +54,7 @@ import {
   useUpdateProductionLog,
 } from "../hooks/useQueries";
 import { MachineType, OrderStatus } from "../types";
-import type { ProductionLog, Shift } from "../types";
+import type { Machine, ProductionLog, Shift } from "../types";
 
 const shiftLabels: Record<string, string> = {
   morning: "Morning",
@@ -85,6 +86,186 @@ const defaultForm = {
   shiftOfficerName: "",
 };
 
+// ─── MachineRow sub-component ─────────────────────────────────────────────────
+interface MachineRowProps {
+  machine: Machine;
+  productionOrders: ReturnType<typeof useProductionOrders>["data"];
+  rowIndex: number;
+  qty: string;
+  eff: string;
+  onRowChange: (machineId: string, qty: string, eff: string) => void;
+}
+
+function MachineRow({
+  machine,
+  productionOrders,
+  rowIndex,
+  qty,
+  eff,
+  onRowChange,
+}: MachineRowProps) {
+  const orders = productionOrders ?? [];
+  const runningLot =
+    machine.runningLotNumber != null && machine.runningLotNumber !== ""
+      ? machine.runningLotNumber
+      : null;
+  const runningCount =
+    machine.runningCount != null ? machine.runningCount : null;
+
+  const hasInProgressOrder = runningLot
+    ? orders.some(
+        (o) =>
+          o.status === OrderStatus.inProgress && o.lotNumber === runningLot,
+      )
+    : false;
+
+  const { data: orderBalance, isLoading: isBalanceLoading } =
+    useProductionOrderBalance(
+      hasInProgressOrder ? BigInt(0) : null,
+      hasInProgressOrder ? runningLot : null,
+    );
+
+  const enteredQty = qty ? Number(qty) : 0;
+  const balanceQty = orderBalance ? Number(orderBalance.balanceQty) : null;
+  const isExceedingBalance =
+    balanceQty !== null && enteredQty > 0 && enteredQty > balanceQty;
+  const isOrderFulfilled = orderBalance?.isFulfilled === true;
+  const isDisabled = !runningLot || !hasInProgressOrder || isOrderFulfilled;
+
+  const machineKey = String(Number(machine.id));
+
+  return (
+    <TableRow
+      data-ocid={`logs.bulk.row.${rowIndex}`}
+      className={`border-border/40 transition-colors ${
+        isExceedingBalance
+          ? "bg-amber-50 dark:bg-amber-950/20"
+          : "hover:bg-muted/30"
+      }`}
+    >
+      {/* Machine name */}
+      <TableCell className="text-sm font-medium">
+        <div>
+          <span>{machine.name}</span>
+          <span className="ml-1 text-xs text-muted-foreground">
+            ({machine.machineNumber})
+          </span>
+        </div>
+      </TableCell>
+
+      {/* Count / Lot */}
+      <TableCell className="text-sm">
+        {runningLot ? (
+          <div className="space-y-0.5">
+            <div className="text-xs text-muted-foreground">
+              Ne&nbsp;
+              <span className="font-semibold text-foreground">
+                {String(runningCount)}
+              </span>
+            </div>
+            <div className="text-xs font-medium text-primary">{runningLot}</div>
+          </div>
+        ) : (
+          <span className="text-xs text-muted-foreground italic">
+            No active order
+          </span>
+        )}
+      </TableCell>
+
+      {/* Balance */}
+      <TableCell className="text-sm">
+        {!runningLot ? (
+          <span className="text-xs text-muted-foreground">—</span>
+        ) : !hasInProgressOrder ? (
+          <Badge
+            variant="outline"
+            className="text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/20 text-xs"
+          >
+            <AlertTriangle className="w-3 h-3 mr-1" />
+            No in-progress order
+          </Badge>
+        ) : isBalanceLoading ? (
+          <Skeleton className="h-4 w-24" />
+        ) : orderBalance ? (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-muted-foreground">
+              {Number(orderBalance.orderQty)}&nbsp;kg
+            </span>
+            <span className="text-muted-foreground">|</span>
+            <span className="text-muted-foreground">
+              {Number(orderBalance.producedQty)}&nbsp;kg
+            </span>
+            <span className="text-muted-foreground">|</span>
+            <span
+              className={`font-semibold ${
+                orderBalance.isFulfilled
+                  ? "text-destructive"
+                  : "text-emerald-600 dark:text-emerald-400"
+              }`}
+            >
+              {Number(orderBalance.balanceQty)}&nbsp;kg
+            </span>
+          </div>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </TableCell>
+
+      {/* Qty input */}
+      <TableCell>
+        <div className="space-y-1">
+          <Input
+            type="number"
+            min="0"
+            value={qty}
+            disabled={isDisabled}
+            onChange={(e) => onRowChange(machineKey, e.target.value, eff)}
+            placeholder={isDisabled ? "—" : "0"}
+            className={`w-24 h-8 text-sm ${
+              isExceedingBalance
+                ? "border-amber-400 focus-visible:ring-amber-400"
+                : ""
+            }`}
+          />
+          {isExceedingBalance && (
+            <p className="text-[10px] text-amber-600">Max {balanceQty} kg</p>
+          )}
+        </div>
+      </TableCell>
+
+      {/* Efficiency input */}
+      <TableCell>
+        <Input
+          type="number"
+          min="0"
+          max="100"
+          value={eff}
+          disabled={isDisabled}
+          onChange={(e) => onRowChange(machineKey, qty, e.target.value)}
+          placeholder={isDisabled ? "—" : "85"}
+          className="w-20 h-8 text-sm"
+        />
+      </TableCell>
+
+      {/* Status icon */}
+      <TableCell className="text-center">
+        {!runningLot || !hasInProgressOrder ? (
+          <X className="w-4 h-4 text-muted-foreground mx-auto" />
+        ) : isOrderFulfilled ? (
+          <AlertCircle className="w-4 h-4 text-destructive mx-auto" />
+        ) : isExceedingBalance ? (
+          <AlertTriangle className="w-4 h-4 text-amber-500 mx-auto" />
+        ) : enteredQty > 0 ? (
+          <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />
+        ) : (
+          <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 mx-auto" />
+        )}
+      </TableCell>
+    </TableRow>
+  );
+}
+
+// ─── Main component ────────────────────────────────────────────────────────────
 export default function ProductionLogs() {
   const { identity } = useInternetIdentity();
   const isLoggedIn = !!identity;
@@ -99,6 +280,19 @@ export default function ProductionLogs() {
   const [editItem, setEditItem] = useState<ProductionLog | null>(null);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [form, setForm] = useState(defaultForm);
+
+  // Bulk entry state
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkForm, setBulkForm] = useState({
+    date: new Date().toISOString().substring(0, 10),
+    shift: "morning" as Shift,
+    selectedUnit: "",
+    shiftOfficerName: "",
+  });
+  const [rowData, setRowData] = useState<
+    Map<string, { qty: string; eff: string }>
+  >(new Map());
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
 
   // Filter state
   const [filterMachineId, setFilterMachineId] = useState("");
@@ -137,6 +331,11 @@ export default function ProductionLogs() {
     ? machines.filter((m) => m.machineType === form.selectedUnit)
     : [];
 
+  // Machines for bulk dialog
+  const bulkMachines = bulkForm.selectedUnit
+    ? machines.filter((m) => m.machineType === bulkForm.selectedUnit)
+    : [];
+
   // Derive selected machine and its running count/lot
   const selectedMachine = form.machineId
     ? machines.find((m) => String(Number(m.id)) === form.machineId)
@@ -151,8 +350,6 @@ export default function ProductionLogs() {
   const hasMachineCountLot =
     machineRunningLot !== null && machineRunningLot !== "";
 
-  // Check if there's an "inProgress" production order for the machine's lot number only
-  // (yarnCountNe comparison is avoided because count values like "30/1" make Number() return NaN)
   const hasInProgressOrder = machineRunningLot
     ? productionOrders.some(
         (o) =>
@@ -161,9 +358,6 @@ export default function ProductionLogs() {
       )
     : false;
 
-  // Fetch production order balance based on machine's lot number
-  // (only fetch if there is an in-progress order)
-  // yarnCountNe is passed as 0n since the backend only uses lotNumber for lookup
   const {
     data: orderBalance,
     isLoading: isBalanceLoading,
@@ -176,11 +370,9 @@ export default function ProductionLogs() {
   const enteredQty = form.quantityKg ? Number(form.quantityKg) : 0;
   const balanceQty = orderBalance ? Number(orderBalance.balanceQty) : null;
 
-  // Determine if submission should be blocked
   const isOrderFulfilled = orderBalance?.isFulfilled === true;
   const isExceedingBalance =
     balanceQty !== null && enteredQty > 0 && enteredQty > balanceQty;
-  // Also block if no in-progress order found for this machine's count+lot
   const isNoInProgressOrder = hasMachineCountLot && !hasInProgressOrder;
   const isSubmitBlocked =
     isNoInProgressOrder ||
@@ -208,6 +400,25 @@ export default function ProductionLogs() {
       shiftOfficerName: item.operatorName,
     });
     setDialogOpen(true);
+  }
+
+  function openBulk() {
+    setBulkForm({
+      date: new Date().toISOString().substring(0, 10),
+      shift: "morning" as Shift,
+      selectedUnit: "",
+      shiftOfficerName: "",
+    });
+    setRowData(new Map());
+    setBulkDialogOpen(true);
+  }
+
+  function handleRowChange(machineId: string, qty: string, eff: string) {
+    setRowData((prev) => {
+      const next = new Map(prev);
+      next.set(machineId, { qty, eff });
+      return next;
+    });
   }
 
   async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
@@ -251,6 +462,53 @@ export default function ProductionLogs() {
     }
   }
 
+  async function handleBulkSubmit() {
+    if (!bulkForm.selectedUnit || !bulkForm.shiftOfficerName) return;
+    const dateTs = BigInt(new Date(bulkForm.date).getTime() * 1_000_000);
+    const entriesToSave = bulkMachines.filter((m) => {
+      const key = String(Number(m.id));
+      const row = rowData.get(key);
+      return row && Number(row.qty) > 0;
+    });
+    if (entriesToSave.length === 0) {
+      toast.error("Enter quantity for at least one machine.");
+      return;
+    }
+    setBulkSubmitting(true);
+    let saved = 0;
+    let failed = 0;
+    for (const machine of entriesToSave) {
+      const key = String(Number(machine.id));
+      const row = rowData.get(key);
+      if (!row) continue;
+      try {
+        await withRetry(() =>
+          addMutation.mutateAsync({
+            shift: bulkForm.shift,
+            date: dateTs,
+            machineId: machine.id,
+            quantityKg: BigInt(Math.round(Number(row.qty))),
+            efficiencyPercent: BigInt(Math.round(Number(row.eff || "0"))),
+            operatorName: bulkForm.shiftOfficerName,
+          }),
+        );
+        saved++;
+      } catch (err) {
+        console.error("Bulk entry failed for machine", machine.name, err);
+        failed++;
+      }
+    }
+    setBulkSubmitting(false);
+    if (saved > 0) {
+      toast.success(
+        `${saved} log entr${saved === 1 ? "y" : "ies"} saved${failed > 0 ? `, ${failed} failed` : ""}.`,
+      );
+      setBulkDialogOpen(false);
+    } else {
+      toast.error("All entries failed. Please try again.");
+    }
+  }
+
   async function handleDelete() {
     if (!deleteId) return;
     try {
@@ -275,14 +533,25 @@ export default function ProductionLogs() {
         title="Production Logs"
         description="Shift-wise production records and efficiency tracking"
         action={
-          <Button
-            data-ocid="logs.primary_button"
-            onClick={openAdd}
-            className="gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Log Entry
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              data-ocid="logs.bulk_button"
+              variant="outline"
+              onClick={openBulk}
+              className="gap-2"
+            >
+              <Layers className="w-4 h-4" />
+              Bulk Entry
+            </Button>
+            <Button
+              data-ocid="logs.primary_button"
+              onClick={openAdd}
+              className="gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Log Entry
+            </Button>
+          </div>
         }
       />
 
@@ -484,6 +753,7 @@ export default function ProductionLogs() {
         )}
       </div>
 
+      {/* ── Single-entry dialog (unchanged) ── */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent data-ocid="logs.dialog" className="sm:max-w-lg">
           <DialogHeader>
@@ -834,6 +1104,195 @@ export default function ProductionLogs() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Bulk Entry dialog ── */}
+      <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
+        <DialogContent
+          data-ocid="logs.bulk.dialog"
+          className="max-w-4xl w-full"
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Layers className="w-5 h-5 text-primary" />
+              Bulk Production Entry
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-5">
+            {/* Common header fields */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="bulk-date">Date</Label>
+                <Input
+                  id="bulk-date"
+                  type="date"
+                  data-ocid="logs.bulk.date.input"
+                  value={bulkForm.date}
+                  onChange={(e) =>
+                    setBulkForm((p) => ({ ...p, date: e.target.value }))
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="bulk-shift">Shift</Label>
+                <Select
+                  value={bulkForm.shift}
+                  onValueChange={(v) =>
+                    setBulkForm((p) => ({ ...p, shift: v as Shift }))
+                  }
+                >
+                  <SelectTrigger
+                    id="bulk-shift"
+                    data-ocid="logs.bulk.shift.select"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="morning">Morning</SelectItem>
+                    <SelectItem value="afternoon">Afternoon</SelectItem>
+                    <SelectItem value="night">Night</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="bulk-unit">Unit</Label>
+                <Select
+                  value={bulkForm.selectedUnit || "none"}
+                  onValueChange={(v) => {
+                    setBulkForm((p) => ({
+                      ...p,
+                      selectedUnit: v === "none" ? "" : v,
+                    }));
+                    setRowData(new Map());
+                  }}
+                >
+                  <SelectTrigger
+                    id="bulk-unit"
+                    data-ocid="logs.bulk.unit.select"
+                  >
+                    <SelectValue placeholder="Select unit..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {unitOptions.map((u) => (
+                      <SelectItem key={u.value} value={u.value}>
+                        {u.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="bulk-officer">Shift Officer Name</Label>
+                <Input
+                  id="bulk-officer"
+                  data-ocid="logs.bulk.officer.input"
+                  value={bulkForm.shiftOfficerName}
+                  onChange={(e) =>
+                    setBulkForm((p) => ({
+                      ...p,
+                      shiftOfficerName: e.target.value,
+                    }))
+                  }
+                  placeholder="Rajan Kumar"
+                />
+              </div>
+            </div>
+
+            {/* Machine table */}
+            {bulkForm.selectedUnit ? (
+              bulkMachines.length === 0 ? (
+                <div className="rounded-lg border border-border/60 p-8 text-center text-muted-foreground text-sm">
+                  No machines found in the selected unit.
+                </div>
+              ) : (
+                <div className="rounded-lg border border-border/60 overflow-auto max-h-[400px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-border/60 hover:bg-transparent sticky top-0 bg-card z-10">
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                          Machine
+                        </TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                          Count / Lot
+                        </TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                          Order Qty | Produced | Balance
+                        </TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                          Qty (kg)
+                        </TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                          Eff %
+                        </TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider text-center">
+                          Status
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {bulkMachines.map((machine, idx) => {
+                        const key = String(Number(machine.id));
+                        const row = rowData.get(key) ?? { qty: "", eff: "" };
+                        return (
+                          <MachineRow
+                            key={String(machine.id)}
+                            machine={machine}
+                            productionOrders={productionOrders}
+                            rowIndex={idx + 1}
+                            qty={row.qty}
+                            eff={row.eff}
+                            onRowChange={handleRowChange}
+                          />
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )
+            ) : (
+              <div className="rounded-lg border border-dashed border-border/60 p-10 text-center">
+                <Layers className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  Select a unit above to see all machines and enter production
+                  quantities at once.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="mt-2">
+            <Button
+              type="button"
+              variant="outline"
+              data-ocid="logs.bulk.cancel_button"
+              onClick={() => setBulkDialogOpen(false)}
+              disabled={bulkSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              data-ocid="logs.bulk.submit_button"
+              onClick={handleBulkSubmit}
+              disabled={
+                bulkSubmitting ||
+                !bulkForm.selectedUnit ||
+                !bulkForm.shiftOfficerName
+              }
+            >
+              {bulkSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                "Submit All"
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

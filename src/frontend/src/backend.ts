@@ -395,7 +395,7 @@ export interface backendInterface {
     addYarnOpeningStock(lotNumber: string, yarnCountNe: bigint, spinningUnit: SpinningUnit, productType: ProductType, endUse: EndUse, weightKg: bigint): Promise<bigint>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createDispatchEntry(lotNumber: string, destination: DispatchDestination, quantityKg: bigint, dispatchDate: Time, remarks: string): Promise<bigint>;
-    createMaterialIssue(department: string, warehouse: Warehouse, materialName: string, grade: string, issuedQty: bigint, remarks: string): Promise<bigint>;
+    createMaterialIssue(department: string, warehouse: Warehouse, materialName: string, grade: string, issuedQty: bigint, remarks: string, issueDate: bigint): Promise<bigint>;
     createPackingEntry(lotNumber: string, quantityKg: bigint, remarks: string, packingDate: Time): Promise<bigint>;
     createProductionOrder(orderNumber: string, lotNumber: string, productType: ProductType, spinningUnit: SpinningUnit, endUse: EndUse, yarnCountNe: bigint, twistDirection: TwistDirection, quantityKg: bigint, targetDate: Time, status: OrderStatus): Promise<bigint>;
     createPurchaseOrder(poNumber: string, supplier: string, materialName: string, orderedQty: bigint, orderDate: Time, expectedDeliveryDate: Time): Promise<bigint>;
@@ -614,17 +614,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async createMaterialIssue(arg0: string, arg1: Warehouse, arg2: string, arg3: string, arg4: bigint, arg5: string): Promise<bigint> {
+    async createMaterialIssue(arg0: string, arg1: Warehouse, arg2: string, arg3: string, arg4: bigint, arg5: string, arg6: bigint): Promise<bigint> {
         if (this.processError) {
             try {
-                const result = await this.actor.createMaterialIssue(arg0, to_candid_Warehouse_n3(this._uploadFile, this._downloadFile, arg1), arg2, arg3, arg4, arg5);
+                const result = await this.actor.createMaterialIssue(arg0, to_candid_Warehouse_n3(this._uploadFile, this._downloadFile, arg1), arg2, arg3, arg4, arg5, arg6);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.createMaterialIssue(arg0, to_candid_Warehouse_n3(this._uploadFile, this._downloadFile, arg1), arg2, arg3, arg4, arg5);
+            const result = await this.actor.createMaterialIssue(arg0, to_candid_Warehouse_n3(this._uploadFile, this._downloadFile, arg1), arg2, arg3, arg4, arg5, arg6);
             return result;
         }
     }

@@ -989,6 +989,7 @@ export function useCreateMaterialIssue() {
       grade: string;
       issuedQty: bigint;
       remarks: string;
+      issueDate: bigint;
     }) => {
       if (!actor) throw new Error("No actor");
       return fullActor(actor).createMaterialIssue(
@@ -998,6 +999,7 @@ export function useCreateMaterialIssue() {
         args.grade,
         args.issuedQty,
         args.remarks,
+        args.issueDate,
       );
     },
     onSuccess: () => {

@@ -57,6 +57,7 @@ function formatUnit(su: string): string {
   if (su === "openend") return "OE Spinning";
   if (su === "ringSpinning") return "Ring Spinning";
   if (su === "tfo") return "TFO";
+  if (su === "outsideYarn") return "Outside Yarn";
   return su;
 }
 
@@ -356,6 +357,7 @@ export default function YarnOpeningStock() {
                   <SelectItem value="openend">OE Spinning</SelectItem>
                   <SelectItem value="ringSpinning">Ring Spinning</SelectItem>
                   <SelectItem value="tfo">TFO</SelectItem>
+                  <SelectItem value="outsideYarn">Outside Yarn</SelectItem>
                 </SelectContent>
               </Select>
             </div>

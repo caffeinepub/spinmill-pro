@@ -126,6 +126,7 @@ function spinningUnitLabel(u: string): string {
   if (s === "openend") return "OE Spinning";
   if (s === "ringspinning") return "Ring Spinning";
   if (s === "tfo") return "TFO";
+  if (s === "outsideYarn" || s === "outsideyarn") return "Outside Yarn";
   return u;
 }
 
@@ -1212,6 +1213,7 @@ function DailyPackingReport({
         )
           return false;
         if (unitFilter === "tfo" && u !== "tfo") return false;
+        if (unitFilter === "outsideYarn" && u !== "outsideyarn") return false;
       }
       return true;
     });
@@ -1319,6 +1321,7 @@ function DailyPackingReport({
               <SelectItem value="openend">OE Spinning</SelectItem>
               <SelectItem value="ringSpinning">Ring Spinning</SelectItem>
               <SelectItem value="tfo">TFO</SelectItem>
+              <SelectItem value="outsideYarn">Outside Yarn</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -1503,6 +1506,7 @@ function DailyDispatchReport({
         )
           return false;
         if (unitFilter === "tfo" && u !== "tfo") return false;
+        if (unitFilter === "outsideYarn" && u !== "outsideyarn") return false;
       }
       if (
         destFilter !== "all" &&
@@ -1617,6 +1621,7 @@ function DailyDispatchReport({
               <SelectItem value="openend">OE Spinning</SelectItem>
               <SelectItem value="ringSpinning">Ring Spinning</SelectItem>
               <SelectItem value="tfo">TFO</SelectItem>
+              <SelectItem value="outsideYarn">Outside Yarn</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -1901,6 +1906,7 @@ function YarnStockReport({
         if (unitFilter === "openend" && u !== "openend") return false;
         if (unitFilter === "ringSpinning" && u !== "ringspinning") return false;
         if (unitFilter === "tfo" && u !== "tfo") return false;
+        if (unitFilter === "outsideYarn" && u !== "outsideyarn") return false;
       }
       if (
         lotSearch.trim() &&
@@ -1969,6 +1975,7 @@ function YarnStockReport({
               <SelectItem value="openend">OE Spinning</SelectItem>
               <SelectItem value="ringSpinning">Ring Spinning</SelectItem>
               <SelectItem value="tfo">TFO</SelectItem>
+              <SelectItem value="outsideYarn">Outside Yarn</SelectItem>
             </SelectContent>
           </Select>
         </div>

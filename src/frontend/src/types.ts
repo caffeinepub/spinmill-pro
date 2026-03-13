@@ -434,6 +434,7 @@ export interface FullBackendInterface {
     grade: string,
     issuedQty: bigint,
     remarks: string,
+    issueDate: bigint,
   ): Promise<bigint>;
   createPackingEntry(
     lotNumber: string,
