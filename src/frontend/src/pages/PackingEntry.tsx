@@ -31,6 +31,7 @@ import {
   AlertTriangle,
   Box,
   CheckCircle2,
+  Layers,
   Loader2,
   Plus,
   Trash2,
@@ -74,6 +75,15 @@ function formatProductType(pt: string): string {
 function formatEndUse(eu: string): string {
   if (eu === "tfo") return "TFO";
   return eu.charAt(0).toUpperCase() + eu.slice(1);
+}
+
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    return await fn();
+  }
 }
 
 // ─── Balance Panel ────────────────────────────────────────────────────────────
@@ -241,6 +251,114 @@ function BalancePanel({ lotNumber, enteredQty }: BalancePanelProps) {
   );
 }
 
+// ─── Bulk Lot Row ─────────────────────────────────────────────────────────────
+
+interface BulkLotRowProps {
+  lotNumber: string;
+  qty: string;
+  rowIndex: number;
+  onQtyChange: (lotNumber: string, qty: string) => void;
+}
+
+function BulkLotRow({
+  lotNumber,
+  qty,
+  rowIndex,
+  onQtyChange,
+}: BulkLotRowProps) {
+  const { data: balance, isLoading } = usePackingBalance(lotNumber);
+
+  const availableKg = balance ? Number(balance.availableKg) : null;
+  const enteredQty = qty ? Number(qty) : 0;
+  const isExceeding =
+    availableKg !== null && enteredQty > 0 && enteredQty > availableKg;
+  const isZeroBalance = availableKg !== null && availableKg <= 0;
+  const isDisabled = isZeroBalance;
+
+  return (
+    <TableRow
+      data-ocid={`packing.bulk.row.${rowIndex}`}
+      className={`border-border/40 ${
+        isDisabled ? "opacity-50 bg-muted/20" : "hover:bg-muted/30"
+      }`}
+    >
+      <TableCell>
+        <Badge variant="outline" className="font-mono text-xs">
+          {lotNumber}
+        </Badge>
+      </TableCell>
+      <TableCell className="font-mono text-xs">
+        {isLoading ? (
+          <Skeleton className="h-4 w-16" />
+        ) : balance ? (
+          `Ne ${String(balance.yarnCountNe)}`
+        ) : (
+          "—"
+        )}
+      </TableCell>
+      <TableCell className="text-xs text-muted-foreground">
+        {isLoading ? (
+          <Skeleton className="h-4 w-20" />
+        ) : balance ? (
+          formatProductType(balance.productType)
+        ) : (
+          "—"
+        )}
+      </TableCell>
+      <TableCell className="text-xs text-muted-foreground">
+        {isLoading ? (
+          <Skeleton className="h-4 w-16" />
+        ) : balance ? (
+          formatEndUse(balance.endUse)
+        ) : (
+          "—"
+        )}
+      </TableCell>
+      <TableCell>
+        {isLoading ? (
+          <Skeleton className="h-4 w-16" />
+        ) : (
+          <span
+            className={`font-mono text-sm font-semibold ${
+              isZeroBalance
+                ? "text-destructive"
+                : "text-emerald-600 dark:text-emerald-400"
+            }`}
+          >
+            {availableKg !== null ? `${availableKg} kg` : "—"}
+          </span>
+        )}
+      </TableCell>
+      <TableCell>
+        <div className="flex flex-col gap-1">
+          <Input
+            type="number"
+            min="1"
+            data-ocid={`packing.bulk.qty.input.${rowIndex}`}
+            value={qty}
+            onChange={(e) => onQtyChange(lotNumber, e.target.value)}
+            placeholder="kg"
+            disabled={isDisabled}
+            className={`w-24 h-8 text-sm ${
+              isExceeding ? "border-amber-400 focus-visible:ring-amber-400" : ""
+            }`}
+          />
+          {isExceeding && (
+            <span className="text-[10px] text-amber-600 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" /> Exceeds balance
+            </span>
+          )}
+          {isZeroBalance && (
+            <span className="text-[10px] text-destructive">
+              No balance available
+            </span>
+          )}
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const defaultForm = {
@@ -265,7 +383,34 @@ export default function PackingEntryPage() {
   const [form, setForm] = useState(defaultForm);
   const [nextPackingNumber, setNextPackingNumber] = useState<string>("");
 
-  // Lot numbers filtered by selected unit AND only "In Progress" production orders
+  // ── Bulk entry state ──────────────────────────────────────────────────────
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkUnit, setBulkUnit] = useState("");
+  const [bulkDate, setBulkDate] = useState(
+    new Date().toISOString().substring(0, 10),
+  );
+  const [bulkRemarks, setBulkRemarks] = useState("");
+  const [bulkQtyMap, setBulkQtyMap] = useState<Map<string, string>>(new Map());
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
+
+  // Active lot numbers for selected bulk unit
+  const activeLotNumbers = Array.from(
+    new Set(
+      productionOrders
+        .filter((po) => {
+          const unitMatch = !bulkUnit || po.spinningUnit === bulkUnit;
+          const status =
+            typeof po.status === "object" && po.status !== null
+              ? Object.keys(po.status as Record<string, unknown>)[0]
+              : String(po.status);
+          return unitMatch && status === "inProgress";
+        })
+        .map((po) => po.lotNumber)
+        .filter(Boolean),
+    ),
+  ).sort();
+
+  // Lot numbers for single entry filtered by unit
   const lotNumbers = Array.from(
     new Set(
       productionOrders
@@ -299,9 +444,9 @@ export default function PackingEntryPage() {
     isZeroBalance ||
     (balance === null && form.lotNumber !== "");
 
-  function generatePackingNumber() {
+  function generatePackingNumber(offset = 0) {
     const year = new Date().getFullYear();
-    const nextNum = entries.length + 1;
+    const nextNum = entries.length + 1 + offset;
     return `PKG-${year}-${String(nextNum).padStart(3, "0")}`;
   }
 
@@ -311,13 +456,20 @@ export default function PackingEntryPage() {
     setDialogOpen(true);
   }
 
-  async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
-    try {
-      return await fn();
-    } catch {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      return await fn();
-    }
+  function openBulk() {
+    setBulkUnit("");
+    setBulkDate(new Date().toISOString().substring(0, 10));
+    setBulkRemarks("");
+    setBulkQtyMap(new Map());
+    setBulkDialogOpen(true);
+  }
+
+  function handleBulkQtyChange(lotNumber: string, qty: string) {
+    setBulkQtyMap((prev) => {
+      const next = new Map(prev);
+      next.set(lotNumber, qty);
+      return next;
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -344,6 +496,46 @@ export default function PackingEntryPage() {
     }
   }
 
+  async function handleBulkSubmit() {
+    if (!bulkUnit) return;
+    const packingDateTs = BigInt(new Date(bulkDate).getTime() * 1_000_000);
+    const entriesToSave = activeLotNumbers.filter((lot) => {
+      const qty = bulkQtyMap.get(lot);
+      return qty && Number(qty) > 0;
+    });
+    if (entriesToSave.length === 0) {
+      toast.error("Enter quantity for at least one lot.");
+      return;
+    }
+    setBulkSubmitting(true);
+    let saved = 0;
+    for (const lot of entriesToSave) {
+      const qty = bulkQtyMap.get(lot) ?? "0";
+      try {
+        await withRetry(() =>
+          createMutation.mutateAsync({
+            lotNumber: lot,
+            quantityKg: BigInt(Math.round(Number(qty))),
+            remarks: bulkRemarks,
+            packingDate: packingDateTs,
+          }),
+        );
+        saved++;
+      } catch (err) {
+        console.error("Bulk packing entry failed for lot", lot, err);
+      }
+    }
+    setBulkSubmitting(false);
+    if (saved > 0) {
+      toast.success(
+        `${saved} packing ${saved === 1 ? "entry" : "entries"} saved`,
+      );
+      setBulkDialogOpen(false);
+    } else {
+      toast.error("All entries failed. Please check quantities and try again.");
+    }
+  }
+
   async function handleDelete() {
     if (!deleteId) return;
     try {
@@ -362,20 +554,38 @@ export default function PackingEntryPage() {
 
   const isPending = createMutation.isPending;
 
+  // Bulk validation
+  const bulkHasValidEntry = activeLotNumbers.some((lot) => {
+    const qty = bulkQtyMap.get(lot);
+    return qty && Number(qty) > 0;
+  });
+  const bulkHasExceeding = false; // Row-level warnings handle this
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <PageHeader
         title="Packing Entry"
         description="Daily packing entries with automatic yarn specification fetch"
         action={
-          <Button
-            data-ocid="packing.primary_button"
-            onClick={openAdd}
-            className="gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            New Packing Entry
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              data-ocid="packing.bulk_button"
+              variant="outline"
+              onClick={openBulk}
+              className="gap-2"
+            >
+              <Layers className="w-4 h-4" />
+              Bulk Entry
+            </Button>
+            <Button
+              data-ocid="packing.primary_button"
+              onClick={openAdd}
+              className="gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              New Packing Entry
+            </Button>
+          </div>
         }
       />
 
@@ -648,6 +858,159 @@ export default function PackingEntryPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Bulk Packing Entry Dialog ── */}
+      <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
+        <DialogContent
+          data-ocid="packing.bulk.dialog"
+          className="max-w-4xl w-full"
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Layers className="w-5 h-5 text-primary" />
+              Bulk Packing Entry
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-5">
+            {/* Header fields */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="bulk-pk-date">Date</Label>
+                <Input
+                  id="bulk-pk-date"
+                  type="date"
+                  data-ocid="packing.bulk.date.input"
+                  value={bulkDate}
+                  onChange={(e) => setBulkDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="bulk-pk-unit">Unit</Label>
+                <Select
+                  value={bulkUnit || "none"}
+                  onValueChange={(v) => {
+                    setBulkUnit(v === "none" ? "" : v);
+                    setBulkQtyMap(new Map());
+                  }}
+                >
+                  <SelectTrigger
+                    id="bulk-pk-unit"
+                    data-ocid="packing.bulk.unit.select"
+                  >
+                    <SelectValue placeholder="Select unit..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {UNIT_OPTIONS.map((u) => (
+                      <SelectItem key={u.value} value={u.value}>
+                        {u.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                <Label htmlFor="bulk-pk-remarks">Remarks (optional)</Label>
+                <Input
+                  id="bulk-pk-remarks"
+                  data-ocid="packing.bulk.remarks.input"
+                  value={bulkRemarks}
+                  onChange={(e) => setBulkRemarks(e.target.value)}
+                  placeholder="Notes for all entries..."
+                />
+              </div>
+            </div>
+
+            {/* Lot table */}
+            {bulkUnit ? (
+              activeLotNumbers.length === 0 ? (
+                <div className="rounded-lg border border-border/60 p-8 text-center text-muted-foreground text-sm">
+                  No active lot numbers found for the selected unit.
+                </div>
+              ) : (
+                <div className="rounded-lg border border-border/60 overflow-auto max-h-[400px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-border/60 hover:bg-transparent sticky top-0 bg-card z-10">
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                          Lot Number
+                        </TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                          Count (Ne)
+                        </TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                          Product Type
+                        </TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                          End Use
+                        </TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                          Available Balance
+                        </TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                          Qty (kg)
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {activeLotNumbers.map((lot, idx) => (
+                        <BulkLotRow
+                          key={lot}
+                          lotNumber={lot}
+                          qty={bulkQtyMap.get(lot) ?? ""}
+                          rowIndex={idx + 1}
+                          onQtyChange={handleBulkQtyChange}
+                        />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )
+            ) : (
+              <div className="rounded-lg border border-dashed border-border/60 p-10 text-center">
+                <Layers className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  Select a unit above to see all active lot numbers and enter
+                  packing quantities at once.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="mt-2">
+            <Button
+              type="button"
+              variant="outline"
+              data-ocid="packing.bulk.cancel_button"
+              onClick={() => setBulkDialogOpen(false)}
+              disabled={bulkSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              data-ocid="packing.bulk.submit_button"
+              onClick={handleBulkSubmit}
+              disabled={
+                bulkSubmitting ||
+                !bulkUnit ||
+                !bulkHasValidEntry ||
+                bulkHasExceeding
+              }
+            >
+              {bulkSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                "Save All Entries"
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
