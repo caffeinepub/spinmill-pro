@@ -11,9 +11,6 @@ import Set "mo:core/Set";
 
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
-import {migration} "Migration";
-
-(with migration)
 actor {
   // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -23,7 +20,7 @@ actor {
   type OrderStatus = { #pending; #inProgress; #completed; #cancelled };
   type MachineStatus = { #running; #idle; #maintenance };
   type MachineType = { #blowroom; #carding; #drawing; #combing; #roving; #ringFrame; #winding; #autocoro };
-  type SpinningUnit = { #openend; #ringSpinning; #tfo; #outsideYarn };
+  type SpinningUnit = { #openend; #ringSpinning; #tfo };
   type ProductType = { #carded; #combed; #polyester; #bamboo; #viscose; #lt };
   type EndUse = { #warp; #weft; #pile; #ground; #tfo };
   type TwistDirection = { #s; #z };

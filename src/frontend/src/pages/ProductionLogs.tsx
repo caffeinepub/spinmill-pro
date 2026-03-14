@@ -296,6 +296,7 @@ export default function ProductionLogs() {
 
   // Filter state
   const [filterMachineId, setFilterMachineId] = useState("");
+  const [filterUnit, setFilterUnit] = useState("");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
 
@@ -303,6 +304,12 @@ export default function ProductionLogs() {
     return logs.filter((log) => {
       if (filterMachineId && String(Number(log.machineId)) !== filterMachineId)
         return false;
+      if (filterUnit) {
+        const machine = machines.find(
+          (m) => String(Number(m.id)) === String(Number(log.machineId)),
+        );
+        if (!machine || machine.machineType !== filterUnit) return false;
+      }
       if (filterDateFrom) {
         const logDate = new Date(Number(log.date) / 1_000_000);
         const fromDate = new Date(filterDateFrom);
@@ -316,12 +323,21 @@ export default function ProductionLogs() {
       }
       return true;
     });
-  }, [logs, filterMachineId, filterDateFrom, filterDateTo]);
+  }, [
+    logs,
+    machines,
+    filterMachineId,
+    filterUnit,
+    filterDateFrom,
+    filterDateTo,
+  ]);
 
-  const hasActiveFilters = filterMachineId || filterDateFrom || filterDateTo;
+  const hasActiveFilters =
+    filterMachineId || filterUnit || filterDateFrom || filterDateTo;
 
   function clearFilters() {
     setFilterMachineId("");
+    setFilterUnit("");
     setFilterDateFrom("");
     setFilterDateTo("");
   }
@@ -557,6 +573,34 @@ export default function ProductionLogs() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-3 mb-4">
+        <div className="space-y-1">
+          <Label
+            htmlFor="filter-unit"
+            className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+          >
+            Unit
+          </Label>
+          <Select
+            value={filterUnit || "all"}
+            onValueChange={(v) => setFilterUnit(v === "all" ? "" : v)}
+          >
+            <SelectTrigger
+              id="filter-unit"
+              data-ocid="logs.unit.select"
+              className="w-48 h-8 text-sm"
+            >
+              <SelectValue placeholder="All Units" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Units</SelectItem>
+              {unitOptions.map((u) => (
+                <SelectItem key={u.value} value={u.value}>
+                  {u.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="space-y-1">
           <Label
             htmlFor="filter-machine"
@@ -1111,7 +1155,7 @@ export default function ProductionLogs() {
       <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
         <DialogContent
           data-ocid="logs.bulk.dialog"
-          className="max-w-4xl w-full !flex !flex-col overflow-hidden"
+          className="max-w-[95vw] w-[95vw] !flex !flex-col overflow-hidden"
           style={{ maxHeight: "90vh" }}
         >
           <DialogHeader>

@@ -286,7 +286,8 @@ export enum Shift {
 export enum SpinningUnit {
     tfo = "tfo",
     openend = "openend",
-    ringSpinning = "ringSpinning"
+    ringSpinning = "ringSpinning",
+    outsideYarn = "outsideYarn"
 }
 export enum TwistDirection {
     s = "s",
@@ -362,6 +363,8 @@ export interface backendInterface {
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     claimAdminIfNoAdminExists(): Promise<boolean>;
     isCallerAdmin(): Promise<boolean>;
+    setYarnCountLabel(lotNumber: string, countLabel: string): Promise<void>;
+    getAllYarnCountLabels(): Promise<Array<[string, string]>>;
     registerMachine(name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: bigint | null, runningLotNumber: string | null): Promise<bigint>;
     removeUser(user: Principal): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;

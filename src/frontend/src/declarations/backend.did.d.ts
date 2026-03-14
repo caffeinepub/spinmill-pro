@@ -231,6 +231,7 @@ export type Shift = { 'morning' : null } |
   { 'night' : null } |
   { 'afternoon' : null };
 export type SpinningUnit = { 'tfo' : null } |
+  { 'outsideYarn' : null } |
   { 'openend' : null } |
   { 'ringSpinning' : null };
 export type Time = bigint;
@@ -382,6 +383,8 @@ export interface _SERVICE {
   >,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'setYarnCountLabel' : ActorMethod<[string, string], undefined>,
+  'getAllYarnCountLabels' : ActorMethod<[], Array<[string, string]>>,
   'registerMachine' : ActorMethod<
     [
       string,

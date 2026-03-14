@@ -1,0 +1,323 @@
+// Version: 1.0.0
+type BatchStage__629240867 =
+  {
+    batchId : Nat;
+    endTime : Time__721709555;
+    id : Nat;
+    machineId : Nat;
+    operatorNotes : Text;
+    stage : ProcessStage__1017666027;
+    startTime : Time__721709555;
+    weightInKg : Nat;
+    weightOutKg : Nat
+  };
+type Data__236546928<K, V> =
+  {var count : Nat__1049140820; kvs : [var ?(K, V)]};
+type Data__467333759<T> = {var count : Nat__1049140820; elements : [var ?T]};
+type DispatchDestination__430039258 =
+  {#ambala; #amravati; #kolhapur; #outside; #softWinding; #tfo; #weaving};
+type DispatchEntry__895206451 =
+  {
+    destination : DispatchDestination__430039258;
+    dispatchDate : Time__721709555;
+    dispatchNumber : Text;
+    endUse : EndUse__978792652;
+    id : Nat;
+    lotNumber : Text;
+    productType : ProductType__880797558;
+    quantityKg : Nat;
+    remarks : Text;
+    spinningUnit : SpinningUnit__867200260;
+    yarnCountNe : Nat
+  };
+type EndUse__978792652 = {#ground; #pile; #tfo; #warp; #weft};
+type Int__616954475 = Int;
+type Int__928224233 = Int__616954475;
+type Internal__433282687<T> =
+  {children : [var ?Node__718157613<T>]; data : Data__467333759<T>};
+type Internal__554968229<K, V> =
+  {children : [var ?Node__733231314<K, V>]; data : Data__236546928<K, V>};
+type InventoryStatus__368894086 = {#dispatched; #inStock};
+type InwardEntry__596023018 =
+  {
+    id : Nat;
+    inwardDate : Time__721709555;
+    inwardNumber : Text;
+    materialName : Text;
+    purchaseOrderId : Nat;
+    receivedQty : Nat;
+    remarks : Text;
+    vehicleNumber : Text;
+    warehouse : Warehouse__768711249
+  };
+type Leaf__405777811<K, V> = {data : Data__236546928<K, V>};
+type Leaf__784138115<T> = {data : Data__467333759<T>};
+type MachineStatus__453419788 = {#idle; #maintenance; #running};
+type MachineType__74252250 =
+  {
+    #autocoro;
+    #blowroom;
+    #carding;
+    #combing;
+    #drawing;
+    #ringFrame;
+    #roving;
+    #winding
+  };
+type Machine__805412348 =
+  {
+    currentOrderId : ?Nat;
+    id : Nat;
+    machineNumber : Text;
+    machineType : MachineType__74252250;
+    maintenanceStartTime : ?Time__721709555;
+    name : Text;
+    runningCount : ?Nat;
+    runningLotNumber : ?Text;
+    status : MachineStatus__453419788;
+    totalMaintenanceDurationMins : Nat
+  };
+type Map__437521162<K, V> = Map__902978828<K, V>;
+type Map__708208903<K, V> =
+  {var root : Node__733231314<K, V>; var size : Nat__1049140820};
+type Map__902978828<K, V> = Map__708208903<K, V>;
+type MaterialIssue__1028030822 =
+  {
+    department : Text;
+    grade : Text;
+    id : Nat;
+    issueDate : Time__721709555;
+    issueNumber : Text;
+    issuedQty : Nat;
+    materialName : Text;
+    remarks : Text;
+    warehouse : Warehouse__768711249
+  };
+type Nat__1049140820 = Nat__920180692;
+type Nat__920180692 = Nat;
+type Node__718157613<T> =
+  {#internal : Internal__433282687<T>; #leaf : Leaf__784138115<T>};
+type Node__733231314<K, V> =
+  {#internal : Internal__554968229<K, V>; #leaf : Leaf__405777811<K, V>};
+type OrderStatus__144513413 = {#cancelled; #completed; #inProgress; #pending};
+type PackingEntry__771530360 =
+  {
+    endUse : EndUse__978792652;
+    id : Nat;
+    lotNumber : Text;
+    packingDate : Time__721709555;
+    packingNumber : Text;
+    productType : ProductType__880797558;
+    quantityKg : Nat;
+    remarks : Text;
+    spinningUnit : SpinningUnit__867200260;
+    yarnCountNe : Nat
+  };
+type ProcessStage__1017666027 =
+  {
+    #blowroom;
+    #carding;
+    #combing;
+    #drawing;
+    #finished;
+    #qualityCheck;
+    #ringSpinning;
+    #roving;
+    #winding
+  };
+type ProductType__880797558 =
+  {#bamboo; #carded; #combed; #lt; #polyester; #viscose};
+type ProductionLog__606571172 =
+  {
+    date : Time__721709555;
+    efficiencyPercent : Nat;
+    id : Nat;
+    machineId : Nat;
+    operatorName : Text;
+    quantityKg : Nat;
+    shift : Shift__692922395
+  };
+type ProductionOrder__903080648 =
+  {
+    endUse : EndUse__978792652;
+    id : Nat;
+    lotNumber : Text;
+    orderNumber : Text;
+    productType : ProductType__880797558;
+    quantityKg : Nat;
+    spinningUnit : SpinningUnit__867200260;
+    status : OrderStatus__144513413;
+    targetDate : Time__721709555;
+    twistDirection : TwistDirection__977166351;
+    yarnCountNe : Nat
+  };
+type PurchaseOrderStatus__797500076 = {#closed; #open; #partiallyReceived};
+type PurchaseOrder__881407990 =
+  {
+    expectedDeliveryDate : Time__721709555;
+    id : Nat;
+    materialName : Text;
+    orderDate : Time__721709555;
+    orderedQty : Nat;
+    poNumber : Text;
+    status : PurchaseOrderStatus__797500076;
+    supplier : Text
+  };
+type QualityTest__585756298 =
+  {
+    batchId : Nat;
+    csp : Nat;
+    elongationPercent : Nat;
+    evennessPercent : Nat;
+    hairinessIndex : Nat;
+    id : Nat;
+    neps : Nat;
+    pass : Bool;
+    thickPlaces : Nat;
+    thinPlaces : Nat
+  };
+type RawMaterialStatus__240489282 = {#available; #consumed; #inUse};
+type RawMaterial__650845401 =
+  {
+    dateReceived : Time__721709555;
+    grade : Text;
+    id : Nat;
+    inwardEntryId : ?Nat;
+    lotNumber : Text;
+    status : RawMaterialStatus__240489282;
+    supplier : Text;
+    warehouse : Warehouse__768711249;
+    weightKg : Nat
+  };
+type Shift__692922395 = {#afternoon; #morning; #night};
+type SpinningUnit__867200260 = {#openend; #ringSpinning; #tfo};
+type Time__1049079483 = Int__928224233;
+type Time__721709555 = Time__1049079483;
+type TwistDirection__977166351 = {#s; #z};
+type UserProfile__856239818 = {department : Text; name : Text; role : Text};
+type UserRole__406674181 = {#admin; #guest; #user};
+type WarehouseStock__415407024 =
+  {materialName : Text; totalQty : Nat; warehouse : Warehouse__768711249};
+type Warehouse__768711249 = {#oeRawMaterial; #ringRawMaterial};
+type YarnInventory__946036448 =
+  {
+    id : Nat;
+    lotNumber : Text;
+    quantityCones : Nat;
+    status : InventoryStatus__368894086;
+    twistDirection : TwistDirection__977166351;
+    weightKg : Nat;
+    yarnCountNe : Nat
+  };
+type YarnOpeningStockRecord__934788438 =
+  {
+    createdAt : Time__721709555;
+    endUse : EndUse__978792652;
+    id : Nat;
+    lotNumber : Text;
+    productType : ProductType__880797558;
+    spinningUnit : SpinningUnit__867200260;
+    weightKg : Nat;
+    yarnCountNe : Nat
+  };
+actor {
+  stable accessControlState :
+    {
+      var adminAssigned : Bool;
+      userRoles : Map__437521162<Principal, UserRole__406674181>
+    };
+  stable var batchStageIdCounter : Nat;
+  stable batches :
+    {
+      var root : Node__733231314<Nat, BatchStage__629240867>;
+      var size : Nat__1049140820
+    };
+  stable dispatchEntries :
+    {
+      var root : Node__733231314<Nat, DispatchEntry__895206451>;
+      var size : Nat__1049140820
+    };
+  stable var dispatchEntryIdCounter : Nat;
+  stable inwardEntries :
+    {
+      var root : Node__733231314<Nat, InwardEntry__596023018>;
+      var size : Nat__1049140820
+    };
+  stable var inwardEntryIdCounter : Nat;
+  stable var machineIdCounter : Nat;
+  stable machines :
+    {
+      var root : Node__733231314<Nat, Machine__805412348>;
+      var size : Nat__1049140820
+    };
+  stable var materialIssueIdCounter : Nat;
+  stable materialIssues :
+    {
+      var root : Node__733231314<Nat, MaterialIssue__1028030822>;
+      var size : Nat__1049140820
+    };
+  stable openingStockRawMaterialIds :
+    {var root : Node__718157613<Nat>; var size : Nat__1049140820};
+  stable openingStockYarnIds :
+    {var root : Node__718157613<Nat>; var size : Nat__1049140820};
+  stable packingEntries :
+    {
+      var root : Node__733231314<Nat, PackingEntry__771530360>;
+      var size : Nat__1049140820
+    };
+  stable var packingEntryIdCounter : Nat;
+  stable var productionLogIdCounter : Nat;
+  stable productionLogs :
+    {
+      var root : Node__733231314<Nat, ProductionLog__606571172>;
+      var size : Nat__1049140820
+    };
+  stable var productionOrderIdCounter : Nat;
+  stable productionOrders :
+    {
+      var root : Node__733231314<Nat, ProductionOrder__903080648>;
+      var size : Nat__1049140820
+    };
+  stable var purchaseOrderIdCounter : Nat;
+  stable purchaseOrders :
+    {
+      var root : Node__733231314<Nat, PurchaseOrder__881407990>;
+      var size : Nat__1049140820
+    };
+  stable var qualityTestIdCounter : Nat;
+  stable qualityTests :
+    {
+      var root : Node__733231314<Nat, QualityTest__585756298>;
+      var size : Nat__1049140820
+    };
+  stable var rawMaterialIdCounter : Nat;
+  stable rawMaterials :
+    {
+      var root : Node__733231314<Nat, RawMaterial__650845401>;
+      var size : Nat__1049140820
+    };
+  stable userProfiles :
+    {
+      var root : Node__733231314<Principal, UserProfile__856239818>;
+      var size : Nat__1049140820
+    };
+  stable warehouseStock :
+    {
+      var root : Node__733231314<Text, WarehouseStock__415407024>;
+      var size : Nat__1049140820
+    };
+  stable var yarnCountLabels :
+    {var root : Node__733231314<Text, Text>; var size : Nat__1049140820};
+  stable yarnInventory :
+    {
+      var root : Node__733231314<Nat, YarnInventory__946036448>;
+      var size : Nat__1049140820
+    };
+  stable var yarnInventoryIdCounter : Nat;
+  stable yarnOpeningStock :
+    {
+      var root : Node__733231314<Nat, YarnOpeningStockRecord__934788438>;
+      var size : Nat__1049140820
+    };
+  stable var yarnOpeningStockIdCounter : Nat
+};

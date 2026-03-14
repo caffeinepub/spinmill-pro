@@ -946,7 +946,11 @@ export function useProductionOrderBalance(
 ) {
   const { actor } = useActor();
   return useQuery<ProductionOrderBalance | null>({
-    queryKey: ["productionOrderBalance", String(yarnCountNe), lotNumber],
+    queryKey: [
+      "productionOrderBalance",
+      yarnCountNe !== null ? String(yarnCountNe) : null,
+      lotNumber,
+    ],
     queryFn: async () => {
       if (!actor || yarnCountNe === null || !lotNumber)
         throw new Error("No params");
@@ -1341,6 +1345,36 @@ export function useDeleteYarnOpeningStock() {
       qc.invalidateQueries({ queryKey: ["yarnOpeningStock"] });
       qc.invalidateQueries({ queryKey: ["yarnInventory"] });
       qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+}
+
+// ─── Yarn Count Labels ────────────────────────────────────────────────────────
+
+export function useYarnCountLabels() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Map<string, string>>({
+    queryKey: ["yarnCountLabels"],
+    queryFn: async () => {
+      if (!actor) return new Map();
+      const entries = await actor.getAllYarnCountLabels();
+      return new Map(entries);
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 30000,
+  });
+}
+
+export function useSetYarnCountLabel() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { lotNumber: string; countLabel: string }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.setYarnCountLabel(args.lotNumber, args.countLabel);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["yarnCountLabels"] });
     },
   });
 }

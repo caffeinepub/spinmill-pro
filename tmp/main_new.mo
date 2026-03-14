@@ -11,9 +11,7 @@ import Set "mo:core/Set";
 
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
-import {migration} "Migration";
 
-(with migration)
 actor {
   // ─── Types ────────────────────────────────────────────────────────────────
 

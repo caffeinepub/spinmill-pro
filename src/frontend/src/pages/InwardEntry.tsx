@@ -26,8 +26,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, PackageOpen, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Loader2, PackageOpen, Plus, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Warehouse } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -98,6 +98,131 @@ const defaultForm = {
   vehicleNumber: "",
   remarks: "",
 };
+
+// ─── PO Search ────────────────────────────────────────────────────────────────
+
+interface PO {
+  id: bigint;
+  poNumber: string;
+  supplier: string;
+  materialName: string;
+}
+
+function POSearchInput({
+  purchaseOrders,
+  value,
+  onChange,
+}: {
+  purchaseOrders: PO[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [selectedLabel, setSelectedLabel] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Sync label when value changes externally (e.g. form reset)
+  useEffect(() => {
+    if (!value) {
+      setSelectedLabel("");
+      setQuery("");
+    }
+  }, [value]);
+
+  const filtered = query.trim()
+    ? purchaseOrders.filter(
+        (po) =>
+          po.poNumber.toLowerCase().includes(query.toLowerCase()) ||
+          po.supplier.toLowerCase().includes(query.toLowerCase()) ||
+          po.materialName.toLowerCase().includes(query.toLowerCase()),
+      )
+    : purchaseOrders;
+
+  function select(po: PO) {
+    const label = `${po.poNumber} – ${po.supplier} – ${po.materialName}`;
+    setSelectedLabel(label);
+    setQuery("");
+    setOpen(false);
+    onChange(String(po.id));
+  }
+
+  function clear() {
+    setSelectedLabel("");
+    setQuery("");
+    onChange("");
+  }
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative">
+      {selectedLabel ? (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/30 text-sm">
+          <span className="flex-1 truncate">{selectedLabel}</span>
+          <button
+            type="button"
+            onClick={clear}
+            className="text-muted-foreground hover:text-foreground flex-shrink-0"
+            data-ocid="inward.po_search.close_button"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ) : (
+        <Input
+          data-ocid="inward.po_search.search_input"
+          placeholder="Search by PO number, supplier, or material..."
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          autoComplete="off"
+        />
+      )}
+      {open && !selectedLabel && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-md max-h-52 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-sm text-muted-foreground">
+              No purchase orders found
+            </div>
+          ) : (
+            filtered.map((po) => (
+              <button
+                key={String(po.id)}
+                type="button"
+                className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors"
+                onMouseDown={() => select(po)}
+              >
+                <span className="font-semibold text-primary">
+                  {po.poNumber}
+                </span>
+                <span className="text-muted-foreground">
+                  {" "}
+                  – {po.supplier} – {po.materialName}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -383,30 +508,14 @@ export default function InwardEntry() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="iw-po">Purchase Order</Label>
-              <Select
+              <Label>Purchase Order</Label>
+              <POSearchInput
+                purchaseOrders={purchaseOrders}
                 value={form.purchaseOrderId}
-                onValueChange={(v) =>
-                  setForm((p) => ({ ...p, purchaseOrderId: v }))
+                onChange={(id) =>
+                  setForm((p) => ({ ...p, purchaseOrderId: id }))
                 }
-              >
-                <SelectTrigger id="iw-po" data-ocid="inward.select">
-                  <SelectValue placeholder="Select purchase order..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {purchaseOrders.length === 0 ? (
-                    <div className="px-3 py-2 text-sm text-muted-foreground">
-                      No purchase orders available
-                    </div>
-                  ) : (
-                    purchaseOrders.map((po) => (
-                      <SelectItem key={String(po.id)} value={String(po.id)}>
-                        {po.poNumber} – {po.supplier} – {po.materialName}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+              />
               {/* PO Balance info row */}
               {form.purchaseOrderId && poBalance && (
                 <div className="mt-2 flex items-center gap-3 px-3 py-2 rounded-md bg-muted/50 border border-border/50 text-sm">

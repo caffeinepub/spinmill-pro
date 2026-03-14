@@ -510,6 +510,8 @@ export interface FullBackendInterface {
   ): Promise<ProductionOrderBalance | null>;
   getUserProfile(user: Principal): Promise<UserProfile | null>;
   isCallerAdmin(): Promise<boolean>;
+  setYarnCountLabel(lotNumber: string, countLabel: string): Promise<void>;
+  getAllYarnCountLabels(): Promise<Array<[string, string]>>;
   registerMachine(
     name: string,
     machineType: MachineType,

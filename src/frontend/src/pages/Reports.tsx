@@ -44,6 +44,7 @@ import {
   useProductionLogs,
   useProductionOrders,
   usePurchaseOrders,
+  useYarnCountLabels,
   useYarnOpeningStock,
 } from "../hooks/useQueries";
 import type {
@@ -1817,11 +1818,13 @@ function YarnStockReport({
   dispatchEntries,
   openingStockEntries,
   isLoading,
+  countLabels,
 }: {
   packingEntries: PackingEntry[];
   dispatchEntries: DispatchEntry[];
   openingStockEntries: YarnOpeningStockRecord[];
   isLoading: boolean;
+  countLabels?: Map<string, string>;
 }) {
   const [unitFilter, setUnitFilter] = useState<string>("all");
   const [lotSearch, setLotSearch] = useState<string>("");
@@ -1844,7 +1847,7 @@ function YarnStockReport({
       if (!packMap.has(key)) {
         packMap.set(key, {
           totalPackedKg: 0,
-          yarnCountNe: String(p.yarnCountNe),
+          yarnCountNe: countLabels?.get(p.lotNumber) ?? String(p.yarnCountNe),
           spinningUnit: p.spinningUnit as string,
           productType: p.productType as string,
           endUse: p.endUse as string,
@@ -1860,7 +1863,7 @@ function YarnStockReport({
       if (!packMap.has(key)) {
         packMap.set(key, {
           totalPackedKg: 0,
-          yarnCountNe: String(os.yarnCountNe),
+          yarnCountNe: countLabels?.get(os.lotNumber) ?? String(os.yarnCountNe),
           spinningUnit: os.spinningUnit as string,
           productType: os.productType as string,
           endUse: os.endUse as string,
@@ -1897,7 +1900,7 @@ function YarnStockReport({
     }
 
     return result.sort((a, b) => a.lotNumber.localeCompare(b.lotNumber));
-  }, [packingEntries, dispatchEntries, openingStockEntries]);
+  }, [packingEntries, dispatchEntries, openingStockEntries, countLabels]);
 
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
@@ -2127,6 +2130,7 @@ export default function Reports() {
     useDispatchEntries();
   const { data: yarnOpeningStock = [], isLoading: yarnOpeningLoading } =
     useYarnOpeningStock();
+  const { data: countLabels } = useYarnCountLabels();
   // productionOrders not directly needed at page level but available if needed
   const { isLoading: ordersLoading } = useProductionOrders();
 
@@ -2243,6 +2247,7 @@ export default function Reports() {
             dispatchEntries={dispatchEntries}
             openingStockEntries={yarnOpeningStock}
             isLoading={yarnStockLoading}
+            countLabels={countLabels}
           />
         </TabsContent>
       </Tabs>

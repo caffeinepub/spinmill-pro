@@ -38,6 +38,7 @@ export const SpinningUnit = IDL.Variant({
   'tfo' : IDL.Null,
   'openend' : IDL.Null,
   'ringSpinning' : IDL.Null,
+  'outsideYarn' : IDL.Null,
 });
 export const ProductType = IDL.Variant({
   'lt' : IDL.Null,
@@ -471,6 +472,8 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'setYarnCountLabel' : IDL.Func([IDL.Text, IDL.Text], [], []),
+  'getAllYarnCountLabels' : IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))], ['query']),
   'registerMachine' : IDL.Func(
       [
         IDL.Text,
@@ -620,6 +623,7 @@ export const idlFactory = ({ IDL }) => {
     'tfo' : IDL.Null,
     'openend' : IDL.Null,
     'ringSpinning' : IDL.Null,
+    'outsideYarn' : IDL.Null,
   });
   const ProductType = IDL.Variant({
     'lt' : IDL.Null,
@@ -1062,6 +1066,10 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'setYarnCountLabel' : IDL.Func([IDL.Text, IDL.Text], [], []),
+    'getAllYarnCountLabels' : IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))], ['query']),
+  'setYarnCountLabel' : IDL.Func([IDL.Text, IDL.Text], [], []),
+  'getAllYarnCountLabels' : IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))], ['query']),
     'registerMachine' : IDL.Func(
         [
           IDL.Text,

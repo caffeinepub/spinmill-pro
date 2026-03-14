@@ -37,6 +37,7 @@ import {
   useCreateProductionOrder,
   useDeleteProductionOrder,
   useProductionOrders,
+  useSetYarnCountLabel,
   useUpdateProductionOrder,
 } from "../hooks/useQueries";
 import type {
@@ -47,13 +48,6 @@ import type {
   SpinningUnit,
   TwistDirection,
 } from "../types";
-
-/** Extracts the leading numeric value from a count string like "30/1", "40@", "2/40".
- *  Returns 1n if no valid number found. */
-function parseCountNe(val: string): bigint {
-  const match = val.match(/^(\d+(\.\d+)?)/);
-  return match ? BigInt(Math.round(Number.parseFloat(match[1]))) : 1n;
-}
 
 const defaultForm = {
   orderNumber: "",
@@ -75,6 +69,7 @@ export default function ProductionOrders() {
   const { data: orders = [], isLoading } = useProductionOrders();
   const createMutation = useCreateProductionOrder();
   const updateMutation = useUpdateProductionOrder();
+  const setYarnCountLabelMutation = useSetYarnCountLabel();
   const deleteMutation = useDeleteProductionOrder();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -105,7 +100,7 @@ export default function ProductionOrders() {
       productType: item.productType,
       spinningUnit: item.spinningUnit,
       endUse: item.endUse,
-      yarnCountNe: String(Number(item.yarnCountNe)),
+      yarnCountNe: String(item.yarnCountNe),
       twistDirection: item.twistDirection,
       quantityKg: String(Number(item.quantityKg)),
       targetDate: d.toISOString().substring(0, 10),
@@ -127,6 +122,10 @@ export default function ProductionOrders() {
     e.preventDefault();
     const targetTs = BigInt(new Date(form.targetDate).getTime() * 1_000_000);
     try {
+      const rawCountStr = form.yarnCountNe;
+      const parsedCount = BigInt(
+        Math.round(Number.parseFloat(rawCountStr) || 0),
+      );
       if (editItem) {
         await withRetry(() =>
           updateMutation.mutateAsync({
@@ -136,7 +135,7 @@ export default function ProductionOrders() {
             productType: form.productType,
             spinningUnit: form.spinningUnit,
             endUse: form.endUse,
-            yarnCountNe: parseCountNe(form.yarnCountNe),
+            yarnCountNe: parsedCount,
             twistDirection: form.twistDirection,
             quantityKg: BigInt(Math.round(Number(form.quantityKg))),
             targetDate: targetTs,
@@ -152,7 +151,7 @@ export default function ProductionOrders() {
             productType: form.productType,
             spinningUnit: form.spinningUnit,
             endUse: form.endUse,
-            yarnCountNe: parseCountNe(form.yarnCountNe),
+            yarnCountNe: parsedCount,
             twistDirection: form.twistDirection,
             quantityKg: BigInt(Math.round(Number(form.quantityKg))),
             targetDate: targetTs,
@@ -161,6 +160,13 @@ export default function ProductionOrders() {
         );
         toast.success("Order created");
       }
+      // Save count label for display
+      try {
+        await setYarnCountLabelMutation.mutateAsync({
+          lotNumber: form.lotNumber,
+          countLabel: rawCountStr,
+        });
+      } catch {}
       setDialogOpen(false);
     } catch (error) {
       console.error("Operation failed:", error);
@@ -360,7 +366,7 @@ export default function ProductionOrders() {
                         order.endUse.slice(1)}
                   </TableCell>
                   <TableCell className="font-mono-nums">
-                    {String(Number(order.yarnCountNe))}
+                    {order.yarnCountNe}
                   </TableCell>
                   <TableCell className="font-mono-nums">
                     {order.twistDirection === "s" ? "OE" : "RS"}

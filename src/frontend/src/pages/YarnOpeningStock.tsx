@@ -35,6 +35,8 @@ import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAddYarnOpeningStock,
   useDeleteYarnOpeningStock,
+  useSetYarnCountLabel,
+  useYarnCountLabels,
   useYarnOpeningStock,
 } from "../hooks/useQueries";
 import type {
@@ -45,13 +47,6 @@ import type {
 } from "../types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Extracts the leading numeric value from a count string like "30/1", "40@", "2/40".
- *  Returns 1n if no valid number found. */
-function parseCountNe(val: string): bigint {
-  const match = val.match(/^(\d+(\.\d+)?)/);
-  return match ? BigInt(Math.round(Number.parseFloat(match[1]))) : 1n;
-}
 
 function formatUnit(su: string): string {
   if (su === "openend") return "OE Spinning";
@@ -112,6 +107,8 @@ export default function YarnOpeningStock() {
     isLoading: boolean;
   };
   const addMutation = useAddYarnOpeningStock();
+  const setYarnCountLabelMutation = useSetYarnCountLabel();
+  const { data: countLabels } = useYarnCountLabels();
   const deleteMutation = useDeleteYarnOpeningStock();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -151,16 +148,27 @@ export default function YarnOpeningStock() {
       return;
     }
     try {
+      const rawCountStr = form.yarnCountNe;
+      const parsedCount = BigInt(
+        Math.round(Number.parseFloat(rawCountStr) || 0),
+      );
       await withRetry(() =>
         addMutation.mutateAsync({
           lotNumber: form.lotNumber,
-          yarnCountNe: parseCountNe(form.yarnCountNe),
+          yarnCountNe: parsedCount,
           spinningUnit: form.spinningUnit as SpinningUnit,
           productType: form.productType as ProductType,
           endUse: form.endUse as EndUse,
           weightKg: BigInt(Math.round(Number(form.weightKg))),
         }),
       );
+      // Save the original string label for display
+      try {
+        await setYarnCountLabelMutation.mutateAsync({
+          lotNumber: form.lotNumber,
+          countLabel: rawCountStr,
+        });
+      } catch {}
       toast.success("Yarn opening stock entry added");
       setDialogOpen(false);
     } catch (error) {
@@ -266,7 +274,8 @@ export default function YarnOpeningStock() {
                     {entry.lotNumber}
                   </TableCell>
                   <TableCell className="font-mono text-sm">
-                    {String(entry.yarnCountNe)}
+                    {countLabels?.get(entry.lotNumber) ??
+                      String(entry.yarnCountNe)}
                   </TableCell>
                   <TableCell>
                     <UnitBadge unit={String(entry.spinningUnit)} />

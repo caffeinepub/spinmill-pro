@@ -36,8 +36,9 @@ import {
   Search,
   Trash2,
   Truck,
+  X,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
@@ -369,6 +370,11 @@ export default function YarnDispatch() {
   const [form, setForm] = useState(defaultForm);
   const [nextDispatchNumber, setNextDispatchNumber] = useState<string>("");
 
+  // Filter state
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
+  const [filterLotSearch, setFilterLotSearch] = useState("");
+
   // Balance for the selected lot
   const { data: balance } = useDispatchBalance(form.lotNumber || null);
 
@@ -422,6 +428,35 @@ export default function YarnDispatch() {
   const sortedEntries = [...entries].sort(
     (a, b) => Number(b.id) - Number(a.id),
   );
+
+  const filteredEntries = useMemo(() => {
+    return sortedEntries.filter((entry) => {
+      if (filterDateFrom) {
+        const entryDate = new Date(Number(entry.dispatchDate) / 1_000_000);
+        const fromDate = new Date(filterDateFrom);
+        if (entryDate < fromDate) return false;
+      }
+      if (filterDateTo) {
+        const entryDate = new Date(Number(entry.dispatchDate) / 1_000_000);
+        const toDate = new Date(filterDateTo);
+        toDate.setHours(23, 59, 59, 999);
+        if (entryDate > toDate) return false;
+      }
+      if (
+        filterLotSearch &&
+        !entry.lotNumber.toLowerCase().includes(filterLotSearch.toLowerCase())
+      )
+        return false;
+      return true;
+    });
+  }, [sortedEntries, filterDateFrom, filterDateTo, filterLotSearch]);
+
+  const hasActiveFilters = filterDateFrom || filterDateTo || filterLotSearch;
+  function clearDispatchFilters() {
+    setFilterDateFrom("");
+    setFilterDateTo("");
+    setFilterLotSearch("");
+  }
 
   function generateDispatchNumber() {
     const year = new Date().getFullYear();
@@ -504,6 +539,74 @@ export default function YarnDispatch() {
         }
       />
 
+      {/* Filters */}
+      <div className="flex flex-wrap items-end gap-3 mb-4">
+        <div className="space-y-1">
+          <Label
+            htmlFor="df-date-from"
+            className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+          >
+            From Date
+          </Label>
+          <Input
+            id="df-date-from"
+            type="date"
+            data-ocid="dispatch.date_from.input"
+            className="w-40 h-8 text-sm"
+            value={filterDateFrom}
+            onChange={(e) => setFilterDateFrom(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label
+            htmlFor="df-date-to"
+            className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+          >
+            To Date
+          </Label>
+          <Input
+            id="df-date-to"
+            type="date"
+            data-ocid="dispatch.date_to.input"
+            className="w-40 h-8 text-sm"
+            value={filterDateTo}
+            onChange={(e) => setFilterDateTo(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label
+            htmlFor="df-lot"
+            className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+          >
+            Lot Number
+          </Label>
+          <Input
+            id="df-lot"
+            type="text"
+            data-ocid="dispatch.lot_search.input"
+            className="w-44 h-8 text-sm"
+            placeholder="Search lot..."
+            value={filterLotSearch}
+            onChange={(e) => setFilterLotSearch(e.target.value)}
+          />
+        </div>
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearDispatchFilters}
+            className="h-8 gap-1 text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-3.5 h-3.5" /> Clear Filters
+          </Button>
+        )}
+        {hasActiveFilters && (
+          <span className="text-xs text-muted-foreground self-end pb-1.5">
+            {filteredEntries.length} of {entries.length} entries
+          </span>
+        )}
+      </div>
+
       <div className="rounded-lg border border-border/60 bg-card shadow-card overflow-hidden">
         {isLoading ? (
           <div className="p-4 space-y-3" data-ocid="dispatch.loading_state">
@@ -561,7 +664,7 @@ export default function YarnDispatch() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedEntries.map((entry, idx) => (
+                {filteredEntries.map((entry, idx) => (
                   <TableRow
                     key={String(entry.id)}
                     data-ocid={`dispatch.item.${idx + 1}`}

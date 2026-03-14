@@ -35,8 +35,9 @@ import {
   Loader2,
   Plus,
   Trash2,
+  X,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
@@ -393,6 +394,11 @@ export default function PackingEntryPage() {
   const [bulkQtyMap, setBulkQtyMap] = useState<Map<string, string>>(new Map());
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
 
+  // Filter state
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
+  const [filterLotSearch, setFilterLotSearch] = useState("");
+
   // Active lot numbers for selected bulk unit
   const activeLotNumbers = Array.from(
     new Set(
@@ -561,6 +567,35 @@ export default function PackingEntryPage() {
   });
   const bulkHasExceeding = false; // Row-level warnings handle this
 
+  const filteredEntries = useMemo(() => {
+    return entries.filter((entry) => {
+      if (filterDateFrom) {
+        const entryDate = new Date(Number(entry.packingDate) / 1_000_000);
+        const fromDate = new Date(filterDateFrom);
+        if (entryDate < fromDate) return false;
+      }
+      if (filterDateTo) {
+        const entryDate = new Date(Number(entry.packingDate) / 1_000_000);
+        const toDate = new Date(filterDateTo);
+        toDate.setHours(23, 59, 59, 999);
+        if (entryDate > toDate) return false;
+      }
+      if (
+        filterLotSearch &&
+        !entry.lotNumber.toLowerCase().includes(filterLotSearch.toLowerCase())
+      )
+        return false;
+      return true;
+    });
+  }, [entries, filterDateFrom, filterDateTo, filterLotSearch]);
+
+  const hasActiveFilters = filterDateFrom || filterDateTo || filterLotSearch;
+  function clearPackingFilters() {
+    setFilterDateFrom("");
+    setFilterDateTo("");
+    setFilterLotSearch("");
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <PageHeader
@@ -588,6 +623,74 @@ export default function PackingEntryPage() {
           </div>
         }
       />
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-end gap-3 mb-4">
+        <div className="space-y-1">
+          <Label
+            htmlFor="pf-date-from"
+            className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+          >
+            From Date
+          </Label>
+          <Input
+            id="pf-date-from"
+            type="date"
+            data-ocid="packing.date_from.input"
+            className="w-40 h-8 text-sm"
+            value={filterDateFrom}
+            onChange={(e) => setFilterDateFrom(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label
+            htmlFor="pf-date-to"
+            className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+          >
+            To Date
+          </Label>
+          <Input
+            id="pf-date-to"
+            type="date"
+            data-ocid="packing.date_to.input"
+            className="w-40 h-8 text-sm"
+            value={filterDateTo}
+            onChange={(e) => setFilterDateTo(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label
+            htmlFor="pf-lot"
+            className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+          >
+            Lot Number
+          </Label>
+          <Input
+            id="pf-lot"
+            type="text"
+            data-ocid="packing.lot_search.input"
+            className="w-44 h-8 text-sm"
+            placeholder="Search lot..."
+            value={filterLotSearch}
+            onChange={(e) => setFilterLotSearch(e.target.value)}
+          />
+        </div>
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearPackingFilters}
+            className="h-8 gap-1 text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-3.5 h-3.5" /> Clear Filters
+          </Button>
+        )}
+        {hasActiveFilters && (
+          <span className="text-xs text-muted-foreground self-end pb-1.5">
+            {filteredEntries.length} of {entries.length} entries
+          </span>
+        )}
+      </div>
 
       <div className="rounded-lg border border-border/60 bg-card shadow-card overflow-hidden">
         {isLoading ? (
@@ -642,7 +745,7 @@ export default function PackingEntryPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {entries.map((entry, idx) => (
+              {filteredEntries.map((entry, idx) => (
                 <TableRow
                   key={String(entry.id)}
                   data-ocid={`packing.item.${idx + 1}`}
@@ -865,7 +968,7 @@ export default function PackingEntryPage() {
       <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
         <DialogContent
           data-ocid="packing.bulk.dialog"
-          className="max-w-4xl w-full !flex !flex-col overflow-hidden"
+          className="max-w-[95vw] w-[95vw] !flex !flex-col overflow-hidden"
           style={{ maxHeight: "90vh" }}
         >
           <DialogHeader>

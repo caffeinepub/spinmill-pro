@@ -368,7 +368,8 @@ export enum Shift {
 export enum SpinningUnit {
     tfo = "tfo",
     openend = "openend",
-    ringSpinning = "ringSpinning"
+    ringSpinning = "ringSpinning",
+    outsideYarn = "outsideYarn"
 }
 export enum TwistDirection {
     s = "s",
@@ -444,6 +445,8 @@ export interface backendInterface {
     getProductionOrderBalance(yarnCountNe: bigint, lotNumber: string): Promise<ProductionOrderBalance | null>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
+    setYarnCountLabel(lotNumber: string, countLabel: string): Promise<void>;
+    getAllYarnCountLabels(): Promise<Array<[string, string]>>;
     registerMachine(name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: bigint | null, runningLotNumber: string | null): Promise<bigint>;
     removeUser(user: Principal): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
@@ -1468,6 +1471,14 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async setYarnCountLabel(arg0: string, arg1: string): Promise<void> {
+        const result = await this.actor.setYarnCountLabel(arg0, arg1);
+        return result;
+    }
+    async getAllYarnCountLabels(): Promise<Array<[string, string]>> {
+        const result = await this.actor.getAllYarnCountLabels();
+        return result as Array<[string, string]>;
+    }
 }
 function from_candid_BatchStage_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _BatchStage): BatchStage {
     return from_candid_record_n26(_uploadFile, _downloadFile, value);
@@ -2125,8 +2136,10 @@ function from_candid_variant_n37(_uploadFile: (file: ExternalBlob) => Promise<Ui
     openend: null;
 } | {
     ringSpinning: null;
+} | {
+    outsideYarn: null;
 }): SpinningUnit {
-    return "tfo" in value ? SpinningUnit.tfo : "openend" in value ? SpinningUnit.openend : "ringSpinning" in value ? SpinningUnit.ringSpinning : value;
+    return "tfo" in value ? SpinningUnit.tfo : "openend" in value ? SpinningUnit.openend : "ringSpinning" in value ? SpinningUnit.ringSpinning : "outsideYarn" in value ? SpinningUnit.outsideYarn : value;
 }
 function from_candid_variant_n39(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     tfo: null;
@@ -2409,6 +2422,8 @@ function to_candid_variant_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint
     openend: null;
 } | {
     ringSpinning: null;
+} | {
+    outsideYarn: null;
 } {
     return value == SpinningUnit.tfo ? {
         tfo: null
@@ -2416,6 +2431,8 @@ function to_candid_variant_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint
         openend: null
     } : value == SpinningUnit.ringSpinning ? {
         ringSpinning: null
+    } : value == SpinningUnit.outsideYarn ? {
+        outsideYarn: null
     } : value;
 }
 function to_candid_variant_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ProductType): {
