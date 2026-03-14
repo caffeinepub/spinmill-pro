@@ -53,6 +53,17 @@ function formatEndUse(eu: string): string {
   return eu.charAt(0).toUpperCase() + eu.slice(1);
 }
 
+function formatDate(createdAt: bigint): string {
+  const ms = Number(createdAt) / 1_000_000;
+  const d = new Date(ms);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 const defaultForm = {
   inwardNumber: "",
   inwardDate: new Date().toISOString().slice(0, 10),
@@ -200,6 +211,18 @@ export default function OutsideYarnInward() {
     ) {
       return false;
     }
+    const entryMs = Number(entry.createdAt) / 1_000_000;
+    const entryDate = new Date(entryMs);
+    if (fromDate) {
+      const from = new Date(fromDate);
+      from.setHours(0, 0, 0, 0);
+      if (entryDate < from) return false;
+    }
+    if (toDate) {
+      const to = new Date(toDate);
+      to.setHours(23, 59, 59, 999);
+      if (entryDate > to) return false;
+    }
     return true;
   });
 
@@ -336,7 +359,7 @@ export default function OutsideYarnInward() {
                     OYI-{idx + 1}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    —
+                    {formatDate(entry.createdAt)}
                   </TableCell>
                   <TableCell className="font-mono text-sm">
                     {entry.lotNumber}
