@@ -232,13 +232,28 @@ export default function App() {
   const sidebarContent = (
     <nav className="flex flex-col h-full" aria-label="Main navigation">
       {/* Logo */}
-      <div className="px-4 py-4 border-b border-sidebar-border/60">
-        <div className="flex items-center justify-center">
+      <div className="px-3 py-4 border-b border-sidebar-border/60">
+        <div className="flex items-center justify-center overflow-hidden">
           <img
             src="/assets/uploads/photo_2022-07-19-14.09.01-1.jpeg"
-            alt="Sudarshan Jeans Pvt. Ltd"
-            className="h-14 w-auto object-contain"
+            alt="SpinMill Pro"
+            className="h-16 w-full object-contain max-w-full"
+            style={{ maxHeight: "64px" }}
+            onError={(e) => {
+              const target = e.currentTarget;
+              target.style.display = "none";
+              const fallback = target.nextElementSibling as HTMLElement | null;
+              if (fallback) fallback.style.display = "flex";
+            }}
           />
+          <div
+            style={{ display: "none" }}
+            className="flex-col items-center justify-center w-full"
+          >
+            <span className="text-sm font-bold text-sidebar-foreground tracking-tight">
+              SpinMill Pro
+            </span>
+          </div>
         </div>
       </div>
 

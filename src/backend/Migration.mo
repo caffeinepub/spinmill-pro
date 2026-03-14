@@ -4,7 +4,9 @@ import Time "mo:core/Time";
 
 module Migration {
 
-  // ─── Old Types (SpinningUnit without #outsideYarn) ───────────────────────
+  // Old types -- must match what is actually stored in stable memory.
+  // ProductionOrderV0 includes singleYarnLotNumber because a previous migration
+  // already wrote this field; if we omit it the deserialiser will reject it.
 
   type SpinningUnitV0 = { #openend; #ringSpinning; #tfo; #outsideYarn };
   type ProductType = { #carded; #combed; #polyester; #bamboo; #viscose; #lt };
@@ -66,7 +68,7 @@ module Migration {
     createdAt : Time.Time;
   };
 
-  // ─── New Types (SpinningUnit with #outsideYarn) ─────────────────────
+  // New types
 
   type SpinningUnit = { #openend; #ringSpinning; #tfo; #outsideYarn };
 
@@ -123,8 +125,6 @@ module Migration {
     createdAt : Time.Time;
   };
 
-  // ─── Helpers ────────────────────────────────────────────────────────────────────
-
   func migrateSpinningUnit(old : SpinningUnitV0) : SpinningUnit {
     switch old {
       case (#openend) #openend;
@@ -133,8 +133,6 @@ module Migration {
       case (#outsideYarn) #outsideYarn;
     };
   };
-
-  // ─── Migration Function ───────────────────────────────────────────────────────
 
   public func migration(
     old : {
