@@ -52,6 +52,7 @@ import type {
 const defaultForm = {
   orderNumber: "",
   lotNumber: "",
+  singleYarnLotNumber: "",
   productType: "carded" as ProductType,
   spinningUnit: "openend" as SpinningUnit,
   endUse: "warp" as EndUse,
@@ -97,6 +98,7 @@ export default function ProductionOrders() {
     setForm({
       orderNumber: item.orderNumber,
       lotNumber: item.lotNumber,
+      singleYarnLotNumber: item.singleYarnLotNumber ?? "",
       productType: item.productType,
       spinningUnit: item.spinningUnit,
       endUse: item.endUse,
@@ -126,12 +128,19 @@ export default function ProductionOrders() {
       const parsedCount = BigInt(
         Math.round(Number.parseFloat(rawCountStr) || 0),
       );
+      const showSingleYarnLot =
+        form.spinningUnit === "tfo" || form.spinningUnit === "outsideYarn";
+      const singleYarnLotNumber =
+        showSingleYarnLot && form.singleYarnLotNumber
+          ? form.singleYarnLotNumber
+          : null;
       if (editItem) {
         await withRetry(() =>
           updateMutation.mutateAsync({
             id: editItem.id,
             orderNumber: form.orderNumber,
             lotNumber: form.lotNumber,
+            singleYarnLotNumber,
             productType: form.productType,
             spinningUnit: form.spinningUnit,
             endUse: form.endUse,
@@ -148,6 +157,7 @@ export default function ProductionOrders() {
           createMutation.mutateAsync({
             orderNumber: form.orderNumber,
             lotNumber: form.lotNumber,
+            singleYarnLotNumber,
             productType: form.productType,
             spinningUnit: form.spinningUnit,
             endUse: form.endUse,
@@ -299,6 +309,9 @@ export default function ProductionOrders() {
                   Lot No.
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                  Single Yarn Lot
+                </TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">
                   Product Type
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">
@@ -339,6 +352,11 @@ export default function ProductionOrders() {
                   </TableCell>
                   <TableCell className="font-mono-nums text-sm">
                     {order.lotNumber || (
+                      <span className="text-muted-foreground/50">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="font-mono-nums text-sm">
+                    {order.singleYarnLotNumber || (
                       <span className="text-muted-foreground/50">—</span>
                     )}
                   </TableCell>
@@ -513,6 +531,28 @@ export default function ProductionOrders() {
                 </Select>
               </div>
             </div>
+            {(form.spinningUnit === "tfo" ||
+              form.spinningUnit === "outsideYarn") && (
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="ord-single-yarn-lot">
+                    Single Yarn Lot Number
+                  </Label>
+                  <Input
+                    id="ord-single-yarn-lot"
+                    data-ocid="orders.single_yarn_lot_input"
+                    value={form.singleYarnLotNumber}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        singleYarnLotNumber: e.target.value,
+                      }))
+                    }
+                    placeholder="e.g. LOT-2026-001"
+                  />
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="ord-ne">Yarn Count (Ne)</Label>

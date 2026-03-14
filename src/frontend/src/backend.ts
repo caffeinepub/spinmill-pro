@@ -398,7 +398,7 @@ export interface backendInterface {
     createDispatchEntry(lotNumber: string, destination: DispatchDestination, quantityKg: bigint, dispatchDate: Time, remarks: string): Promise<bigint>;
     createMaterialIssue(department: string, warehouse: Warehouse, materialName: string, grade: string, issuedQty: bigint, remarks: string, issueDate: bigint): Promise<bigint>;
     createPackingEntry(lotNumber: string, quantityKg: bigint, remarks: string, packingDate: Time): Promise<bigint>;
-    createProductionOrder(orderNumber: string, lotNumber: string, productType: ProductType, spinningUnit: SpinningUnit, endUse: EndUse, yarnCountNe: bigint, twistDirection: TwistDirection, quantityKg: bigint, targetDate: Time, status: OrderStatus): Promise<bigint>;
+    createProductionOrder(orderNumber: string, lotNumber: string, productType: ProductType, spinningUnit: SpinningUnit, endUse: EndUse, yarnCountNe: bigint, twistDirection: TwistDirection, quantityKg: bigint, targetDate: Time, status: OrderStatus, singleYarnLotNumber: string | null): Promise<bigint>;
     createPurchaseOrder(poNumber: string, supplier: string, materialName: string, orderedQty: bigint, orderDate: Time, expectedDeliveryDate: Time): Promise<bigint>;
     deleteBatchStage(id: bigint): Promise<void>;
     deleteDispatchEntry(id: bigint): Promise<void>;
@@ -453,7 +453,7 @@ export interface backendInterface {
     updateBatchStage(id: bigint, batchId: bigint, stage: ProcessStage, weightInKg: bigint, weightOutKg: bigint, machineId: bigint, startTime: Time, endTime: Time, operatorNotes: string): Promise<void>;
     updateMachine(id: bigint, name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: bigint | null, runningLotNumber: string | null): Promise<void>;
     updateProductionLog(id: bigint, shift: Shift, date: Time, machineId: bigint, quantityKg: bigint, efficiencyPercent: bigint, operatorName: string): Promise<void>;
-    updateProductionOrder(id: bigint, orderNumber: string, lotNumber: string, productType: ProductType, spinningUnit: SpinningUnit, endUse: EndUse, yarnCountNe: bigint, twistDirection: TwistDirection, quantityKg: bigint, targetDate: Time, status: OrderStatus): Promise<void>;
+    updateProductionOrder(id: bigint, orderNumber: string, lotNumber: string, productType: ProductType, spinningUnit: SpinningUnit, endUse: EndUse, yarnCountNe: bigint, twistDirection: TwistDirection, quantityKg: bigint, targetDate: Time, status: OrderStatus, singleYarnLotNumber: string | null): Promise<void>;
     updatePurchaseOrder(id: bigint, poNumber: string, supplier: string, materialName: string, orderedQty: bigint, orderDate: Time, expectedDeliveryDate: Time): Promise<void>;
     updateQualityTest(id: bigint, batchId: bigint, csp: bigint, elongationPercent: bigint, evennessPercent: bigint, thinPlaces: bigint, thickPlaces: bigint, neps: bigint, hairinessIndex: bigint, pass: boolean): Promise<void>;
     updateRawMaterial(id: bigint, lotNumber: string, supplier: string, grade: string, weightKg: bigint, status: RawMaterialStatus, warehouse: Warehouse): Promise<void>;
@@ -645,17 +645,18 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async createProductionOrder(arg0: string, arg1: string, arg2: ProductType, arg3: SpinningUnit, arg4: EndUse, arg5: bigint, arg6: TwistDirection, arg7: bigint, arg8: Time, arg9: OrderStatus): Promise<bigint> {
+    async createProductionOrder(arg0: string, arg1: string, arg2: ProductType, arg3: SpinningUnit, arg4: EndUse, arg5: bigint, arg6: TwistDirection, arg7: bigint, arg8: Time, arg9: OrderStatus, arg10: string | null): Promise<bigint> {
+        const candid_arg10: [] | [string] = arg10 === null ? [] : [arg10];
         if (this.processError) {
             try {
-                const result = await this.actor.createProductionOrder(arg0, arg1, to_candid_ProductType_n14(this._uploadFile, this._downloadFile, arg2), to_candid_SpinningUnit_n12(this._uploadFile, this._downloadFile, arg3), to_candid_EndUse_n16(this._uploadFile, this._downloadFile, arg4), arg5, to_candid_TwistDirection_n8(this._uploadFile, this._downloadFile, arg6), arg7, arg8, to_candid_OrderStatus_n22(this._uploadFile, this._downloadFile, arg9));
+                const result = await this.actor.createProductionOrder(arg0, arg1, to_candid_ProductType_n14(this._uploadFile, this._downloadFile, arg2), to_candid_SpinningUnit_n12(this._uploadFile, this._downloadFile, arg3), to_candid_EndUse_n16(this._uploadFile, this._downloadFile, arg4), arg5, to_candid_TwistDirection_n8(this._uploadFile, this._downloadFile, arg6), arg7, arg8, to_candid_OrderStatus_n22(this._uploadFile, this._downloadFile, arg9), candid_arg10);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.createProductionOrder(arg0, arg1, to_candid_ProductType_n14(this._uploadFile, this._downloadFile, arg2), to_candid_SpinningUnit_n12(this._uploadFile, this._downloadFile, arg3), to_candid_EndUse_n16(this._uploadFile, this._downloadFile, arg4), arg5, to_candid_TwistDirection_n8(this._uploadFile, this._downloadFile, arg6), arg7, arg8, to_candid_OrderStatus_n22(this._uploadFile, this._downloadFile, arg9));
+            const result = await this.actor.createProductionOrder(arg0, arg1, to_candid_ProductType_n14(this._uploadFile, this._downloadFile, arg2), to_candid_SpinningUnit_n12(this._uploadFile, this._downloadFile, arg3), to_candid_EndUse_n16(this._uploadFile, this._downloadFile, arg4), arg5, to_candid_TwistDirection_n8(this._uploadFile, this._downloadFile, arg6), arg7, arg8, to_candid_OrderStatus_n22(this._uploadFile, this._downloadFile, arg9), candid_arg10);
             return result;
         }
     }
@@ -1387,17 +1388,18 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async updateProductionOrder(arg0: bigint, arg1: string, arg2: string, arg3: ProductType, arg4: SpinningUnit, arg5: EndUse, arg6: bigint, arg7: TwistDirection, arg8: bigint, arg9: Time, arg10: OrderStatus): Promise<void> {
+    async updateProductionOrder(arg0: bigint, arg1: string, arg2: string, arg3: ProductType, arg4: SpinningUnit, arg5: EndUse, arg6: bigint, arg7: TwistDirection, arg8: bigint, arg9: Time, arg10: OrderStatus, arg11: string | null): Promise<void> {
+        const candid_arg11: [] | [string] = arg11 === null ? [] : [arg11];
         if (this.processError) {
             try {
-                const result = await this.actor.updateProductionOrder(arg0, arg1, arg2, to_candid_ProductType_n14(this._uploadFile, this._downloadFile, arg3), to_candid_SpinningUnit_n12(this._uploadFile, this._downloadFile, arg4), to_candid_EndUse_n16(this._uploadFile, this._downloadFile, arg5), arg6, to_candid_TwistDirection_n8(this._uploadFile, this._downloadFile, arg7), arg8, arg9, to_candid_OrderStatus_n22(this._uploadFile, this._downloadFile, arg10));
+                const result = await this.actor.updateProductionOrder(arg0, arg1, arg2, to_candid_ProductType_n14(this._uploadFile, this._downloadFile, arg3), to_candid_SpinningUnit_n12(this._uploadFile, this._downloadFile, arg4), to_candid_EndUse_n16(this._uploadFile, this._downloadFile, arg5), arg6, to_candid_TwistDirection_n8(this._uploadFile, this._downloadFile, arg7), arg8, arg9, to_candid_OrderStatus_n22(this._uploadFile, this._downloadFile, arg10), candid_arg11);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateProductionOrder(arg0, arg1, arg2, to_candid_ProductType_n14(this._uploadFile, this._downloadFile, arg3), to_candid_SpinningUnit_n12(this._uploadFile, this._downloadFile, arg4), to_candid_EndUse_n16(this._uploadFile, this._downloadFile, arg5), arg6, to_candid_TwistDirection_n8(this._uploadFile, this._downloadFile, arg7), arg8, arg9, to_candid_OrderStatus_n22(this._uploadFile, this._downloadFile, arg10));
+            const result = await this.actor.updateProductionOrder(arg0, arg1, arg2, to_candid_ProductType_n14(this._uploadFile, this._downloadFile, arg3), to_candid_SpinningUnit_n12(this._uploadFile, this._downloadFile, arg4), to_candid_EndUse_n16(this._uploadFile, this._downloadFile, arg5), arg6, to_candid_TwistDirection_n8(this._uploadFile, this._downloadFile, arg7), arg8, arg9, to_candid_OrderStatus_n22(this._uploadFile, this._downloadFile, arg10), candid_arg11);
             return result;
         }
     }
@@ -1903,6 +1905,7 @@ function from_candid_record_n68(_uploadFile: (file: ExternalBlob) => Promise<Uin
     orderNumber: string;
     quantityKg: bigint;
     endUse: _EndUse;
+    singleYarnLotNumber?: [] | [string];
 }): {
     id: bigint;
     status: OrderStatus;
@@ -1915,6 +1918,7 @@ function from_candid_record_n68(_uploadFile: (file: ExternalBlob) => Promise<Uin
     orderNumber: string;
     quantityKg: bigint;
     endUse: EndUse;
+    singleYarnLotNumber: string | null;
 } {
     return {
         id: value.id,
@@ -1927,7 +1931,8 @@ function from_candid_record_n68(_uploadFile: (file: ExternalBlob) => Promise<Uin
         targetDate: value.targetDate,
         orderNumber: value.orderNumber,
         quantityKg: value.quantityKg,
-        endUse: from_candid_EndUse_n38(_uploadFile, _downloadFile, value.endUse)
+        endUse: from_candid_EndUse_n38(_uploadFile, _downloadFile, value.endUse),
+        singleYarnLotNumber: (value.singleYarnLotNumber && value.singleYarnLotNumber.length > 0) ? value.singleYarnLotNumber[0] : null
     };
 }
 function from_candid_record_n75(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {

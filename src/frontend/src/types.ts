@@ -193,6 +193,7 @@ export interface ProductionOrder {
   quantityKg: bigint;
   targetDate: Time;
   status: OrderStatus;
+  singleYarnLotNumber?: string | null;
 }
 
 export interface ProductionOrderBalance {
@@ -453,6 +454,7 @@ export interface FullBackendInterface {
     quantityKg: bigint,
     targetDate: Time,
     status: OrderStatus,
+    singleYarnLotNumber: string | null,
   ): Promise<bigint>;
   createPurchaseOrder(
     poNumber: string,
@@ -565,6 +567,7 @@ export interface FullBackendInterface {
     quantityKg: bigint,
     targetDate: Time,
     status: OrderStatus,
+    singleYarnLotNumber: string | null,
   ): Promise<void>;
   updatePurchaseOrder(
     id: bigint,

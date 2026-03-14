@@ -588,6 +588,14 @@ export default function Machines() {
               )}
             </div>
 
+            {selectedOrder?.singleYarnLotNumber && (
+              <div className="space-y-1.5">
+                <Label>Single Yarn Lot Number</Label>
+                <div className="px-3 py-2 rounded-md border border-border bg-muted/40 text-sm font-medium">
+                  {selectedOrder.singleYarnLotNumber}
+                </div>
+              </div>
+            )}
             {form.status === "running" && (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">

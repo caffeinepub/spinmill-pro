@@ -181,6 +181,7 @@ export const ProductionOrder = IDL.Record({
   'orderNumber' : IDL.Text,
   'quantityKg' : IDL.Nat,
   'endUse' : EndUse,
+  'singleYarnLotNumber' : IDL.Opt(IDL.Text),
 });
 export const PurchaseOrderStatus = IDL.Variant({
   'closed' : IDL.Null,
@@ -390,6 +391,7 @@ export const idlService = IDL.Service({
         IDL.Nat,
         Time,
         OrderStatus,
+        IDL.Opt(IDL.Text),
       ],
       [IDL.Nat],
       [],
@@ -536,6 +538,7 @@ export const idlService = IDL.Service({
         IDL.Nat,
         Time,
         OrderStatus,
+        IDL.Opt(IDL.Text),
       ],
       [],
       [],
@@ -766,6 +769,7 @@ export const idlFactory = ({ IDL }) => {
     'orderNumber' : IDL.Text,
     'quantityKg' : IDL.Nat,
     'endUse' : EndUse,
+    'singleYarnLotNumber' : IDL.Opt(IDL.Text),
   });
   const PurchaseOrderStatus = IDL.Variant({
     'closed' : IDL.Null,
@@ -984,6 +988,7 @@ export const idlFactory = ({ IDL }) => {
           IDL.Nat,
           Time,
           OrderStatus,
+          IDL.Opt(IDL.Text),
         ],
         [IDL.Nat],
         [],
@@ -1132,6 +1137,7 @@ export const idlFactory = ({ IDL }) => {
           IDL.Nat,
           Time,
           OrderStatus,
+          IDL.Opt(IDL.Text),
         ],
         [],
         [],

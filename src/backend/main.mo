@@ -97,6 +97,7 @@ actor {
     quantityKg : Nat;
     targetDate : Time.Time;
     status : OrderStatus;
+    singleYarnLotNumber : ?Text;
   };
 
   type Machine = {
@@ -746,20 +747,20 @@ actor {
     "ORD-" # currentYear() # "-" # padNum(productionOrderIdCounter + 1, 3);
   };
 
-  public shared ({ caller }) func createProductionOrder(orderNumber : Text, lotNumber : Text, productType : ProductType, spinningUnit : SpinningUnit, endUse : EndUse, yarnCountNe : Nat, twistDirection : TwistDirection, quantityKg : Nat, targetDate : Time.Time, status : OrderStatus) : async Nat {
+  public shared ({ caller }) func createProductionOrder(orderNumber : Text, lotNumber : Text, productType : ProductType, spinningUnit : SpinningUnit, endUse : EndUse, yarnCountNe : Nat, twistDirection : TwistDirection, quantityKg : Nat, targetDate : Time.Time, status : OrderStatus, singleYarnLotNumber : ?Text) : async Nat {
     requireUser(caller);
     let id = productionOrderIdCounter;
-    productionOrders.add(id, { id; orderNumber; lotNumber; productType; spinningUnit; endUse; yarnCountNe; twistDirection; quantityKg; targetDate; status });
+    productionOrders.add(id, { id; orderNumber; lotNumber; productType; spinningUnit; endUse; yarnCountNe; twistDirection; quantityKg; targetDate; status; singleYarnLotNumber });
     productionOrderIdCounter += 1;
     id;
   };
 
-  public shared ({ caller }) func updateProductionOrder(id : Nat, orderNumber : Text, lotNumber : Text, productType : ProductType, spinningUnit : SpinningUnit, endUse : EndUse, yarnCountNe : Nat, twistDirection : TwistDirection, quantityKg : Nat, targetDate : Time.Time, status : OrderStatus) : async () {
+  public shared ({ caller }) func updateProductionOrder(id : Nat, orderNumber : Text, lotNumber : Text, productType : ProductType, spinningUnit : SpinningUnit, endUse : EndUse, yarnCountNe : Nat, twistDirection : TwistDirection, quantityKg : Nat, targetDate : Time.Time, status : OrderStatus, singleYarnLotNumber : ?Text) : async () {
     requireUser(caller);
     switch (productionOrders.get(id)) {
       case (null) { Runtime.trap("Production order not found") };
       case (?po) {
-        productionOrders.add(id, { po with orderNumber; lotNumber; productType; spinningUnit; endUse; yarnCountNe; twistDirection; quantityKg; targetDate; status });
+        productionOrders.add(id, { po with orderNumber; lotNumber; productType; spinningUnit; endUse; yarnCountNe; twistDirection; quantityKg; targetDate; status; singleYarnLotNumber });
       };
     };
   };

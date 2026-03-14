@@ -180,6 +180,7 @@ export interface ProductionOrder {
   'orderNumber' : string,
   'quantityKg' : bigint,
   'endUse' : EndUse,
+  'singleYarnLotNumber' : [] | [string],
 }
 export interface ProductionOrderBalance {
   'isFulfilled' : boolean,
@@ -328,6 +329,7 @@ export interface _SERVICE {
       bigint,
       Time,
       OrderStatus,
+      [] | [string],
     ],
     bigint
   >,
@@ -433,6 +435,7 @@ export interface _SERVICE {
       bigint,
       Time,
       OrderStatus,
+      [] | [string],
     ],
     undefined
   >,

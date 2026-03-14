@@ -25,6 +25,7 @@ module Migration {
     quantityKg : Nat;
     targetDate : Time.Time;
     status : OrderStatus;
+    singleYarnLotNumber : ?Text;
   };
 
   type PackingEntryV0 = {
@@ -81,6 +82,7 @@ module Migration {
     quantityKg : Nat;
     targetDate : Time.Time;
     status : OrderStatus;
+    singleYarnLotNumber : ?Text;
   };
 
   type PackingEntry = {
@@ -161,6 +163,7 @@ module Migration {
         quantityKg = v.quantityKg;
         targetDate = v.targetDate;
         status = v.status;
+        singleYarnLotNumber = v.singleYarnLotNumber;
       });
     };
 

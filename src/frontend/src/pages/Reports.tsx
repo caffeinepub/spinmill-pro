@@ -1931,7 +1931,10 @@ function YarnStockReport({
     const tfoStock = filteredRows
       .filter((r) => r.spinningUnit.toLowerCase() === "tfo")
       .reduce((s, r) => s + r.availableKg, 0);
-    return { totalStock, oeStock, ringStock, tfoStock };
+    const outsideYarnStock = filteredRows
+      .filter((r) => r.spinningUnit.toLowerCase() === "outsideyarn")
+      .reduce((s, r) => s + r.availableKg, 0);
+    return { totalStock, oeStock, ringStock, tfoStock, outsideYarnStock };
   }, [filteredRows]);
 
   function handleExport() {
@@ -2008,7 +2011,7 @@ function YarnStockReport({
         </Button>
       </FilterBar>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <KpiCard
           ocid="reports.yarnstock.card"
           label="Total Yarn Stock"
@@ -2031,6 +2034,12 @@ function YarnStockReport({
           ocid="reports.yarnstock.card"
           label="TFO Stock"
           value={`${kpis.tfoStock.toLocaleString()} kg`}
+          icon={<Layers className="w-4 h-4" />}
+        />
+        <KpiCard
+          ocid="reports.yarnstock.card"
+          label="Outside Yarn Stock"
+          value={`${kpis.outsideYarnStock.toLocaleString()} kg`}
           icon={<Layers className="w-4 h-4" />}
         />
       </div>

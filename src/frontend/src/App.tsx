@@ -33,6 +33,7 @@ import DropdownOptionsPage from "./pages/DropdownOptions";
 import InwardEntry from "./pages/InwardEntry";
 import Machines from "./pages/Machines";
 import MaterialIssue from "./pages/MaterialIssue";
+import OutsideYarnInward from "./pages/OutsideYarnInward";
 import PackingEntry from "./pages/PackingEntry";
 import ProductionLogs from "./pages/ProductionLogs";
 import ProductionOrders from "./pages/ProductionOrders";
@@ -50,6 +51,7 @@ type PageId =
   | "raw-materials"
   | "purchase-orders"
   | "inward"
+  | "outside-yarn-inward"
   | "material-issue"
   | "rm-opening-stock"
   | "yarn-opening-stock"
@@ -92,6 +94,12 @@ const navItems: NavItem[] = [
     id: "inward",
     label: "Inward Entry",
     icon: <PackageOpen className="w-4 h-4" />,
+    group: "Procurement",
+  },
+  {
+    id: "outside-yarn-inward",
+    label: "Outside Yarn Inward",
+    icon: <Truck className="w-4 h-4" />,
     group: "Procurement",
   },
   {
@@ -173,6 +181,7 @@ const pageComponents: Record<PageId, React.ReactNode> = {
   "raw-materials": <RawMaterials />,
   "purchase-orders": <PurchaseOrders />,
   inward: <InwardEntry />,
+  "outside-yarn-inward": <OutsideYarnInward />,
   "material-issue": <MaterialIssue />,
   "rm-opening-stock": <RawMaterialOpeningStock />,
   "yarn-opening-stock": <YarnOpeningStock />,

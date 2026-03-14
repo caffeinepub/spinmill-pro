@@ -179,6 +179,7 @@ export function useCreateProductionOrder() {
       quantityKg: bigint;
       targetDate: bigint;
       status: OrderStatus;
+      singleYarnLotNumber?: string | null;
     }) => {
       if (!actor) throw new Error("No actor");
       return fullActor(actor).createProductionOrder(
@@ -192,6 +193,7 @@ export function useCreateProductionOrder() {
         args.quantityKg,
         args.targetDate,
         args.status,
+        args.singleYarnLotNumber ?? null,
       );
     },
     onSuccess: () => {
@@ -217,6 +219,7 @@ export function useUpdateProductionOrder() {
       quantityKg: bigint;
       targetDate: bigint;
       status: OrderStatus;
+      singleYarnLotNumber?: string | null;
     }) => {
       if (!actor) throw new Error("No actor");
       return fullActor(actor).updateProductionOrder(
@@ -231,6 +234,7 @@ export function useUpdateProductionOrder() {
         args.quantityKg,
         args.targetDate,
         args.status,
+        args.singleYarnLotNumber ?? null,
       );
     },
     onSuccess: () => {
