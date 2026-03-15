@@ -130,9 +130,7 @@ export default function Machines() {
       status: item.status,
       currentOrderId: orderId,
       runningCount:
-        item.runningCount !== undefined
-          ? String(Number(item.runningCount))
-          : "",
+        item.runningCount !== undefined ? String(item.runningCount) : "",
       runningLotNumber: item.runningLotNumber ?? "",
     });
     // Pre-fill search with existing order number
@@ -381,7 +379,7 @@ export default function Machines() {
                       {machine.status === "running" &&
                       machine.runningCount !== undefined ? (
                         <span className="font-medium">
-                          {String(Number(machine.runningCount))}
+                          {String(machine.runningCount)}
                         </span>
                       ) : machine.status === "maintenance" ? (
                         <span className="inline-flex items-center bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded font-medium whitespace-nowrap">
