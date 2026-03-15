@@ -107,7 +107,7 @@ actor {
     machineNumber : Text;
     status : MachineStatus;
     currentOrderId : ?Nat;
-    runningCount : ?Nat;
+    runningCount : ?Text;
     runningLotNumber : ?Text;
     maintenanceStartTime : ?Time.Time;
     totalMaintenanceDurationMins : Nat;
@@ -820,7 +820,7 @@ actor {
     out.toArray().sort(func(a : Machine, b : Machine) : Order.Order { Nat.compare(a.id, b.id) });
   };
 
-  public shared ({ caller }) func registerMachine(name : Text, machineType : MachineType, machineNumber : Text, status : MachineStatus, currentOrderId : ?Nat, runningCount : ?Nat, runningLotNumber : ?Text) : async Nat {
+  public shared ({ caller }) func registerMachine(name : Text, machineType : MachineType, machineNumber : Text, status : MachineStatus, currentOrderId : ?Nat, runningCount : ?Text, runningLotNumber : ?Text) : async Nat {
     requireUser(caller);
     let id = machineIdCounter;
     let maintenanceStartTime : ?Time.Time = switch (status) {
@@ -832,7 +832,7 @@ actor {
     id;
   };
 
-  public shared ({ caller }) func updateMachine(id : Nat, name : Text, machineType : MachineType, machineNumber : Text, status : MachineStatus, currentOrderId : ?Nat, runningCount : ?Nat, runningLotNumber : ?Text) : async () {
+  public shared ({ caller }) func updateMachine(id : Nat, name : Text, machineType : MachineType, machineNumber : Text, status : MachineStatus, currentOrderId : ?Nat, runningCount : ?Text, runningLotNumber : ?Text) : async () {
     requireUser(caller);
     switch (machines.get(id)) {
       case (null) { Runtime.trap("Machine not found") };

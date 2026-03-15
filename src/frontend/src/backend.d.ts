@@ -152,7 +152,7 @@ export interface Machine {
     name: string;
     currentOrderId?: bigint;
     totalMaintenanceDurationMins: bigint;
-    runningCount?: bigint;
+    runningCount?: string;
     machineNumber: string;
     machineType: MachineType;
 }
@@ -366,11 +366,11 @@ export interface backendInterface {
     isCallerAdmin(): Promise<boolean>;
     setYarnCountLabel(lotNumber: string, countLabel: string): Promise<void>;
     getAllYarnCountLabels(): Promise<Array<[string, string]>>;
-    registerMachine(name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: bigint | null, runningLotNumber: string | null): Promise<bigint>;
+    registerMachine(name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: string | null, runningLotNumber: string | null): Promise<bigint>;
     removeUser(user: Principal): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     updateBatchStage(id: bigint, batchId: bigint, stage: ProcessStage, weightInKg: bigint, weightOutKg: bigint, machineId: bigint, startTime: Time, endTime: Time, operatorNotes: string): Promise<void>;
-    updateMachine(id: bigint, name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: bigint | null, runningLotNumber: string | null): Promise<void>;
+    updateMachine(id: bigint, name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: string | null, runningLotNumber: string | null): Promise<void>;
     updateProductionLog(id: bigint, shift: Shift, date: Time, machineId: bigint, quantityKg: bigint, efficiencyPercent: bigint, operatorName: string): Promise<void>;
     updateProductionOrder(id: bigint, orderNumber: string, lotNumber: string, productType: ProductType, spinningUnit: SpinningUnit, endUse: EndUse, yarnCountNe: bigint, twistDirection: TwistDirection, quantityKg: bigint, targetDate: Time, status: OrderStatus, singleYarnLotNumber: string | null): Promise<void>;
     updatePurchaseOrder(id: bigint, poNumber: string, supplier: string, materialName: string, orderedQty: bigint, orderDate: Time, expectedDeliveryDate: Time): Promise<void>;

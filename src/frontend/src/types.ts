@@ -231,7 +231,7 @@ export interface Machine {
   machineNumber: string;
   status: MachineStatus;
   currentOrderId?: bigint;
-  runningCount?: bigint;
+  runningCount?: string;
   runningLotNumber?: string;
   maintenanceStartTime?: bigint;
   totalMaintenanceDurationMins: bigint;
@@ -520,7 +520,7 @@ export interface FullBackendInterface {
     machineNumber: string,
     status: MachineStatus,
     currentOrderId: bigint | null,
-    runningCount: bigint | null,
+    runningCount: string | null,
     runningLotNumber: string | null,
   ): Promise<bigint>;
   removeUser(user: Principal): Promise<void>;
@@ -543,7 +543,7 @@ export interface FullBackendInterface {
     machineNumber: string,
     status: MachineStatus,
     currentOrderId: bigint | null,
-    runningCount: bigint | null,
+    runningCount: string | null,
     runningLotNumber: string | null,
   ): Promise<void>;
   updateProductionLog(

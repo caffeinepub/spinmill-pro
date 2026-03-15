@@ -88,7 +88,7 @@ export interface Machine {
   'name' : string,
   'currentOrderId' : [] | [bigint],
   'totalMaintenanceDurationMins' : bigint,
-  'runningCount' : [] | [bigint],
+  'runningCount' : [] | [string],
   'machineNumber' : string,
   'machineType' : MachineType,
 }
@@ -394,7 +394,7 @@ export interface _SERVICE {
       string,
       MachineStatus,
       [] | [bigint],
-      [] | [bigint],
+      [] | [string],
       [] | [string],
     ],
     bigint
@@ -413,7 +413,7 @@ export interface _SERVICE {
       string,
       MachineStatus,
       [] | [bigint],
-      [] | [bigint],
+      [] | [string],
       [] | [string],
     ],
     undefined

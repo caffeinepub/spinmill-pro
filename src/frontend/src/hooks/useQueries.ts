@@ -285,7 +285,7 @@ export function useRegisterMachine() {
       machineNumber: string;
       status: MachineStatus;
       currentOrderId: bigint | null;
-      runningCount: bigint | null;
+      runningCount: string | null;
       runningLotNumber: string | null;
     }) => {
       if (!actor) throw new Error("No actor");
@@ -317,7 +317,7 @@ export function useUpdateMachine() {
       machineNumber: string;
       status: MachineStatus;
       currentOrderId: bigint | null;
-      runningCount: bigint | null;
+      runningCount: string | null;
       runningLotNumber: string | null;
     }) => {
       if (!actor) throw new Error("No actor");

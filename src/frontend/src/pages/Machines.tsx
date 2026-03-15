@@ -53,13 +53,6 @@ import {
 import { MachineType } from "../types";
 import type { Machine, MachineStatus } from "../types";
 
-/** Extracts the leading numeric value from a count string like "30/1", "40@", "2/40".
- *  Returns 1n if no valid number found. */
-function parseCountNe(val: string): bigint {
-  const match = val.match(/^(\d+(\.\d+)?)/);
-  return match ? BigInt(Math.round(Number.parseFloat(match[1]))) : 1n;
-}
-
 const unitLabels: Record<string, string> = {
   [MachineType.autocoro]: "OE Spinning",
   [MachineType.ringFrame]: "Ring Spinning",
@@ -153,7 +146,7 @@ export default function Machines() {
     const orderId = form.currentOrderId ? BigInt(form.currentOrderId) : null;
     const isRunning = form.status === "running";
     const runningCount =
-      isRunning && form.runningCount ? parseCountNe(form.runningCount) : null;
+      isRunning && form.runningCount ? form.runningCount : null;
     const runningLotNumber =
       isRunning && form.runningLotNumber ? form.runningLotNumber : null;
     try {

@@ -4,15 +4,13 @@ import Time "mo:core/Time";
 
 module Migration {
 
-  // Old types -- must match what is actually stored in stable memory.
-  // ProductionOrderV0 includes singleYarnLotNumber because a previous migration
-  // already wrote this field; if we omit it the deserialiser will reject it.
-
   type SpinningUnitV0 = { #openend; #ringSpinning; #tfo; #outsideYarn };
   type ProductType = { #carded; #combed; #polyester; #bamboo; #viscose; #lt };
   type EndUse = { #warp; #weft; #pile; #ground; #tfo };
   type TwistDirection = { #s; #z };
   type OrderStatus = { #pending; #inProgress; #completed; #cancelled };
+  type MachineStatus = { #running; #idle; #maintenance };
+  type MachineType = { #blowroom; #carding; #drawing; #combing; #roving; #ringFrame; #winding; #autocoro };
   type DispatchDestination = { #weaving; #kolhapur; #ambala; #outside; #amravati; #softWinding; #tfo };
 
   type ProductionOrderV0 = {
@@ -66,6 +64,20 @@ module Migration {
     endUse : EndUse;
     weightKg : Nat;
     createdAt : Time.Time;
+  };
+
+  // MachineV0 has runningCount : ?Nat (old format)
+  type MachineV0 = {
+    id : Nat;
+    name : Text;
+    machineType : MachineType;
+    machineNumber : Text;
+    status : MachineStatus;
+    currentOrderId : ?Nat;
+    runningCount : ?Nat;
+    runningLotNumber : ?Text;
+    maintenanceStartTime : ?Time.Time;
+    totalMaintenanceDurationMins : Nat;
   };
 
   // New types
@@ -125,6 +137,20 @@ module Migration {
     createdAt : Time.Time;
   };
 
+  // Machine with runningCount : ?Text (new format)
+  type Machine = {
+    id : Nat;
+    name : Text;
+    machineType : MachineType;
+    machineNumber : Text;
+    status : MachineStatus;
+    currentOrderId : ?Nat;
+    runningCount : ?Text;
+    runningLotNumber : ?Text;
+    maintenanceStartTime : ?Time.Time;
+    totalMaintenanceDurationMins : Nat;
+  };
+
   func migrateSpinningUnit(old : SpinningUnitV0) : SpinningUnit {
     switch old {
       case (#openend) #openend;
@@ -140,12 +166,14 @@ module Migration {
       packingEntries : Map.Map<Nat, PackingEntryV0>;
       dispatchEntries : Map.Map<Nat, DispatchEntryV0>;
       yarnOpeningStock : Map.Map<Nat, YarnOpeningStockRecordV0>;
+      machines : Map.Map<Nat, MachineV0>;
     }
   ) : {
     productionOrders : Map.Map<Nat, ProductionOrder>;
     packingEntries : Map.Map<Nat, PackingEntry>;
     dispatchEntries : Map.Map<Nat, DispatchEntry>;
     yarnOpeningStock : Map.Map<Nat, YarnOpeningStockRecord>;
+    machines : Map.Map<Nat, Machine>;
   } {
     let newProductionOrders = Map.empty<Nat, ProductionOrder>();
     for ((k, v) in old.productionOrders.entries()) {
@@ -212,11 +240,33 @@ module Migration {
       });
     };
 
+    // Migrate machines: convert runningCount from ?Nat to ?Text
+    let newMachines = Map.empty<Nat, Machine>();
+    for ((k, v) in old.machines.entries()) {
+      let newRunningCount : ?Text = switch (v.runningCount) {
+        case (null) { null };
+        case (?n) { ?(n : Nat).toText() };
+      };
+      newMachines.add(k, {
+        id = v.id;
+        name = v.name;
+        machineType = v.machineType;
+        machineNumber = v.machineNumber;
+        status = v.status;
+        currentOrderId = v.currentOrderId;
+        runningCount = newRunningCount;
+        runningLotNumber = v.runningLotNumber;
+        maintenanceStartTime = v.maintenanceStartTime;
+        totalMaintenanceDurationMins = v.totalMaintenanceDurationMins;
+      });
+    };
+
     {
       productionOrders = newProductionOrders;
       packingEntries = newPackingEntries;
       dispatchEntries = newDispatchEntries;
       yarnOpeningStock = newYarnOpeningStock;
+      machines = newMachines;
     };
   };
 

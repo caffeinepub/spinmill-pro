@@ -234,7 +234,7 @@ export interface Machine {
     name: string;
     currentOrderId?: bigint;
     totalMaintenanceDurationMins: bigint;
-    runningCount?: bigint;
+    runningCount?: string;
     machineNumber: string;
     machineType: MachineType;
 }
@@ -447,11 +447,11 @@ export interface backendInterface {
     isCallerAdmin(): Promise<boolean>;
     setYarnCountLabel(lotNumber: string, countLabel: string): Promise<void>;
     getAllYarnCountLabels(): Promise<Array<[string, string]>>;
-    registerMachine(name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: bigint | null, runningLotNumber: string | null): Promise<bigint>;
+    registerMachine(name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: string | null, runningLotNumber: string | null): Promise<bigint>;
     removeUser(user: Principal): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     updateBatchStage(id: bigint, batchId: bigint, stage: ProcessStage, weightInKg: bigint, weightOutKg: bigint, machineId: bigint, startTime: Time, endTime: Time, operatorNotes: string): Promise<void>;
-    updateMachine(id: bigint, name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: bigint | null, runningLotNumber: string | null): Promise<void>;
+    updateMachine(id: bigint, name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: string | null, runningLotNumber: string | null): Promise<void>;
     updateProductionLog(id: bigint, shift: Shift, date: Time, machineId: bigint, quantityKg: bigint, efficiencyPercent: bigint, operatorName: string): Promise<void>;
     updateProductionOrder(id: bigint, orderNumber: string, lotNumber: string, productType: ProductType, spinningUnit: SpinningUnit, endUse: EndUse, yarnCountNe: bigint, twistDirection: TwistDirection, quantityKg: bigint, targetDate: Time, status: OrderStatus, singleYarnLotNumber: string | null): Promise<void>;
     updatePurchaseOrder(id: bigint, poNumber: string, supplier: string, materialName: string, orderedQty: bigint, orderDate: Time, expectedDeliveryDate: Time): Promise<void>;
@@ -1304,17 +1304,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async registerMachine(arg0: string, arg1: MachineType, arg2: string, arg3: MachineStatus, arg4: bigint | null, arg5: bigint | null, arg6: string | null): Promise<bigint> {
+    async registerMachine(arg0: string, arg1: MachineType, arg2: string, arg3: MachineStatus, arg4: bigint | null, arg5: string | null, arg6: string | null): Promise<bigint> {
         if (this.processError) {
             try {
-                const result = await this.actor.registerMachine(arg0, to_candid_MachineType_n108(this._uploadFile, this._downloadFile, arg1), arg2, to_candid_MachineStatus_n110(this._uploadFile, this._downloadFile, arg3), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n112(this._uploadFile, this._downloadFile, arg6));
+                const result = await this.actor.registerMachine(arg0, to_candid_MachineType_n108(this._uploadFile, this._downloadFile, arg1), arg2, to_candid_MachineStatus_n110(this._uploadFile, this._downloadFile, arg3), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n112(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n112(this._uploadFile, this._downloadFile, arg6));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.registerMachine(arg0, to_candid_MachineType_n108(this._uploadFile, this._downloadFile, arg1), arg2, to_candid_MachineStatus_n110(this._uploadFile, this._downloadFile, arg3), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n112(this._uploadFile, this._downloadFile, arg6));
+            const result = await this.actor.registerMachine(arg0, to_candid_MachineType_n108(this._uploadFile, this._downloadFile, arg1), arg2, to_candid_MachineStatus_n110(this._uploadFile, this._downloadFile, arg3), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n112(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n112(this._uploadFile, this._downloadFile, arg6));
             return result;
         }
     }
@@ -1360,17 +1360,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async updateMachine(arg0: bigint, arg1: string, arg2: MachineType, arg3: string, arg4: MachineStatus, arg5: bigint | null, arg6: bigint | null, arg7: string | null): Promise<void> {
+    async updateMachine(arg0: bigint, arg1: string, arg2: MachineType, arg3: string, arg4: MachineStatus, arg5: bigint | null, arg6: string | null, arg7: string | null): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateMachine(arg0, arg1, to_candid_MachineType_n108(this._uploadFile, this._downloadFile, arg2), arg3, to_candid_MachineStatus_n110(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg6), to_candid_opt_n112(this._uploadFile, this._downloadFile, arg7));
+                const result = await this.actor.updateMachine(arg0, arg1, to_candid_MachineType_n108(this._uploadFile, this._downloadFile, arg2), arg3, to_candid_MachineStatus_n110(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n112(this._uploadFile, this._downloadFile, arg6), to_candid_opt_n112(this._uploadFile, this._downloadFile, arg7));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateMachine(arg0, arg1, to_candid_MachineType_n108(this._uploadFile, this._downloadFile, arg2), arg3, to_candid_MachineStatus_n110(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg6), to_candid_opt_n112(this._uploadFile, this._downloadFile, arg7));
+            const result = await this.actor.updateMachine(arg0, arg1, to_candid_MachineType_n108(this._uploadFile, this._downloadFile, arg2), arg3, to_candid_MachineStatus_n110(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n7(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n112(this._uploadFile, this._downloadFile, arg6), to_candid_opt_n112(this._uploadFile, this._downloadFile, arg7));
             return result;
         }
     }
@@ -1769,7 +1769,7 @@ function from_candid_record_n47(_uploadFile: (file: ExternalBlob) => Promise<Uin
     name: string;
     currentOrderId: [] | [bigint];
     totalMaintenanceDurationMins: bigint;
-    runningCount: [] | [bigint];
+    runningCount: [] | [string];
     machineNumber: string;
     machineType: _MachineType;
 }): {
@@ -1780,7 +1780,7 @@ function from_candid_record_n47(_uploadFile: (file: ExternalBlob) => Promise<Uin
     name: string;
     currentOrderId?: bigint;
     totalMaintenanceDurationMins: bigint;
-    runningCount?: bigint;
+    runningCount?: string;
     machineNumber: string;
     machineType: MachineType;
 } {
@@ -1792,7 +1792,7 @@ function from_candid_record_n47(_uploadFile: (file: ExternalBlob) => Promise<Uin
         name: value.name,
         currentOrderId: record_opt_to_undefined(from_candid_opt_n52(_uploadFile, _downloadFile, value.currentOrderId)),
         totalMaintenanceDurationMins: value.totalMaintenanceDurationMins,
-        runningCount: record_opt_to_undefined(from_candid_opt_n52(_uploadFile, _downloadFile, value.runningCount)),
+        runningCount: record_opt_to_undefined(from_candid_opt_n51(_uploadFile, _downloadFile, value.runningCount)),
         machineNumber: value.machineNumber,
         machineType: from_candid_MachineType_n53(_uploadFile, _downloadFile, value.machineType)
     };
