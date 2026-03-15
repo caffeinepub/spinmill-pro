@@ -108,6 +108,15 @@ export interface WarehouseStock {
     warehouse: Warehouse;
     materialName: string;
 }
+export interface WarehouseTransfer {
+    id: bigint;
+    materialName: string;
+    fromWarehouse: Warehouse;
+    toWarehouse: Warehouse;
+    qty: bigint;
+    transferDate: bigint;
+    remarks: string;
+}
 export interface POBalance {
     receivedQty: bigint;
     orderedQty: bigint;
@@ -350,6 +359,8 @@ export interface backendInterface {
     getAllRawMaterialOpeningStock(): Promise<Array<RawMaterial>>;
     getAllRawMaterials(): Promise<Array<RawMaterial>>;
     getAllWarehouseStock(): Promise<Array<WarehouseStock>>;
+    transferWarehouseStock(materialName: string, fromWarehouse: Warehouse, toWarehouse: Warehouse, qty: bigint, transferDate: bigint, remarks: string): Promise<bigint>;
+    getAllWarehouseTransfers(): Promise<Array<WarehouseTransfer>>;
     getAllYarnCountLabels(): Promise<Array<[string, string]>>;
     getAllYarnInventory(): Promise<Array<YarnInventory>>;
     getAllYarnOpeningStock(): Promise<Array<YarnOpeningStockRecord>>;

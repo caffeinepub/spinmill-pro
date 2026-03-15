@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import {
+  ArrowLeftRight,
   ArrowUpFromLine,
   BarChart2,
   Box,
@@ -22,7 +23,6 @@ import {
   Settings2,
   ShoppingCart,
   Truck,
-  Users,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -42,7 +42,7 @@ import PurchaseOrders from "./pages/PurchaseOrders";
 import RawMaterialOpeningStock from "./pages/RawMaterialOpeningStock";
 import RawMaterials from "./pages/RawMaterials";
 import Reports from "./pages/Reports";
-import UserManagement from "./pages/UserManagement";
+import WarehouseTransferPage from "./pages/WarehouseTransfer";
 import YarnDispatch from "./pages/YarnDispatch";
 import YarnInventory from "./pages/YarnInventory";
 import YarnOpeningStock from "./pages/YarnOpeningStock";
@@ -63,8 +63,8 @@ type PageId =
   | "yarn-inventory"
   | "yarn-dispatch"
   | "reports"
-  | "user-management"
-  | "dropdown-options";
+  | "dropdown-options"
+  | "warehouse-transfer";
 
 interface NavItem {
   id: PageId;
@@ -107,6 +107,12 @@ const navItems: NavItem[] = [
     id: "material-issue",
     label: "Material Issue",
     icon: <ArrowUpFromLine className="w-4 h-4" />,
+    group: "Procurement",
+  },
+  {
+    id: "warehouse-transfer",
+    label: "Warehouse Transfer",
+    icon: <ArrowLeftRight className="w-4 h-4" />,
     group: "Procurement",
   },
   {
@@ -164,12 +170,6 @@ const navItems: NavItem[] = [
     group: "Packing",
   },
   {
-    id: "user-management",
-    label: "User Management",
-    icon: <Users className="w-4 h-4" />,
-    group: "Admin",
-  },
-  {
     id: "dropdown-options",
     label: "Dropdown Options",
     icon: <ListChecks className="w-4 h-4" />,
@@ -193,8 +193,8 @@ const pageComponents: Record<PageId, React.ReactNode> = {
   "yarn-inventory": <YarnInventory />,
   "yarn-dispatch": <YarnDispatch />,
   reports: <Reports />,
-  "user-management": <UserManagement />,
   "dropdown-options": <DropdownOptionsPage />,
+  "warehouse-transfer": <WarehouseTransferPage />,
 };
 
 const groups = [

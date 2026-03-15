@@ -1563,3 +1563,50 @@ export function useSetYarnCountLabel() {
     },
   });
 }
+
+// ─── Warehouse Transfers ──────────────────────────────────────────────────────
+
+export function useWarehouseTransfers() {
+  const { actor } = useActor();
+  return useQuery<import("../types").WarehouseTransfer[]>({
+    queryKey: ["warehouseTransfers"],
+    queryFn: async () => {
+      if (!actor) return [];
+      const result = await fullActor(actor).getAllWarehouseTransfers();
+      return normalizeRecord(result) as import("../types").WarehouseTransfer[];
+    },
+    enabled: !!actor,
+    retry: 2,
+  });
+}
+
+export function useTransferWarehouseStock() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      materialName: string;
+      fromWarehouse: import("../types").Warehouse;
+      toWarehouse: import("../types").Warehouse;
+      qty: bigint;
+      transferDate: bigint;
+      remarks: string;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return fullActor(actor).transferWarehouseStock(
+        args.materialName,
+        args.fromWarehouse,
+        args.toWarehouse,
+        args.qty,
+        args.transferDate,
+        args.remarks,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["warehouseStock"] });
+      qc.invalidateQueries({ queryKey: ["warehouseTransfers"] });
+      qc.invalidateQueries({ queryKey: ["rawMaterials"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+}

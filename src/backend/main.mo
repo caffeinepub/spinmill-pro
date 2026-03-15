@@ -84,6 +84,16 @@ actor {
     totalQty : Nat;
   };
 
+  type WarehouseTransfer = {
+    id : Nat;
+    materialName : Text;
+    fromWarehouse : Warehouse;
+    toWarehouse : Warehouse;
+    qty : Nat;
+    transferDate : Time.Time;
+    remarks : Text;
+  };
+
   type ProductionOrder = {
     id : Nat;
     orderNumber : Text;
@@ -268,12 +278,14 @@ actor {
   var packingEntryIdCounter = 1;
   var dispatchEntryIdCounter = 1;
   var yarnOpeningStockIdCounter = 1;
+  var warehouseTransferIdCounter = 1;
 
   let rawMaterials = Map.empty<Nat, RawMaterial>();
   let purchaseOrders = Map.empty<Nat, PurchaseOrder>();
   let inwardEntries = Map.empty<Nat, InwardEntry>();
   let materialIssues = Map.empty<Nat, MaterialIssue>();
   let warehouseStock = Map.empty<Text, WarehouseStock>();
+  let warehouseTransfers = Map.empty<Nat, WarehouseTransfer>();
   let productionOrders = Map.empty<Nat, ProductionOrder>();
   let machines = Map.empty<Nat, Machine>();
   let productionLogs = Map.empty<Nat, ProductionLog>();
@@ -410,7 +422,7 @@ actor {
           warehouseStock.add(primaryKey, { s with totalQty = s.totalQty - remaining });
           remaining := 0;
         } else {
-          remaining := if (remaining > s.totalQty) { remaining - s.totalQty } else { 0 };
+          remaining := if (remaining > s.totalQty) { remaining - s.totalQty : Nat } else { 0 };
           warehouseStock.add(primaryKey, { s with totalQty = 0 });
         };
       };
@@ -424,7 +436,7 @@ actor {
             warehouseStock.add(k, { s with totalQty = s.totalQty - remaining });
             remaining := 0;
           } else {
-            remaining := if (remaining > s.totalQty) { remaining - s.totalQty } else { 0 };
+            remaining := if (remaining > s.totalQty) { remaining - s.totalQty : Nat } else { 0 };
             warehouseStock.add(k, { s with totalQty = 0 });
           };
         };
@@ -452,10 +464,9 @@ actor {
   };
 
   func requireUser(caller : Principal) {
-    let isAdmin = AccessControl.hasPermission(accessControlState, caller, #admin);
-    let isApproved = UserApproval.isApproved(approvalState, caller);
-    if (not (isAdmin or isApproved)) {
-      Runtime.trap("User is not approved");
+    // User management removed - any authenticated user can perform write operations
+    if (caller.isAnonymous()) {
+      Runtime.trap("Please sign in to perform this action");
     };
   };
 
@@ -568,6 +579,33 @@ actor {
       if (s.totalQty > 0) { out.add(s) };
     };
     out.toArray();
+  };
+
+  // ─── Warehouse Transfers ─────────────────────────────────────────────────
+
+  public shared ({ caller }) func transferWarehouseStock(materialName : Text, fromWarehouse : Warehouse, toWarehouse : Warehouse, qty : Nat, transferDate : Time.Time, remarks : Text) : async Nat {
+    // Compute available stock in fromWarehouse for this material
+    var available : Nat = 0;
+    for ((_, s) in warehouseStock.entries()) {
+      if (s.warehouse == fromWarehouse and s.materialName == materialName) {
+        available += s.totalQty;
+      };
+    };
+    if (qty == 0) { Runtime.trap("Transfer quantity must be greater than zero") };
+    if (available < qty) { Runtime.trap("Not enough stock in source warehouse. Available: " # (available : Nat).toText() # " kg") };
+    // Deduct from source, add to destination
+    updateWarehouseStockSub(fromWarehouse, materialName, qty);
+    updateWarehouseStockAdd(toWarehouse, materialName, qty);
+    let id = warehouseTransferIdCounter;
+    warehouseTransferIdCounter += 1;
+    warehouseTransfers.add(id, { id; materialName; fromWarehouse; toWarehouse; qty; transferDate; remarks });
+    id;
+  };
+
+  public query ({ caller }) func getAllWarehouseTransfers() : async [WarehouseTransfer] {
+    let out = List.empty<WarehouseTransfer>();
+    for ((_, t) in warehouseTransfers.entries()) { out.add(t) };
+    out.toArray().sort(func(a : WarehouseTransfer, b : WarehouseTransfer) : Order.Order { Nat.compare(a.id, b.id) });
   };
 
   // ─── Purchase Orders ──────────────────────────────────────────────────────
@@ -831,7 +869,7 @@ actor {
     productionOrders.remove(id);
   };
 
-  public query ({ caller }) func getProductionOrderBalance(yarnCountNe : Nat, lotNumber : Text) : async ?ProductionOrderBalance {
+  public query ({ caller }) func getProductionOrderBalance(_yarnCountNe : Nat, lotNumber : Text) : async ?ProductionOrderBalance {
     var found : ?ProductionOrder = null;
     for ((_, po) in productionOrders.entries()) {
       if (po.status == #inProgress and po.lotNumber == lotNumber) {

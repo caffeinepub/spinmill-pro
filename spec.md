@@ -1,39 +1,29 @@
 # SpinMill Pro
 
 ## Current State
-The app has edit/delete functionality for: PurchaseOrders, Machines, ProductionOrders, ProductionLogs (admin-only via isAdmin guard). The following pages have DELETE only but no EDIT:
-- InwardEntry
-- MaterialIssue
-- PackingEntry
-- YarnDispatch
-- OutsideYarnInward
-- YarnOpeningStock
-- RawMaterialOpeningStock
-
-Backend has update functions for RawMaterial, PurchaseOrder, ProductionOrder, Machine, ProductionLog but NOT for the above entities.
+The app has raw material tracking with two warehouses (OE Raw Material and Ring Raw Material). Stock is managed via inward entries and opening stock. There is no way to transfer raw material between warehouses.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Backend: `updateInwardEntry` - updates fields, adjusts warehouse stock delta
-- Backend: `updateMaterialIssue` - updates fields, adjusts warehouse stock delta
-- Backend: `updatePackingEntry` - updates remarks, packingDate, quantityKg (with balance check)
-- Backend: `updateDispatchEntry` - updates remarks, dispatchDate, quantityKg (with balance check)
-- Backend: `updateYarnOpeningStock` - updates all fields
-- Backend: `updateRawMaterialOpeningStock` - updates fields, adjusts warehouse stock
-- Frontend: Edit button (admin-only) in InwardEntry, MaterialIssue, PackingEntry, YarnDispatch, YarnOpeningStock, OutsideYarnInward, RawMaterialOpeningStock
-- Frontend: Edit dialog pre-populated with existing data for each page
-- Frontend: useUpdateXxx mutation hooks for each entity
+- Backend: `transferWarehouseStock(materialName, fromWarehouse, toWarehouse, qty, transferDate, remarks)` function that deducts from source warehouse and adds to destination warehouse
+- Backend: `WarehouseTransfer` type and stable storage for transfer records
+- Backend: `getAllWarehouseTransfers()` query function
+- Frontend: New `WarehouseTransfer.tsx` page under Procurement group in sidebar
+- Page shows current warehouse stock summary, a transfer form, and a history table of all transfers
+- backend.d.ts updated with new functions and types
 
 ### Modify
-- backend.d.ts: Add type declarations for all new update functions
-- Each page: Add editItem state, openEdit handler, edit dialog, update mutation call
+- App.tsx: Add `warehouse-transfer` PageId, nav item under Procurement group, and page component mapping
 
 ### Remove
 - Nothing
 
 ## Implementation Plan
-1. Add 6 update functions to backend/main.mo
-2. Add update function declarations to backend.d.ts
-3. Add useUpdateXxx hooks to useQueries.ts
-4. Add edit functionality to 7 frontend pages (InwardEntry, MaterialIssue, PackingEntry, YarnDispatch, YarnOpeningStock, OutsideYarnInward, RawMaterialOpeningStock)
+1. Add `WarehouseTransfer` type to backend Motoko with fields: id, materialName, fromWarehouse, toWarehouse, qty, transferDate, remarks
+2. Add stable storage for transfers and next transfer ID
+3. Add `transferWarehouseStock` shared function that validates stock, deducts from source, adds to destination
+4. Add `getAllWarehouseTransfers` query function
+5. Update backend.d.ts with new type and function signatures
+6. Create `WarehouseTransfer.tsx` frontend page with stock summary, form, and history
+7. Update App.tsx with new PageId, nav item (ArrowLeftRight icon), and page mapping

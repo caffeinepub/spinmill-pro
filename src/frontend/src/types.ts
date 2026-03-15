@@ -45,6 +45,16 @@ export interface WarehouseStock {
   totalQty: bigint;
 }
 
+export interface WarehouseTransfer {
+  id: bigint;
+  materialName: string;
+  fromWarehouse: Warehouse;
+  toWarehouse: Warehouse;
+  qty: bigint;
+  transferDate: bigint;
+  remarks: string;
+}
+
 // ─── Purchase Orders ──────────────────────────────────────────────────────────
 
 export enum PurchaseOrderStatus {
@@ -490,6 +500,15 @@ export interface FullBackendInterface {
   getAllRawMaterials(): Promise<Array<RawMaterial>>;
   getAllUsers(): Promise<Array<unknown>>;
   getAllWarehouseStock(): Promise<Array<WarehouseStock>>;
+  getAllWarehouseTransfers(): Promise<Array<WarehouseTransfer>>;
+  transferWarehouseStock(
+    materialName: string,
+    fromWarehouse: Warehouse,
+    toWarehouse: Warehouse,
+    qty: bigint,
+    transferDate: bigint,
+    remarks: string,
+  ): Promise<bigint>;
   getAllYarnInventory(): Promise<Array<YarnInventory>>;
   getAllYarnOpeningStock(): Promise<Array<YarnOpeningStockRecord>>;
   getCallerUserProfile(): Promise<UserProfile | null>;
