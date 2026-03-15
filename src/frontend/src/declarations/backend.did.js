@@ -37,8 +37,8 @@ export const InventoryStatus = IDL.Variant({
 export const SpinningUnit = IDL.Variant({
   'tfo' : IDL.Null,
   'openend' : IDL.Null,
-  'ringSpinning' : IDL.Null,
   'outsideYarn' : IDL.Null,
+  'ringSpinning' : IDL.Null,
 });
 export const ProductType = IDL.Variant({
   'lt' : IDL.Null,
@@ -172,6 +172,7 @@ export const ProductionLog = IDL.Record({
 export const ProductionOrder = IDL.Record({
   'id' : IDL.Nat,
   'status' : OrderStatus,
+  'singleYarnLotNumber' : IDL.Opt(IDL.Text),
   'yarnCountNe' : IDL.Nat,
   'twistDirection' : TwistDirection,
   'productType' : ProductType,
@@ -181,7 +182,6 @@ export const ProductionOrder = IDL.Record({
   'orderNumber' : IDL.Text,
   'quantityKg' : IDL.Nat,
   'endUse' : EndUse,
-  'singleYarnLotNumber' : IDL.Opt(IDL.Text),
 });
 export const PurchaseOrderStatus = IDL.Variant({
   'closed' : IDL.Null,
@@ -225,10 +225,6 @@ export const RawMaterial = IDL.Record({
   'grade' : IDL.Text,
   'dateReceived' : Time,
   'warehouse' : Warehouse,
-});
-export const UserEntry = IDL.Record({
-  'principal' : IDL.Principal,
-  'role' : UserRole,
 });
 export const WarehouseStock = IDL.Record({
   'totalQty' : IDL.Nat,
@@ -300,6 +296,15 @@ export const ProductionOrderBalance = IDL.Record({
   'balanceQty' : IDL.Int,
   'orderQty' : IDL.Nat,
   'producedQty' : IDL.Nat,
+});
+export const ApprovalStatus = IDL.Variant({
+  'pending' : IDL.Null,
+  'approved' : IDL.Null,
+  'rejected' : IDL.Null,
+});
+export const UserApprovalInfo = IDL.Record({
+  'status' : ApprovalStatus,
+  'principal' : IDL.Principal,
 });
 
 export const idlService = IDL.Service({
@@ -435,8 +440,12 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getAllRawMaterials' : IDL.Func([], [IDL.Vec(RawMaterial)], ['query']),
-  'getAllUsers' : IDL.Func([], [IDL.Vec(UserEntry)], ['query']),
   'getAllWarehouseStock' : IDL.Func([], [IDL.Vec(WarehouseStock)], ['query']),
+  'getAllYarnCountLabels' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))],
+      ['query'],
+    ),
   'getAllYarnInventory' : IDL.Func([], [IDL.Vec(YarnInventory)], ['query']),
   'getAllYarnOpeningStock' : IDL.Func(
       [],
@@ -474,8 +483,8 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'setYarnCountLabel' : IDL.Func([IDL.Text, IDL.Text], [], []),
-  'getAllYarnCountLabels' : IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))], ['query']),
+  'isCallerApproved' : IDL.Func([], [IDL.Bool], ['query']),
+  'listApprovals' : IDL.Func([], [IDL.Vec(UserApprovalInfo)], ['query']),
   'registerMachine' : IDL.Func(
       [
         IDL.Text,
@@ -489,8 +498,10 @@ export const idlService = IDL.Service({
       [IDL.Nat],
       [],
     ),
-  'removeUser' : IDL.Func([IDL.Principal], [], []),
+  'requestApproval' : IDL.Func([], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'setApproval' : IDL.Func([IDL.Principal, ApprovalStatus], [], []),
+  'setYarnCountLabel' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'updateBatchStage' : IDL.Func(
       [
         IDL.Nat,
@@ -577,7 +588,6 @@ export const idlService = IDL.Service({
       [],
       [],
     ),
-  'updateUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'updateYarnInventory' : IDL.Func(
       [
         IDL.Nat,
@@ -625,8 +635,8 @@ export const idlFactory = ({ IDL }) => {
   const SpinningUnit = IDL.Variant({
     'tfo' : IDL.Null,
     'openend' : IDL.Null,
-    'ringSpinning' : IDL.Null,
     'outsideYarn' : IDL.Null,
+    'ringSpinning' : IDL.Null,
   });
   const ProductType = IDL.Variant({
     'lt' : IDL.Null,
@@ -760,6 +770,7 @@ export const idlFactory = ({ IDL }) => {
   const ProductionOrder = IDL.Record({
     'id' : IDL.Nat,
     'status' : OrderStatus,
+    'singleYarnLotNumber' : IDL.Opt(IDL.Text),
     'yarnCountNe' : IDL.Nat,
     'twistDirection' : TwistDirection,
     'productType' : ProductType,
@@ -769,7 +780,6 @@ export const idlFactory = ({ IDL }) => {
     'orderNumber' : IDL.Text,
     'quantityKg' : IDL.Nat,
     'endUse' : EndUse,
-    'singleYarnLotNumber' : IDL.Opt(IDL.Text),
   });
   const PurchaseOrderStatus = IDL.Variant({
     'closed' : IDL.Null,
@@ -813,10 +823,6 @@ export const idlFactory = ({ IDL }) => {
     'grade' : IDL.Text,
     'dateReceived' : Time,
     'warehouse' : Warehouse,
-  });
-  const UserEntry = IDL.Record({
-    'principal' : IDL.Principal,
-    'role' : UserRole,
   });
   const WarehouseStock = IDL.Record({
     'totalQty' : IDL.Nat,
@@ -888,6 +894,15 @@ export const idlFactory = ({ IDL }) => {
     'balanceQty' : IDL.Int,
     'orderQty' : IDL.Nat,
     'producedQty' : IDL.Nat,
+  });
+  const ApprovalStatus = IDL.Variant({
+    'pending' : IDL.Null,
+    'approved' : IDL.Null,
+    'rejected' : IDL.Null,
+  });
+  const UserApprovalInfo = IDL.Record({
+    'status' : ApprovalStatus,
+    'principal' : IDL.Principal,
   });
   
   return IDL.Service({
@@ -1032,8 +1047,12 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getAllRawMaterials' : IDL.Func([], [IDL.Vec(RawMaterial)], ['query']),
-    'getAllUsers' : IDL.Func([], [IDL.Vec(UserEntry)], ['query']),
     'getAllWarehouseStock' : IDL.Func([], [IDL.Vec(WarehouseStock)], ['query']),
+    'getAllYarnCountLabels' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))],
+        ['query'],
+      ),
     'getAllYarnInventory' : IDL.Func([], [IDL.Vec(YarnInventory)], ['query']),
     'getAllYarnOpeningStock' : IDL.Func(
         [],
@@ -1071,10 +1090,8 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-    'setYarnCountLabel' : IDL.Func([IDL.Text, IDL.Text], [], []),
-    'getAllYarnCountLabels' : IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))], ['query']),
-  'setYarnCountLabel' : IDL.Func([IDL.Text, IDL.Text], [], []),
-  'getAllYarnCountLabels' : IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))], ['query']),
+    'isCallerApproved' : IDL.Func([], [IDL.Bool], ['query']),
+    'listApprovals' : IDL.Func([], [IDL.Vec(UserApprovalInfo)], ['query']),
     'registerMachine' : IDL.Func(
         [
           IDL.Text,
@@ -1088,8 +1105,10 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Nat],
         [],
       ),
-    'removeUser' : IDL.Func([IDL.Principal], [], []),
+    'requestApproval' : IDL.Func([], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'setApproval' : IDL.Func([IDL.Principal, ApprovalStatus], [], []),
+    'setYarnCountLabel' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'updateBatchStage' : IDL.Func(
         [
           IDL.Nat,
@@ -1176,7 +1195,6 @@ export const idlFactory = ({ IDL }) => {
         [],
         [],
       ),
-    'updateUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'updateYarnInventory' : IDL.Func(
         [
           IDL.Nat,

@@ -11,9 +11,8 @@ import Set "mo:core/Set";
 
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
-import {migration} "Migration";
+import UserApproval "user-approval/approval";
 
-(with migration)
 actor {
   // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -285,6 +284,10 @@ actor {
   let dispatchEntries = Map.empty<Nat, DispatchEntry>();
   let yarnOpeningStock = Map.empty<Nat, YarnOpeningStockRecord>();
   stable var yarnCountLabels = Map.empty<Text, Text>();
+  // Stable backing for user management (persists across upgrades)
+  stable var _stableUserRoles = Map.empty<Principal, AccessControl.UserRole>();
+  stable var _stableAdminAssigned : Bool = false;
+  stable var _stableApprovalStatus = Map.empty<Principal, UserApproval.ApprovalStatus>();
   let userProfiles = Map.empty<Principal, UserProfile>();
 
   let openingStockRawMaterialIds = Set.empty<Nat>();
@@ -293,7 +296,73 @@ actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
+  let approvalState = UserApproval.initState(accessControlState);
+
   // ─── Helpers ──────────────────────────────────────────────────────────────
+
+  public query ({ caller }) func getCallerApprovalStatus() : async ?UserApproval.ApprovalStatus {
+    if (AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      return ?#approved;
+    };
+    approvalState.approvalStatus.get(caller);
+  };
+
+  public query ({ caller }) func isCallerApproved() : async Bool {
+    AccessControl.hasPermission(accessControlState, caller, #admin) or UserApproval.isApproved(approvalState, caller);
+  };
+
+  public shared ({ caller }) func requestApproval() : async () {
+    UserApproval.requestApproval(approvalState, caller);
+  };
+
+  public shared ({ caller }) func setApproval(user : Principal, status : UserApproval.ApprovalStatus) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can perform this action");
+    };
+    UserApproval.setApproval(approvalState, user, status);
+  };
+
+  public query ({ caller }) func listApprovals() : async [UserApproval.UserApprovalInfo] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can perform this action");
+    };
+    UserApproval.listApprovals(approvalState);
+  };
+
+  // Bootstrap admin: grants admin to caller if no admin exists yet.
+  // This is the recovery path for the live app where no admin was ever set.
+  public shared ({ caller }) func bootstrapAdmin() : async Text {
+    if (caller.isAnonymous()) { return "Cannot use anonymous identity" };
+    if (AccessControl.hasAnyAdmin(accessControlState)) {
+      return "Admin already exists";
+    };
+    accessControlState.userRoles.remove(caller);
+    accessControlState.userRoles.add(caller, #admin);
+    accessControlState.adminAssigned := true;
+    approvalState.approvalStatus.remove(caller);
+    approvalState.approvalStatus.add(caller, #approved);
+    return "success";
+  };
+
+  // Persist user management state across upgrades
+  system func preupgrade() {
+    _stableUserRoles := accessControlState.userRoles;
+    _stableAdminAssigned := accessControlState.adminAssigned;
+    _stableApprovalStatus := approvalState.approvalStatus;
+  };
+
+  system func postupgrade() {
+    for ((p, role) in _stableUserRoles.entries()) {
+      accessControlState.userRoles.remove(p);
+      accessControlState.userRoles.add(p, role);
+      if (role == #admin) { accessControlState.adminAssigned := true };
+    };
+    accessControlState.adminAssigned := _stableAdminAssigned;
+    for ((p, status) in _stableApprovalStatus.entries()) {
+      approvalState.approvalStatus.remove(p);
+      approvalState.approvalStatus.add(p, status);
+    };
+  };
 
   func warehouseToText(w : Warehouse) : Text {
     switch (w) {
@@ -339,7 +408,7 @@ actor {
           warehouseStock.add(primaryKey, { s with totalQty = s.totalQty - remaining });
           remaining := 0;
         } else {
-          remaining := if (remaining > s.totalQty) remaining - s.totalQty else 0;
+          remaining := if (remaining > s.totalQty) { remaining - s.totalQty } else { 0 };
           warehouseStock.add(primaryKey, { s with totalQty = 0 });
         };
       };
@@ -353,7 +422,7 @@ actor {
             warehouseStock.add(k, { s with totalQty = s.totalQty - remaining });
             remaining := 0;
           } else {
-            remaining := if (remaining > s.totalQty) remaining - s.totalQty else 0;
+            remaining := if (remaining > s.totalQty) { remaining - s.totalQty } else { 0 };
             warehouseStock.add(k, { s with totalQty = 0 });
           };
         };
@@ -381,51 +450,14 @@ actor {
   };
 
   func requireUser(caller : Principal) {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Please sign in to save data");
+    let isAdmin = AccessControl.hasPermission(accessControlState, caller, #admin);
+    let isApproved = UserApproval.isApproved(approvalState, caller);
+    if (not (isAdmin or isApproved)) {
+      Runtime.trap("User is not approved");
     };
   };
 
   // ─── Auth / Users ─────────────────────────────────────────────────────────
-
-  public query ({ caller }) func getAllUsers() : async [UserEntry] {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      return [];
-    };
-    let out = List.empty<UserEntry>();
-    for ((p, r) in accessControlState.userRoles.entries()) {
-      out.add({ principal = p; role = r });
-    };
-    out.toArray();
-  };
-
-  public shared ({ caller }) func removeUser(user : Principal) : async () {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized");
-    };
-    if (caller == user) { Runtime.trap("Cannot remove yourself") };
-    accessControlState.userRoles.remove(user);
-  };
-
-  public shared ({ caller }) func updateUserRole(user : Principal, newRole : AccessControl.UserRole) : async () {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized");
-    };
-    if (caller == user) { Runtime.trap("Cannot change your own role") };
-    accessControlState.userRoles.add(user, newRole);
-  };
-
-  // Grants admin to the caller if no admin exists in the system (recovery path for live deployments)
-  public shared ({ caller }) func claimAdminIfNoAdminExists() : async Bool {
-    if (caller.isAnonymous()) { return false };
-    if (not accessControlState.adminAssigned) {
-      accessControlState.userRoles.add(caller, #admin);
-      accessControlState.adminAssigned := true;
-      true;
-    } else {
-      false;
-    };
-  };
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     userProfiles.get(caller);
@@ -443,9 +475,6 @@ actor {
   // ─── Raw Materials ────────────────────────────────────────────────────────
 
   public query ({ caller }) func getAllRawMaterials() : async [RawMaterial] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view raw materials");
-    };
     let out = List.empty<RawMaterial>();
     for ((_, m) in rawMaterials.entries()) { out.add(m) };
     out.toArray().sort(func(a : RawMaterial, b : RawMaterial) : Order.Order { Nat.compare(a.id, b.id) });
@@ -488,9 +517,6 @@ actor {
   };
 
   public query ({ caller }) func getAllRawMaterialOpeningStock() : async [RawMaterial] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view opening stock");
-    };
     let out = List.empty<RawMaterial>();
     for (id in openingStockRawMaterialIds.values()) {
       switch (rawMaterials.get(id)) {
@@ -519,9 +545,6 @@ actor {
   // ─── Warehouse Stock ──────────────────────────────────────────────────────
 
   public query ({ caller }) func getAllWarehouseStock() : async [WarehouseStock] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view warehouse stock");
-    };
     let out = List.empty<WarehouseStock>();
     for ((_, s) in warehouseStock.entries()) {
       if (s.totalQty > 0) { out.add(s) };
@@ -532,18 +555,12 @@ actor {
   // ─── Purchase Orders ──────────────────────────────────────────────────────
 
   public query ({ caller }) func getAllPurchaseOrders() : async [PurchaseOrder] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view purchase orders");
-    };
     let out = List.empty<PurchaseOrder>();
     for ((_, po) in purchaseOrders.entries()) { out.add(po) };
     out.toArray().sort(func(a : PurchaseOrder, b : PurchaseOrder) : Order.Order { Nat.compare(a.id, b.id) });
   };
 
   public query ({ caller }) func getNextPONumber() : async Text {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can access this function");
-    };
     "PO-" # currentYear() # "-" # padNum(purchaseOrderIdCounter + 1, 3);
   };
 
@@ -571,9 +588,6 @@ actor {
   };
 
   public query ({ caller }) func getPOBalance(purchaseOrderId : Nat) : async ?POBalance {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view PO balance");
-    };
     switch (purchaseOrders.get(purchaseOrderId)) {
       case (null) { null };
       case (?po) {
@@ -592,18 +606,12 @@ actor {
   // ─── Inward Entries ───────────────────────────────────────────────────────
 
   public query ({ caller }) func getAllInwardEntries() : async [InwardEntry] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view inward entries");
-    };
     let out = List.empty<InwardEntry>();
     for ((_, ie) in inwardEntries.entries()) { out.add(ie) };
     out.toArray().sort(func(a : InwardEntry, b : InwardEntry) : Order.Order { Nat.compare(a.id, b.id) });
   };
 
   public query ({ caller }) func getNextInwardNumber() : async Text {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can access this function");
-    };
     "IW-" # currentYear() # "-" # padNum(inwardEntryIdCounter + 1, 3);
   };
 
@@ -678,18 +686,12 @@ actor {
   // ─── Material Issues ──────────────────────────────────────────────────────
 
   public query ({ caller }) func getAllMaterialIssues() : async [MaterialIssue] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view material issues");
-    };
     let out = List.empty<MaterialIssue>();
     for ((_, mi) in materialIssues.entries()) { out.add(mi) };
     out.toArray().sort(func(a : MaterialIssue, b : MaterialIssue) : Order.Order { Nat.compare(a.id, b.id) });
   };
 
   public query ({ caller }) func getNextIssueNumber() : async Text {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can access this function");
-    };
     "ISS-" # currentYear() # "-" # padNum(materialIssueIdCounter, 3);
   };
 
@@ -732,18 +734,12 @@ actor {
   // ─── Production Orders ────────────────────────────────────────────────────
 
   public query ({ caller }) func getAllProductionOrders() : async [ProductionOrder] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view production orders");
-    };
     let out = List.empty<ProductionOrder>();
     for ((_, po) in productionOrders.entries()) { out.add(po) };
     out.toArray().sort(func(a : ProductionOrder, b : ProductionOrder) : Order.Order { Nat.compare(a.id, b.id) });
   };
 
   public query ({ caller }) func getNextProductionOrderNumber() : async Text {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can access this function");
-    };
     "ORD-" # currentYear() # "-" # padNum(productionOrderIdCounter + 1, 3);
   };
 
@@ -771,9 +767,6 @@ actor {
   };
 
   public query ({ caller }) func getProductionOrderBalance(yarnCountNe : Nat, lotNumber : Text) : async ?ProductionOrderBalance {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view production order balance");
-    };
     var found : ?ProductionOrder = null;
     for ((_, po) in productionOrders.entries()) {
       if (po.status == #inProgress and po.lotNumber == lotNumber) {
@@ -802,7 +795,7 @@ actor {
             produced += log.quantityKg;
           };
         };
-        let balance : Int = (order.quantityKg : Int) - (produced : Int);
+        let balance : Int = if (order.quantityKg > produced) { order.quantityKg - produced : Int } else { produced - order.quantityKg : Int };
         let isFulfilled = produced >= order.quantityKg;
         ?{ orderId = order.id; orderQty = order.quantityKg; producedQty = produced; balanceQty = balance; isFulfilled };
       };
@@ -812,9 +805,6 @@ actor {
   // ─── Machines ─────────────────────────────────────────────────────────────
 
   public query ({ caller }) func getAllMachines() : async [Machine] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view machines");
-    };
     let out = List.empty<Machine>();
     for ((_, m) in machines.entries()) { out.add(m) };
     out.toArray().sort(func(a : Machine, b : Machine) : Order.Order { Nat.compare(a.id, b.id) });
@@ -875,9 +865,6 @@ actor {
   // ─── Production Logs ──────────────────────────────────────────────────────
 
   public query ({ caller }) func getAllProductionLogs() : async [ProductionLog] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view production logs");
-    };
     let out = List.empty<ProductionLog>();
     for ((_, pl) in productionLogs.entries()) { out.add(pl) };
     out.toArray().sort(func(a : ProductionLog, b : ProductionLog) : Order.Order { Nat.compare(a.id, b.id) });
@@ -909,9 +896,6 @@ actor {
   // ─── Batch Stages ─────────────────────────────────────────────────────────
 
   public query ({ caller }) func getAllBatchStages() : async [BatchStage] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view batch stages");
-    };
     let out = List.empty<BatchStage>();
     for ((_, b) in batches.entries()) { out.add(b) };
     out.toArray().sort(func(a : BatchStage, b : BatchStage) : Order.Order { Nat.compare(a.id, b.id) });
@@ -943,9 +927,6 @@ actor {
   // ─── Quality Tests ────────────────────────────────────────────────────────
 
   public query ({ caller }) func getAllQualityTests() : async [QualityTest] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view quality tests");
-    };
     let out = List.empty<QualityTest>();
     for ((_, qt) in qualityTests.entries()) { out.add(qt) };
     out.toArray().sort(func(a : QualityTest, b : QualityTest) : Order.Order { Nat.compare(a.id, b.id) });
@@ -977,9 +958,6 @@ actor {
   // ─── Yarn Inventory (legacy) ──────────────────────────────────────────────
 
   public query ({ caller }) func getAllYarnInventory() : async [YarnInventory] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view yarn inventory");
-    };
     let out = List.empty<YarnInventory>();
     for ((_, yi) in yarnInventory.entries()) { out.add(yi) };
     out.toArray().sort(func(a : YarnInventory, b : YarnInventory) : Order.Order { Nat.compare(a.id, b.id) });
@@ -1011,9 +989,6 @@ actor {
   // ─── Yarn Opening Stock ───────────────────────────────────────────────────
 
   public query ({ caller }) func getAllYarnOpeningStock() : async [YarnOpeningStockRecord] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view yarn opening stock");
-    };
     let out = List.empty<YarnOpeningStockRecord>();
     for ((_, r) in yarnOpeningStock.entries()) { out.add(r) };
     out.toArray().sort(func(a : YarnOpeningStockRecord, b : YarnOpeningStockRecord) : Order.Order { Nat.compare(a.id, b.id) });
@@ -1047,31 +1022,22 @@ actor {
   public query func getAllYarnCountLabels() : async [(Text, Text)] {
     var out = List.empty<(Text, Text)>();
     for ((k, v) in yarnCountLabels.entries()) { out.add((k, v)) };
-    out.toArray()
+    out.toArray();
   };
 
   // ─── Packing Entries ──────────────────────────────────────────────────────
 
   public query ({ caller }) func getAllPackingEntries() : async [PackingEntry] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view packing entries");
-    };
     let out = List.empty<PackingEntry>();
     for ((_, pe) in packingEntries.entries()) { out.add(pe) };
     out.toArray().sort(func(a : PackingEntry, b : PackingEntry) : Order.Order { Nat.compare(a.id, b.id) });
   };
 
   public query ({ caller }) func getNextPackingNumber() : async Text {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can access this function");
-    };
     "PKG-" # currentYear() # "-" # padNum(packingEntryIdCounter, 3);
   };
 
   public query ({ caller }) func getPackingBalance(lotNumber : Text) : async ?PackingBalance {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view packing balance");
-    };
     var order : ?ProductionOrder = null;
     for ((_, po) in productionOrders.entries()) {
       if (po.lotNumber == lotNumber) { order := ?po };
@@ -1158,25 +1124,16 @@ actor {
   // ─── Dispatch Entries ─────────────────────────────────────────────────────
 
   public query ({ caller }) func getAllDispatchEntries() : async [DispatchEntry] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view dispatch entries");
-    };
     let out = List.empty<DispatchEntry>();
     for ((_, de) in dispatchEntries.entries()) { out.add(de) };
     out.toArray().sort(func(a : DispatchEntry, b : DispatchEntry) : Order.Order { Nat.compare(a.id, b.id) });
   };
 
   public query ({ caller }) func getNextDispatchNumber() : async Text {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can access this function");
-    };
     "DSP-" # currentYear() # "-" # padNum(dispatchEntryIdCounter, 3);
   };
 
   public query ({ caller }) func getDispatchBalance(lotNumber : Text) : async ?DispatchBalance {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view dispatch balance");
-    };
     var packed : Nat = 0;
     var yarnCountNe : Nat = 0;
     var spinningUnit : SpinningUnit = #openend;
@@ -1268,9 +1225,6 @@ actor {
   // ─── Dashboard ────────────────────────────────────────────────────────────
 
   public query ({ caller }) func getDashboardStats() : async DashboardStats {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can view dashboard stats");
-    };
     var totalActiveOrders : Nat = 0;
     for ((_, po) in productionOrders.entries()) {
       if (po.status == #inProgress) { totalActiveOrders += 1 };

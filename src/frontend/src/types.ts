@@ -8,7 +8,6 @@ import type {
   RawMaterial,
   RawMaterialStatus,
   Time,
-  UserEntry,
   UserProfile,
   UserRole,
   Warehouse,
@@ -19,7 +18,6 @@ export type {
   RawMaterial,
   RawMaterialStatus,
   Time,
-  UserEntry,
   UserProfile,
   UserRole,
   Warehouse,
@@ -490,7 +488,7 @@ export interface FullBackendInterface {
   getAllQualityTests(): Promise<Array<QualityTest>>;
   getAllRawMaterialOpeningStock(): Promise<Array<RawMaterial>>;
   getAllRawMaterials(): Promise<Array<RawMaterial>>;
-  getAllUsers(): Promise<Array<UserEntry>>;
+  getAllUsers(): Promise<Array<unknown>>;
   getAllWarehouseStock(): Promise<Array<WarehouseStock>>;
   getAllYarnInventory(): Promise<Array<YarnInventory>>;
   getAllYarnOpeningStock(): Promise<Array<YarnOpeningStockRecord>>;
@@ -511,6 +509,7 @@ export interface FullBackendInterface {
     lotNumber: string,
   ): Promise<ProductionOrderBalance | null>;
   getUserProfile(user: Principal): Promise<UserProfile | null>;
+  claimAdminIfNoAdminExists(): Promise<boolean>;
   isCallerAdmin(): Promise<boolean>;
   setYarnCountLabel(lotNumber: string, countLabel: string): Promise<void>;
   getAllYarnCountLabels(): Promise<Array<[string, string]>>;

@@ -23,6 +23,7 @@ import type { Warehouse } from "../backend.d";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
+import { useUserRole } from "../hooks/UserRoleContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useDeleteRawMaterial,
@@ -230,6 +231,7 @@ function injectPrintStyles() {
 }
 
 export default function RawMaterials() {
+  const { isAdmin } = useUserRole();
   const { identity } = useInternetIdentity();
   const isLoggedIn = !!identity;
   const { data: materials = [], isLoading } = useRawMaterials();
@@ -724,15 +726,17 @@ export default function RawMaterials() {
                     <WarehouseBadge warehouse={item.warehouse} />
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      data-ocid={`rawmaterials.delete_button.${idx + 1}`}
-                      onClick={() => setDeleteId(item.id)}
-                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                    {isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        data-ocid={`rawmaterials.delete_button.${idx + 1}`}
+                        onClick={() => setDeleteId(item.id)}
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

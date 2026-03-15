@@ -11,6 +11,7 @@ import {
 import {
   ChevronDown,
   ChevronUp,
+  ListChecks,
   Pencil,
   Plus,
   RefreshCw,
@@ -20,6 +21,7 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "../components/PageHeader";
 import { useDropdownOptionsContext } from "../hooks/DropdownOptionsContext";
+import { useUserRole } from "../hooks/UserRoleContext";
 import type { LabeledOption } from "../hooks/useDropdownOptions";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -559,6 +561,7 @@ function LabeledListEditor({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DropdownOptionsPage() {
+  const { isAdmin } = useUserRole();
   const store = useDropdownOptionsContext();
   const [activeList, setActiveList] = useState<ListId>("materialNames");
 
@@ -607,6 +610,23 @@ export default function DropdownOptionsPage() {
           />
         );
     }
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto">
+        <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+          <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+            <ListChecks className="w-6 h-6 text-amber-600" />
+          </div>
+          <h2 className="text-lg font-semibold">Admin Only</h2>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            Only admins can manage dropdown options. Contact the admin if you
+            need changes.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -10,6 +10,9 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export type ApprovalStatus = { 'pending' : null } |
+  { 'approved' : null } |
+  { 'rejected' : null };
 export interface BatchStage {
   'id' : bigint,
   'startTime' : Time,
@@ -171,6 +174,7 @@ export interface ProductionLog {
 export interface ProductionOrder {
   'id' : bigint,
   'status' : OrderStatus,
+  'singleYarnLotNumber' : [] | [string],
   'yarnCountNe' : bigint,
   'twistDirection' : TwistDirection,
   'productType' : ProductType,
@@ -180,7 +184,6 @@ export interface ProductionOrder {
   'orderNumber' : string,
   'quantityKg' : bigint,
   'endUse' : EndUse,
-  'singleYarnLotNumber' : [] | [string],
 }
 export interface ProductionOrderBalance {
   'isFulfilled' : boolean,
@@ -232,13 +235,16 @@ export type Shift = { 'morning' : null } |
   { 'night' : null } |
   { 'afternoon' : null };
 export type SpinningUnit = { 'tfo' : null } |
-  { 'outsideYarn' : null } |
   { 'openend' : null } |
+  { 'outsideYarn' : null } |
   { 'ringSpinning' : null };
 export type Time = bigint;
 export type TwistDirection = { 's' : null } |
   { 'z' : null };
-export interface UserEntry { 'principal' : Principal, 'role' : UserRole }
+export interface UserApprovalInfo {
+  'status' : ApprovalStatus,
+  'principal' : Principal,
+}
 export interface UserProfile {
   'name' : string,
   'role' : string,
@@ -313,7 +319,7 @@ export interface _SERVICE {
     bigint
   >,
   'createMaterialIssue' : ActorMethod<
-    [string, Warehouse, string, string, bigint, string],
+    [string, Warehouse, string, string, bigint, string, bigint],
     bigint
   >,
   'createPackingEntry' : ActorMethod<[string, bigint, string, Time], bigint>,
@@ -363,8 +369,8 @@ export interface _SERVICE {
   'getAllQualityTests' : ActorMethod<[], Array<QualityTest>>,
   'getAllRawMaterialOpeningStock' : ActorMethod<[], Array<RawMaterial>>,
   'getAllRawMaterials' : ActorMethod<[], Array<RawMaterial>>,
-  'getAllUsers' : ActorMethod<[], Array<UserEntry>>,
   'getAllWarehouseStock' : ActorMethod<[], Array<WarehouseStock>>,
+  'getAllYarnCountLabels' : ActorMethod<[], Array<[string, string]>>,
   'getAllYarnInventory' : ActorMethod<[], Array<YarnInventory>>,
   'getAllYarnOpeningStock' : ActorMethod<[], Array<YarnOpeningStockRecord>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
@@ -385,8 +391,8 @@ export interface _SERVICE {
   >,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'setYarnCountLabel' : ActorMethod<[string, string], undefined>,
-  'getAllYarnCountLabels' : ActorMethod<[], Array<[string, string]>>,
+  'isCallerApproved' : ActorMethod<[], boolean>,
+  'listApprovals' : ActorMethod<[], Array<UserApprovalInfo>>,
   'registerMachine' : ActorMethod<
     [
       string,
@@ -399,8 +405,10 @@ export interface _SERVICE {
     ],
     bigint
   >,
-  'removeUser' : ActorMethod<[Principal], undefined>,
+  'requestApproval' : ActorMethod<[], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'setApproval' : ActorMethod<[Principal, ApprovalStatus], undefined>,
+  'setYarnCountLabel' : ActorMethod<[string, string], undefined>,
   'updateBatchStage' : ActorMethod<
     [bigint, bigint, ProcessStage, bigint, bigint, bigint, Time, Time, string],
     undefined
@@ -462,7 +470,6 @@ export interface _SERVICE {
     [bigint, string, string, string, bigint, RawMaterialStatus, Warehouse],
     undefined
   >,
-  'updateUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'updateYarnInventory' : ActorMethod<
     [bigint, string, bigint, TwistDirection, bigint, bigint, InventoryStatus],
     undefined

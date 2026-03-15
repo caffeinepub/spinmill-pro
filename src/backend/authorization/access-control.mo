@@ -37,13 +37,12 @@ module {
     };
   };
 
+  // Safe: returns #guest for unknown/unregistered users instead of trapping
   public func getUserRole(state : AccessControlState, caller : Principal) : UserRole {
     if (caller.isAnonymous()) { return #guest };
     switch (state.userRoles.get(caller)) {
       case (?role) { role };
-      case (null) {
-        Runtime.trap("User is not registered");
-      };
+      case (null) { #guest };
     };
   };
 
@@ -51,6 +50,7 @@ module {
     if (not (isAdmin(state, caller))) {
       Runtime.trap("Unauthorized: Only admins can assign user roles");
     };
+    state.userRoles.remove(user);
     state.userRoles.add(user, role);
   };
 
@@ -63,5 +63,10 @@ module {
 
   public func isAdmin(state : AccessControlState, caller : Principal) : Bool {
     getUserRole(state, caller) == #admin;
+  };
+
+  // Returns true if any admin has been assigned
+  public func hasAnyAdmin(state : AccessControlState) : Bool {
+    state.adminAssigned;
   };
 };

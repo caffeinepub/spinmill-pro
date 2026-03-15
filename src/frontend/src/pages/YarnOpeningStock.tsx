@@ -31,6 +31,7 @@ import { toast } from "sonner";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
+import { useUserRole } from "../hooks/UserRoleContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAddYarnOpeningStock,
@@ -99,6 +100,7 @@ const defaultForm = {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function YarnOpeningStock() {
+  const { isAdmin } = useUserRole();
   const { identity } = useInternetIdentity();
   const isLoggedIn = !!identity;
 
@@ -294,15 +296,17 @@ export default function YarnOpeningStock() {
                     {Number(entry.weightKg).toLocaleString()}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      data-ocid={`yarn-opening.delete_button.${idx + 1}`}
-                      onClick={() => setDeleteId(entry.id)}
-                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                    {isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        data-ocid={`yarn-opening.delete_button.${idx + 1}`}
+                        onClick={() => setDeleteId(entry.id)}
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

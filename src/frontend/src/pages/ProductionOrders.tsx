@@ -32,6 +32,7 @@ import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useDropdownOptionsContext } from "../hooks/DropdownOptionsContext";
+import { useUserRole } from "../hooks/UserRoleContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useCreateProductionOrder,
@@ -64,6 +65,7 @@ const defaultForm = {
 };
 
 export default function ProductionOrders() {
+  const { isAdmin } = useUserRole();
   const { identity } = useInternetIdentity();
   const isLoggedIn = !!identity;
   const { productTypes, endUses } = useDropdownOptionsContext();
@@ -402,24 +404,28 @@ export default function ProductionOrders() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        data-ocid={`orders.edit_button.${idx + 1}`}
-                        onClick={() => openEdit(order)}
-                        className="h-8 w-8"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        data-ocid={`orders.delete_button.${idx + 1}`}
-                        onClick={() => setDeleteId(order.id)}
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-ocid={`orders.edit_button.${idx + 1}`}
+                          onClick={() => openEdit(order)}
+                          className="h-8 w-8"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-ocid={`orders.delete_button.${idx + 1}`}
+                          onClick={() => setDeleteId(order.id)}
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

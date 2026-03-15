@@ -41,6 +41,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
+import { useUserRole } from "../hooks/UserRoleContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAddBatchStage,
@@ -86,6 +87,7 @@ const defaultForm = {
 };
 
 export default function BatchTracking() {
+  const { isAdmin } = useUserRole();
   const { identity } = useInternetIdentity();
   const isLoggedIn = !!identity;
   const { data: stages = [], isLoading } = useBatchStages();
@@ -379,24 +381,28 @@ export default function BatchTracking() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          data-ocid={`batch.edit_button.${idx + 1}`}
-                          onClick={() => openEdit(stage)}
-                          className="h-8 w-8"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          data-ocid={`batch.delete_button.${idx + 1}`}
-                          onClick={() => setDeleteId(stage.id)}
-                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            data-ocid={`batch.edit_button.${idx + 1}`}
+                            onClick={() => openEdit(stage)}
+                            className="h-8 w-8"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            data-ocid={`batch.delete_button.${idx + 1}`}
+                            onClick={() => setDeleteId(stage.id)}
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { DropdownOptionsProvider } from "./hooks/DropdownOptionsContext";
+import { UserRoleProvider } from "./hooks/UserRoleContext";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import Dashboard from "./pages/Dashboard";
 import DropdownOptionsPage from "./pages/DropdownOptions";
@@ -336,99 +337,103 @@ export default function App() {
 
   return (
     <DropdownOptionsProvider>
-      <div className="flex h-screen overflow-hidden bg-background font-body">
-        {/* Desktop Sidebar */}
-        <aside className="hidden md:flex flex-col w-56 bg-sidebar flex-shrink-0 border-r border-sidebar-border">
-          {sidebarContent}
-        </aside>
+      <UserRoleProvider>
+        <div className="flex h-screen overflow-hidden bg-background font-body">
+          {/* Desktop Sidebar */}
+          <aside className="hidden md:flex flex-col w-56 bg-sidebar flex-shrink-0 border-r border-sidebar-border">
+            {sidebarContent}
+          </aside>
 
-        {/* Mobile Sidebar Overlay */}
-        {sidebarOpen && (
-          <div className="md:hidden fixed inset-0 z-50 flex">
-            <div
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-              onClick={() => setSidebarOpen(false)}
-              onKeyDown={(e) => e.key === "Escape" && setSidebarOpen(false)}
-              role="button"
-              tabIndex={0}
-              aria-label="Close sidebar overlay"
-            />
-            <aside className="relative w-64 bg-sidebar flex flex-col shadow-xl">
-              <button
-                type="button"
-                className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-md text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
+          {/* Mobile Sidebar Overlay */}
+          {sidebarOpen && (
+            <div className="md:hidden fixed inset-0 z-50 flex">
+              <div
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                 onClick={() => setSidebarOpen(false)}
-                aria-label="Close sidebar"
-              >
-                <X className="w-4 h-4" />
-              </button>
-              {sidebarContent}
-            </aside>
-          </div>
-        )}
-
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Top Bar (mobile + breadcrumb) */}
-          <header className="flex items-center h-12 px-4 border-b border-border/60 bg-card/50 backdrop-blur-sm flex-shrink-0 gap-2">
-            <button
-              type="button"
-              className="md:hidden mr-1 w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Open navigation"
-              data-ocid="nav.toggle"
-            >
-              <Menu className="w-4 h-4" />
-            </button>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-1">
-              <span>SpinMill Pro</span>
-              <ChevronRight className="w-3 h-3" />
-              <span className="text-foreground font-medium">{activeLabel}</span>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              data-ocid="nav.refresh_button"
-              className="h-7 px-2.5 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              aria-label="Refresh"
-            >
-              <RefreshCw
-                className={cn("w-3.5 h-3.5", isRefreshing && "animate-spin")}
+                onKeyDown={(e) => e.key === "Escape" && setSidebarOpen(false)}
+                role="button"
+                tabIndex={0}
+                aria-label="Close sidebar overlay"
               />
-              <span className="hidden sm:inline">Refresh</span>
-            </Button>
-          </header>
-
-          {/* Login Banner */}
-          {!isLoggedIn && !isInitializing && (
-            <div className="flex items-center justify-between px-4 py-2 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800/60">
-              <p className="text-xs text-amber-700 dark:text-amber-400">
-                You are not signed in. Sign in to save, edit, or delete data.
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                data-ocid="nav.banner_login_button"
-                className="h-7 text-xs gap-1.5 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 bg-transparent"
-                onClick={login}
-                disabled={isLoggingIn}
-              >
-                <LogIn className="w-3 h-3" />
-                Sign In
-              </Button>
+              <aside className="relative w-64 bg-sidebar flex flex-col shadow-xl">
+                <button
+                  type="button"
+                  className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-md text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
+                  onClick={() => setSidebarOpen(false)}
+                  aria-label="Close sidebar"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                {sidebarContent}
+              </aside>
             </div>
           )}
 
-          {/* Page Content */}
-          <main className="flex-1 overflow-y-auto" key={refreshKey}>
-            {pageComponents[activePage]}
-          </main>
-        </div>
+          {/* Main Content */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Top Bar (mobile + breadcrumb) */}
+            <header className="flex items-center h-12 px-4 border-b border-border/60 bg-card/50 backdrop-blur-sm flex-shrink-0 gap-2">
+              <button
+                type="button"
+                className="md:hidden mr-1 w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Open navigation"
+                data-ocid="nav.toggle"
+              >
+                <Menu className="w-4 h-4" />
+              </button>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-1">
+                <span>SpinMill Pro</span>
+                <ChevronRight className="w-3 h-3" />
+                <span className="text-foreground font-medium">
+                  {activeLabel}
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                data-ocid="nav.refresh_button"
+                className="h-7 px-2.5 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                aria-label="Refresh"
+              >
+                <RefreshCw
+                  className={cn("w-3.5 h-3.5", isRefreshing && "animate-spin")}
+                />
+                <span className="hidden sm:inline">Refresh</span>
+              </Button>
+            </header>
 
-        <Toaster position="bottom-right" richColors />
-      </div>
+            {/* Login Banner */}
+            {!isLoggedIn && !isInitializing && (
+              <div className="flex items-center justify-between px-4 py-2 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800/60">
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  You are not signed in. Sign in to save, edit, or delete data.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  data-ocid="nav.banner_login_button"
+                  className="h-7 text-xs gap-1.5 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 bg-transparent"
+                  onClick={login}
+                  disabled={isLoggingIn}
+                >
+                  <LogIn className="w-3 h-3" />
+                  Sign In
+                </Button>
+              </div>
+            )}
+
+            {/* Page Content */}
+            <main className="flex-1 overflow-y-auto" key={refreshKey}>
+              {pageComponents[activePage]}
+            </main>
+          </div>
+
+          <Toaster position="bottom-right" richColors />
+        </div>
+      </UserRoleProvider>
     </DropdownOptionsProvider>
   );
 }

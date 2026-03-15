@@ -42,6 +42,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
+import { useUserRole } from "../hooks/UserRoleContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useDeleteMachine,
@@ -71,6 +72,7 @@ const defaultForm = {
 };
 
 export default function Machines() {
+  const { isAdmin } = useUserRole();
   const { identity } = useInternetIdentity();
   const isLoggedIn = !!identity;
   const { data: machines = [], isLoading } = useMachines();
@@ -399,24 +401,28 @@ export default function Machines() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          data-ocid={`machines.edit_button.${idx + 1}`}
-                          onClick={() => openEdit(machine)}
-                          className="h-8 w-8"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          data-ocid={`machines.delete_button.${idx + 1}`}
-                          onClick={() => setDeleteId(machine.id)}
-                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            data-ocid={`machines.edit_button.${idx + 1}`}
+                            onClick={() => openEdit(machine)}
+                            className="h-8 w-8"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            data-ocid={`machines.delete_button.${idx + 1}`}
+                            onClick={() => setDeleteId(machine.id)}
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

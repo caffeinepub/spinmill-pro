@@ -43,6 +43,7 @@ import { toast } from "sonner";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
+import { useUserRole } from "../hooks/UserRoleContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAddProductionLog,
@@ -267,6 +268,7 @@ function MachineRow({
 
 // ─── Main component ────────────────────────────────────────────────────────────
 export default function ProductionLogs() {
+  const { isAdmin } = useUserRole();
   const { identity } = useInternetIdentity();
   const isLoggedIn = !!identity;
   const { data: logs = [], isLoading } = useProductionLogs();
@@ -769,24 +771,28 @@ export default function ProductionLogs() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          data-ocid={`logs.edit_button.${idx + 1}`}
-                          onClick={() => openEdit(log)}
-                          className="h-8 w-8"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          data-ocid={`logs.delete_button.${idx + 1}`}
-                          onClick={() => setDeleteId(log.id)}
-                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            data-ocid={`logs.edit_button.${idx + 1}`}
+                            onClick={() => openEdit(log)}
+                            className="h-8 w-8"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            data-ocid={`logs.delete_button.${idx + 1}`}
+                            onClick={() => setDeleteId(log.id)}
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

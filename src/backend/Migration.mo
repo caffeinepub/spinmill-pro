@@ -66,7 +66,7 @@ module Migration {
     createdAt : Time.Time;
   };
 
-  // MachineV0 has runningCount : ?Nat (old format)
+  // MachineV0 now has runningCount : ?Text (already migrated in previous version)
   type MachineV0 = {
     id : Nat;
     name : Text;
@@ -74,7 +74,7 @@ module Migration {
     machineNumber : Text;
     status : MachineStatus;
     currentOrderId : ?Nat;
-    runningCount : ?Nat;
+    runningCount : ?Text;
     runningLotNumber : ?Text;
     maintenanceStartTime : ?Time.Time;
     totalMaintenanceDurationMins : Nat;
@@ -137,7 +137,7 @@ module Migration {
     createdAt : Time.Time;
   };
 
-  // Machine with runningCount : ?Text (new format)
+  // Machine with runningCount : ?Text (same as MachineV0 now)
   type Machine = {
     id : Nat;
     name : Text;
@@ -240,13 +240,9 @@ module Migration {
       });
     };
 
-    // Migrate machines: convert runningCount from ?Nat to ?Text
+    // Machines: runningCount already ?Text, copy as-is
     let newMachines = Map.empty<Nat, Machine>();
     for ((k, v) in old.machines.entries()) {
-      let newRunningCount : ?Text = switch (v.runningCount) {
-        case (null) { null };
-        case (?n) { ?(n : Nat).toText() };
-      };
       newMachines.add(k, {
         id = v.id;
         name = v.name;
@@ -254,7 +250,7 @@ module Migration {
         machineNumber = v.machineNumber;
         status = v.status;
         currentOrderId = v.currentOrderId;
-        runningCount = newRunningCount;
+        runningCount = v.runningCount;
         runningLotNumber = v.runningLotNumber;
         maintenanceStartTime = v.maintenanceStartTime;
         totalMaintenanceDurationMins = v.totalMaintenanceDurationMins;

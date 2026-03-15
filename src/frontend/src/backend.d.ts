@@ -176,13 +176,14 @@ export interface YarnInventory {
     lotNumber: string;
     weightKg: bigint;
 }
-export interface UserEntry {
+export interface UserApprovalInfo {
+    status: ApprovalStatus;
     principal: Principal;
-    role: UserRole;
 }
 export interface ProductionOrder {
     id: bigint;
     status: OrderStatus;
+    singleYarnLotNumber?: string;
     yarnCountNe: bigint;
     twistDirection: TwistDirection;
     productType: ProductType;
@@ -192,7 +193,6 @@ export interface ProductionOrder {
     orderNumber: string;
     quantityKg: bigint;
     endUse: EndUse;
-    singleYarnLotNumber: string | null;
 }
 export interface UserProfile {
     name: string;
@@ -208,6 +208,11 @@ export interface DispatchBalance {
     totalDispatchedKg: bigint;
     availableKg: bigint;
     endUse: EndUse;
+}
+export enum ApprovalStatus {
+    pending = "pending",
+    approved = "approved",
+    rejected = "rejected"
 }
 export enum DispatchDestination {
     tfo = "tfo",
@@ -287,8 +292,8 @@ export enum Shift {
 export enum SpinningUnit {
     tfo = "tfo",
     openend = "openend",
-    ringSpinning = "ringSpinning",
-    outsideYarn = "outsideYarn"
+    outsideYarn = "outsideYarn",
+    ringSpinning = "ringSpinning"
 }
 export enum TwistDirection {
     s = "s",
@@ -344,8 +349,8 @@ export interface backendInterface {
     getAllQualityTests(): Promise<Array<QualityTest>>;
     getAllRawMaterialOpeningStock(): Promise<Array<RawMaterial>>;
     getAllRawMaterials(): Promise<Array<RawMaterial>>;
-    getAllUsers(): Promise<Array<UserEntry>>;
     getAllWarehouseStock(): Promise<Array<WarehouseStock>>;
+    getAllYarnCountLabels(): Promise<Array<[string, string]>>;
     getAllYarnInventory(): Promise<Array<YarnInventory>>;
     getAllYarnOpeningStock(): Promise<Array<YarnOpeningStockRecord>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
@@ -362,13 +367,16 @@ export interface backendInterface {
     getPackingBalance(lotNumber: string): Promise<PackingBalance | null>;
     getProductionOrderBalance(yarnCountNe: bigint, lotNumber: string): Promise<ProductionOrderBalance | null>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
-    claimAdminIfNoAdminExists(): Promise<boolean>;
     isCallerAdmin(): Promise<boolean>;
-    setYarnCountLabel(lotNumber: string, countLabel: string): Promise<void>;
-    getAllYarnCountLabels(): Promise<Array<[string, string]>>;
+    isCallerApproved(): Promise<boolean>;
+    getCallerApprovalStatus(): Promise<ApprovalStatus | null>;
+    bootstrapAdmin(): Promise<string>;
+    listApprovals(): Promise<Array<UserApprovalInfo>>;
     registerMachine(name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: string | null, runningLotNumber: string | null): Promise<bigint>;
-    removeUser(user: Principal): Promise<void>;
+    requestApproval(): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setApproval(user: Principal, status: ApprovalStatus): Promise<void>;
+    setYarnCountLabel(lotNumber: string, countLabel: string): Promise<void>;
     updateBatchStage(id: bigint, batchId: bigint, stage: ProcessStage, weightInKg: bigint, weightOutKg: bigint, machineId: bigint, startTime: Time, endTime: Time, operatorNotes: string): Promise<void>;
     updateMachine(id: bigint, name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: string | null, runningLotNumber: string | null): Promise<void>;
     updateProductionLog(id: bigint, shift: Shift, date: Time, machineId: bigint, quantityKg: bigint, efficiencyPercent: bigint, operatorName: string): Promise<void>;
@@ -376,6 +384,5 @@ export interface backendInterface {
     updatePurchaseOrder(id: bigint, poNumber: string, supplier: string, materialName: string, orderedQty: bigint, orderDate: Time, expectedDeliveryDate: Time): Promise<void>;
     updateQualityTest(id: bigint, batchId: bigint, csp: bigint, elongationPercent: bigint, evennessPercent: bigint, thinPlaces: bigint, thickPlaces: bigint, neps: bigint, hairinessIndex: bigint, pass: boolean): Promise<void>;
     updateRawMaterial(id: bigint, lotNumber: string, supplier: string, grade: string, weightKg: bigint, status: RawMaterialStatus, warehouse: Warehouse): Promise<void>;
-    updateUserRole(user: Principal, newRole: UserRole): Promise<void>;
     updateYarnInventory(id: bigint, lotNumber: string, yarnCountNe: bigint, twistDirection: TwistDirection, quantityCones: bigint, weightKg: bigint, status: InventoryStatus): Promise<void>;
 }
