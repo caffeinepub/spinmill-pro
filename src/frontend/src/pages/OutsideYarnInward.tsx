@@ -25,7 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Plus, Trash2, Truck } from "lucide-react";
+import { Loader2, Pencil, Plus, Trash2, Truck } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -38,6 +38,7 @@ import {
   useAddYarnOpeningStock,
   useDeleteYarnOpeningStock,
   useSetYarnCountLabel,
+  useUpdateYarnOpeningStock,
   useYarnCountLabels,
   useYarnOpeningStock,
 } from "../hooks/useQueries";
@@ -111,6 +112,7 @@ export default function OutsideYarnInward() {
   const setYarnCountLabelMutation = useSetYarnCountLabel();
   const { data: countLabels } = useYarnCountLabels();
   const deleteMutation = useDeleteYarnOpeningStock();
+  const updateMutation = useUpdateYarnOpeningStock();
 
   const addMutationRef = useRef<ReturnType<typeof useAddYarnOpeningStock>>(
     null!,
@@ -123,12 +125,14 @@ export default function OutsideYarnInward() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
+  const [editItem, setEditItem] = useState<YarnOpeningStockRecord | null>(null);
   const [form, setForm] = useState(defaultForm);
   const [lotSearch, setLotSearch] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
   function openAdd() {
+    setEditItem(null);
     const ts = Date.now();
     setForm({
       ...defaultForm,
@@ -139,13 +143,34 @@ export default function OutsideYarnInward() {
     setDialogOpen(true);
   }
 
+  function openEdit(item: YarnOpeningStockRecord) {
+    setEditItem(item);
+    const countLabel =
+      countLabels?.get(item.lotNumber) ?? String(item.yarnCountNe);
+    setForm({
+      inwardNumber: `OYI-${String(item.id)}`,
+      inwardDate: new Date(Number(item.createdAt) / 1_000_000)
+        .toISOString()
+        .slice(0, 10),
+      supplierName: "",
+      lotNumber: item.lotNumber,
+      yarnCountNe: countLabel,
+      productType: item.productType as ProductType,
+      endUse: item.endUse as EndUse,
+      weightKg: String(Number(item.weightKg)),
+      vehicleNumber: "",
+      remarks: "",
+    });
+    setDialogOpen(true);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isLoggedIn) {
       toast.error("Please sign in to save data");
       return;
     }
-    if (!actor && actorLoading) {
+    if (!actor && actorLoading && !editItem) {
       toast.error("Please wait, connecting to the network...");
       return;
     }
@@ -162,23 +187,45 @@ export default function OutsideYarnInward() {
       const parsedCount = BigInt(
         Math.round(Number.parseFloat(rawCountStr) || 0),
       );
-      await withRetry(() =>
-        addMutationRef.current.mutateAsync({
-          lotNumber: form.lotNumber,
-          yarnCountNe: parsedCount,
-          spinningUnit: SpinningUnit.outsideYarn,
-          productType: form.productType as ProductType,
-          endUse: form.endUse as EndUse,
-          weightKg: BigInt(Math.round(Number(form.weightKg))),
-        }),
-      );
-      try {
-        await setYarnCountLabelMutationRef.current.mutateAsync({
-          lotNumber: form.lotNumber,
-          countLabel: rawCountStr,
-        });
-      } catch {}
-      toast.success("Outside yarn inward entry saved");
+      if (editItem) {
+        await withRetry(() =>
+          updateMutation.mutateAsync({
+            id: editItem.id,
+            lotNumber: form.lotNumber,
+            yarnCountNe: parsedCount,
+            spinningUnit: SpinningUnit.outsideYarn,
+            productType: form.productType as ProductType,
+            endUse: form.endUse as EndUse,
+            weightKg: BigInt(Math.round(Number(form.weightKg))),
+          }),
+        );
+        try {
+          await setYarnCountLabelMutationRef.current.mutateAsync({
+            lotNumber: form.lotNumber,
+            countLabel: rawCountStr,
+          });
+        } catch {}
+        toast.success("Outside yarn inward entry updated");
+        setEditItem(null);
+      } else {
+        await withRetry(() =>
+          addMutationRef.current.mutateAsync({
+            lotNumber: form.lotNumber,
+            yarnCountNe: parsedCount,
+            spinningUnit: SpinningUnit.outsideYarn,
+            productType: form.productType as ProductType,
+            endUse: form.endUse as EndUse,
+            weightKg: BigInt(Math.round(Number(form.weightKg))),
+          }),
+        );
+        try {
+          await setYarnCountLabelMutationRef.current.mutateAsync({
+            lotNumber: form.lotNumber,
+            countLabel: rawCountStr,
+          });
+        } catch {}
+        toast.success("Outside yarn inward entry saved");
+      }
       setDialogOpen(false);
     } catch (error) {
       console.error("Operation failed:", error);
@@ -393,15 +440,26 @@ export default function OutsideYarnInward() {
                   </TableCell>
                   <TableCell className="text-right">
                     {isAdmin && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        data-ocid={`outside-yarn-inward.delete_button.${idx + 1}`}
-                        onClick={() => setDeleteId(entry.id)}
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-ocid={`outside-yarn-inward.edit_button.${idx + 1}`}
+                          onClick={() => openEdit(entry)}
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-ocid={`outside-yarn-inward.delete_button.${idx + 1}`}
+                          onClick={() => setDeleteId(entry.id)}
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>
@@ -412,13 +470,23 @@ export default function OutsideYarnInward() {
       </div>
 
       {/* Add Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(o) => {
+          if (!o) setEditItem(null);
+          setDialogOpen(o);
+        }}
+      >
         <DialogContent
           data-ocid="outside-yarn-inward.dialog"
           className="sm:max-w-2xl"
         >
           <DialogHeader>
-            <DialogTitle>New Outside Yarn Inward Entry</DialogTitle>
+            <DialogTitle>
+              {editItem
+                ? "Edit Outside Yarn Inward Entry"
+                : "New Outside Yarn Inward Entry"}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Row 1: Inward Number + Date */}
@@ -606,12 +674,16 @@ export default function OutsideYarnInward() {
               <Button
                 type="submit"
                 data-ocid="outside-yarn-inward.submit_button"
-                disabled={addMutation.isPending || (!actor && actorLoading)}
+                disabled={
+                  addMutation.isPending ||
+                  updateMutation.isPending ||
+                  (!actor && actorLoading && !editItem)
+                }
               >
-                {addMutation.isPending && (
+                {(addMutation.isPending || updateMutation.isPending) && (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 )}
-                Save Inward Entry
+                {editItem ? "Update" : "Save Inward Entry"}
               </Button>
             </DialogFooter>
           </form>

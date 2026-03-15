@@ -25,7 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Package2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Package2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -37,6 +37,7 @@ import {
   useAddYarnOpeningStock,
   useDeleteYarnOpeningStock,
   useSetYarnCountLabel,
+  useUpdateYarnOpeningStock,
   useYarnCountLabels,
   useYarnOpeningStock,
 } from "../hooks/useQueries";
@@ -112,13 +113,31 @@ export default function YarnOpeningStock() {
   const setYarnCountLabelMutation = useSetYarnCountLabel();
   const { data: countLabels } = useYarnCountLabels();
   const deleteMutation = useDeleteYarnOpeningStock();
+  const updateMutation = useUpdateYarnOpeningStock();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
+  const [editItem, setEditItem] = useState<YarnOpeningStockRecord | null>(null);
   const [form, setForm] = useState(defaultForm);
 
   function openAdd() {
+    setEditItem(null);
     setForm(defaultForm);
+    setDialogOpen(true);
+  }
+
+  function openEdit(item: YarnOpeningStockRecord) {
+    setEditItem(item);
+    const countLabel =
+      countLabels?.get(item.lotNumber) ?? String(item.yarnCountNe);
+    setForm({
+      lotNumber: item.lotNumber,
+      yarnCountNe: countLabel,
+      spinningUnit: item.spinningUnit as SpinningUnit,
+      productType: item.productType as ProductType,
+      endUse: item.endUse as EndUse,
+      weightKg: String(Number(item.weightKg)),
+    });
     setDialogOpen(true);
   }
 
@@ -154,24 +173,46 @@ export default function YarnOpeningStock() {
       const parsedCount = BigInt(
         Math.round(Number.parseFloat(rawCountStr) || 0),
       );
-      await withRetry(() =>
-        addMutation.mutateAsync({
-          lotNumber: form.lotNumber,
-          yarnCountNe: parsedCount,
-          spinningUnit: form.spinningUnit as SpinningUnit,
-          productType: form.productType as ProductType,
-          endUse: form.endUse as EndUse,
-          weightKg: BigInt(Math.round(Number(form.weightKg))),
-        }),
-      );
-      // Save the original string label for display
-      try {
-        await setYarnCountLabelMutation.mutateAsync({
-          lotNumber: form.lotNumber,
-          countLabel: rawCountStr,
-        });
-      } catch {}
-      toast.success("Yarn opening stock entry added");
+      if (editItem) {
+        await withRetry(() =>
+          updateMutation.mutateAsync({
+            id: editItem.id,
+            lotNumber: form.lotNumber,
+            yarnCountNe: parsedCount,
+            spinningUnit: form.spinningUnit as SpinningUnit,
+            productType: form.productType as ProductType,
+            endUse: form.endUse as EndUse,
+            weightKg: BigInt(Math.round(Number(form.weightKg))),
+          }),
+        );
+        try {
+          await setYarnCountLabelMutation.mutateAsync({
+            lotNumber: form.lotNumber,
+            countLabel: rawCountStr,
+          });
+        } catch {}
+        toast.success("Yarn opening stock entry updated");
+        setEditItem(null);
+      } else {
+        await withRetry(() =>
+          addMutation.mutateAsync({
+            lotNumber: form.lotNumber,
+            yarnCountNe: parsedCount,
+            spinningUnit: form.spinningUnit as SpinningUnit,
+            productType: form.productType as ProductType,
+            endUse: form.endUse as EndUse,
+            weightKg: BigInt(Math.round(Number(form.weightKg))),
+          }),
+        );
+        // Save the original string label for display
+        try {
+          await setYarnCountLabelMutation.mutateAsync({
+            lotNumber: form.lotNumber,
+            countLabel: rawCountStr,
+          });
+        } catch {}
+        toast.success("Yarn opening stock entry added");
+      }
       setDialogOpen(false);
     } catch (error) {
       console.error("Operation failed:", error);
@@ -297,15 +338,26 @@ export default function YarnOpeningStock() {
                   </TableCell>
                   <TableCell className="text-right">
                     {isAdmin && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        data-ocid={`yarn-opening.delete_button.${idx + 1}`}
-                        onClick={() => setDeleteId(entry.id)}
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-ocid={`yarn-opening.edit_button.${idx + 1}`}
+                          onClick={() => openEdit(entry)}
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-ocid={`yarn-opening.delete_button.${idx + 1}`}
+                          onClick={() => setDeleteId(entry.id)}
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>
@@ -316,10 +368,18 @@ export default function YarnOpeningStock() {
       </div>
 
       {/* Add Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(o) => {
+          if (!o) setEditItem(null);
+          setDialogOpen(o);
+        }}
+      >
         <DialogContent data-ocid="yarn-opening.dialog" className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Add Yarn Opening Stock</DialogTitle>
+            <DialogTitle>
+              {editItem ? "Edit Yarn Opening Stock" : "Add Yarn Opening Stock"}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -454,12 +514,12 @@ export default function YarnOpeningStock() {
               <Button
                 type="submit"
                 data-ocid="yarn-opening.submit_button"
-                disabled={addMutation.isPending}
+                disabled={addMutation.isPending || updateMutation.isPending}
               >
-                {addMutation.isPending && (
+                {(addMutation.isPending || updateMutation.isPending) && (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 )}
-                Add Stock
+                {editItem ? "Update" : "Add Stock"}
               </Button>
             </DialogFooter>
           </form>

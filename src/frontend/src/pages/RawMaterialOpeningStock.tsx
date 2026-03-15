@@ -25,7 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, PackageSearch, Plus, Trash2 } from "lucide-react";
+import { Loader2, PackageSearch, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { RawMaterial, Warehouse } from "../backend.d";
@@ -39,6 +39,7 @@ import {
   useAddRawMaterialOpeningStock,
   useDeleteRawMaterialOpeningStock,
   useRawMaterialOpeningStock,
+  useUpdateRawMaterialOpeningStock,
 } from "../hooks/useQueries";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -103,13 +104,32 @@ export default function RawMaterialOpeningStock() {
   const { data: entries = [], isLoading } = useRawMaterialOpeningStock();
   const addMutation = useAddRawMaterialOpeningStock();
   const deleteMutation = useDeleteRawMaterialOpeningStock();
+  const updateMutation = useUpdateRawMaterialOpeningStock();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
+  const [editItem, setEditItem] = useState<RawMaterial | null>(null);
   const [form, setForm] = useState(defaultForm);
 
   function openAdd() {
+    setEditItem(null);
     setForm(defaultForm);
+    setDialogOpen(true);
+  }
+
+  function openEdit(item: RawMaterial) {
+    setEditItem(item);
+    const dateStr = new Date(Number(item.dateReceived) / 1_000_000)
+      .toISOString()
+      .substring(0, 10);
+    setForm({
+      materialName: item.lotNumber,
+      supplier: item.supplier,
+      grade: item.grade,
+      warehouse: item.warehouse as typeof form.warehouse,
+      weightKg: String(Number(item.weightKg)),
+      date: dateStr,
+    });
     setDialogOpen(true);
   }
 
@@ -128,26 +148,42 @@ export default function RawMaterialOpeningStock() {
       toast.error("Please sign in to save data");
       return;
     }
-    if (!form.warehouse) {
+    if (!editItem && !form.warehouse) {
       toast.error("Please select a warehouse");
       return;
     }
-    if (!form.materialName) {
+    if (!editItem && !form.materialName) {
       toast.error("Please select a material name");
       return;
     }
     try {
-      await withRetry(() =>
-        addMutation.mutateAsync({
-          materialName: form.materialName,
-          supplier: form.supplier,
-          grade: form.grade,
-          weightKg: BigInt(Math.round(Number(form.weightKg))),
-          warehouse: form.warehouse as Warehouse,
-          date: dateStringToNs(form.date),
-        }),
-      );
-      toast.success("Opening stock entry added");
+      if (editItem) {
+        await withRetry(() =>
+          updateMutation.mutateAsync({
+            id: editItem.id,
+            materialName: form.materialName,
+            supplier: form.supplier,
+            grade: form.grade,
+            weightKg: BigInt(Math.round(Number(form.weightKg))),
+            warehouse: form.warehouse as Warehouse,
+            date: dateStringToNs(form.date),
+          }),
+        );
+        toast.success("Opening stock entry updated");
+        setEditItem(null);
+      } else {
+        await withRetry(() =>
+          addMutation.mutateAsync({
+            materialName: form.materialName,
+            supplier: form.supplier,
+            grade: form.grade,
+            weightKg: BigInt(Math.round(Number(form.weightKg))),
+            warehouse: form.warehouse as Warehouse,
+            date: dateStringToNs(form.date),
+          }),
+        );
+        toast.success("Opening stock entry added");
+      }
       setDialogOpen(false);
     } catch (error) {
       console.error("Operation failed:", error);
@@ -267,15 +303,26 @@ export default function RawMaterialOpeningStock() {
                   </TableCell>
                   <TableCell className="text-right">
                     {isAdmin && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        data-ocid={`rm-opening.delete_button.${idx + 1}`}
-                        onClick={() => setDeleteId(entry.id)}
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-ocid={`rm-opening.edit_button.${idx + 1}`}
+                          onClick={() => openEdit(entry)}
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-ocid={`rm-opening.delete_button.${idx + 1}`}
+                          onClick={() => setDeleteId(entry.id)}
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>
@@ -286,10 +333,20 @@ export default function RawMaterialOpeningStock() {
       </div>
 
       {/* Add Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(o) => {
+          if (!o) setEditItem(null);
+          setDialogOpen(o);
+        }}
+      >
         <DialogContent data-ocid="rm-opening.dialog" className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Add Raw Material Opening Stock</DialogTitle>
+            <DialogTitle>
+              {editItem
+                ? "Edit Raw Material Opening Stock"
+                : "Add Raw Material Opening Stock"}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
@@ -412,12 +469,12 @@ export default function RawMaterialOpeningStock() {
               <Button
                 type="submit"
                 data-ocid="rm-opening.submit_button"
-                disabled={addMutation.isPending}
+                disabled={addMutation.isPending || updateMutation.isPending}
               >
-                {addMutation.isPending && (
+                {(addMutation.isPending || updateMutation.isPending) && (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 )}
-                Add Stock
+                {editItem ? "Update" : "Add Stock"}
               </Button>
             </DialogFooter>
           </form>

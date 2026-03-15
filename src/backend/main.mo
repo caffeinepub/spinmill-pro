@@ -333,9 +333,11 @@ actor {
   // This is the recovery path for the live app where no admin was ever set.
   public shared ({ caller }) func bootstrapAdmin() : async Text {
     if (caller.isAnonymous()) { return "Cannot use anonymous identity" };
-    if (AccessControl.hasAnyAdmin(accessControlState)) {
-      return "Admin already exists";
+    var anyAdmin = false;
+    for ((_, role) in accessControlState.userRoles.entries()) {
+      if (role == #admin) { anyAdmin := true };
     };
+    if (anyAdmin) { return "Admin already exists" };
     accessControlState.userRoles.remove(caller);
     accessControlState.userRoles.add(caller, #admin);
     accessControlState.adminAssigned := true;
@@ -527,6 +529,22 @@ actor {
     out.toArray().sort(func(a : RawMaterial, b : RawMaterial) : Order.Order { Nat.compare(a.id, b.id) });
   };
 
+  public shared ({ caller }) func updateRawMaterialOpeningStock(id : Nat, materialName : Text, supplier : Text, grade : Text, weightKg : Nat, warehouse : Warehouse, date : Time.Time) : async () {
+    requireUser(caller);
+    if (not openingStockRawMaterialIds.contains(id)) {
+      Runtime.trap("Not an opening stock entry");
+    };
+    switch (rawMaterials.get(id)) {
+      case (null) { Runtime.trap("Raw material not found") };
+      case (?m) {
+        updateWarehouseStockSub(m.warehouse, m.grade, m.weightKg);
+        let effectiveGrade = if (grade == "") { materialName } else { grade };
+        rawMaterials.add(id, { m with lotNumber = materialName; supplier; grade = effectiveGrade; weightKg; dateReceived = date; warehouse });
+        updateWarehouseStockAdd(warehouse, materialName, weightKg);
+      };
+    };
+  };
+
   public shared ({ caller }) func deleteRawMaterialOpeningStock(id : Nat) : async () {
     requireUser(caller);
     if (not openingStockRawMaterialIds.contains(id)) {
@@ -648,6 +666,35 @@ actor {
     id;
   };
 
+  public shared ({ caller }) func updateInwardEntry(id : Nat, inwardDate : Time.Time, vehicleNumber : Text, remarks : Text, receivedQty : Nat) : async () {
+    requireUser(caller);
+    switch (inwardEntries.get(id)) {
+      case (null) { Runtime.trap("Inward entry not found") };
+      case (?ie) {
+        // Adjust warehouse stock for qty change
+        if (receivedQty != ie.receivedQty) {
+          if (receivedQty > ie.receivedQty) {
+            updateWarehouseStockAdd(ie.warehouse, ie.materialName, receivedQty - ie.receivedQty);
+          } else {
+            updateWarehouseStockSub(ie.warehouse, ie.materialName, ie.receivedQty - receivedQty);
+          };
+          // Update associated raw material qty
+          for ((rmId, rm) in rawMaterials.entries()) {
+            switch (rm.inwardEntryId) {
+              case (?eid) {
+                if (eid == id) {
+                  rawMaterials.add(rmId, { rm with weightKg = receivedQty });
+                };
+              };
+              case (null) {};
+            };
+          };
+        };
+        inwardEntries.add(id, { ie with inwardDate; vehicleNumber; remarks; receivedQty });
+      };
+    };
+  };
+
   public shared ({ caller }) func deleteInwardEntry(id : Nat) : async () {
     requireUser(caller);
     switch (inwardEntries.get(id)) {
@@ -718,6 +765,24 @@ actor {
     materialIssues.add(id, { id; issueNumber; issueDate = issueDate; department; warehouse; materialName; grade; issuedQty; remarks });
     materialIssueIdCounter += 1;
     id;
+  };
+
+  public shared ({ caller }) func updateMaterialIssue(id : Nat, department : Text, warehouse : Warehouse, materialName : Text, grade : Text, issuedQty : Nat, remarks : Text, issueDate : Int) : async () {
+    requireUser(caller);
+    switch (materialIssues.get(id)) {
+      case (null) { Runtime.trap("Material issue not found") };
+      case (?mi) {
+        // Adjust warehouse stock for qty change
+        if (issuedQty != mi.issuedQty) {
+          if (issuedQty > mi.issuedQty) {
+            updateWarehouseStockSub(warehouse, materialName, issuedQty - mi.issuedQty);
+          } else {
+            updateWarehouseStockAdd(warehouse, materialName, mi.issuedQty - issuedQty);
+          };
+        };
+        materialIssues.add(id, { mi with department; warehouse; materialName; grade; issuedQty; remarks; issueDate });
+      };
+    };
   };
 
   public shared ({ caller }) func deleteMaterialIssue(id : Nat) : async () {
@@ -1003,6 +1068,16 @@ actor {
     id;
   };
 
+  public shared ({ caller }) func updateYarnOpeningStock(id : Nat, lotNumber : Text, yarnCountNe : Nat, spinningUnit : SpinningUnit, productType : ProductType, endUse : EndUse, weightKg : Nat) : async () {
+    requireUser(caller);
+    switch (yarnOpeningStock.get(id)) {
+      case (null) { Runtime.trap("Yarn opening stock not found") };
+      case (?yr) {
+        yarnOpeningStock.add(id, { yr with lotNumber; yarnCountNe; spinningUnit; productType; endUse; weightKg });
+      };
+    };
+  };
+
   public shared ({ caller }) func deleteYarnOpeningStock(id : Nat) : async () {
     requireUser(caller);
     if (not openingStockYarnIds.contains(id)) {
@@ -1116,6 +1191,16 @@ actor {
     id;
   };
 
+  public shared ({ caller }) func updatePackingEntry(id : Nat, packingDate : Time.Time, quantityKg : Nat, remarks : Text) : async () {
+    requireUser(caller);
+    switch (packingEntries.get(id)) {
+      case (null) { Runtime.trap("Packing entry not found") };
+      case (?pe) {
+        packingEntries.add(id, { pe with packingDate; quantityKg; remarks });
+      };
+    };
+  };
+
   public shared ({ caller }) func deletePackingEntry(id : Nat) : async () {
     requireUser(caller);
     packingEntries.remove(id);
@@ -1215,6 +1300,16 @@ actor {
     dispatchEntries.add(id, { id; dispatchNumber; dispatchDate; lotNumber; destination; quantityKg; yarnCountNe; spinningUnit; productType; endUse; remarks });
     dispatchEntryIdCounter += 1;
     id;
+  };
+
+  public shared ({ caller }) func updateDispatchEntry(id : Nat, dispatchDate : Time.Time, destination : DispatchDestination, quantityKg : Nat, remarks : Text) : async () {
+    requireUser(caller);
+    switch (dispatchEntries.get(id)) {
+      case (null) { Runtime.trap("Dispatch entry not found") };
+      case (?de) {
+        dispatchEntries.add(id, { de with dispatchDate; destination; quantityKg; remarks });
+      };
+    };
   };
 
   public shared ({ caller }) func deleteDispatchEntry(id : Nat) : async () {

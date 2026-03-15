@@ -30,6 +30,7 @@ import {
   ArrowUpFromLine,
   Loader2,
   PackageOpen,
+  Pencil,
   Plus,
   Trash2,
   Warehouse as WarehouseIcon,
@@ -47,8 +48,10 @@ import {
   useCreateMaterialIssue,
   useDeleteMaterialIssue,
   useMaterialIssues,
+  useUpdateMaterialIssue,
   useWarehouseStock,
 } from "../hooks/useQueries";
+import type { MaterialIssue as MaterialIssueType } from "../types";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
@@ -120,9 +123,11 @@ export default function MaterialIssue() {
   const { data: warehouseStock = [] } = useWarehouseStock();
   const createMutation = useCreateMaterialIssue();
   const deleteMutation = useDeleteMaterialIssue();
+  const updateMutation = useUpdateMaterialIssue();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
+  const [editItem, setEditItem] = useState<MaterialIssueType | null>(null);
   const [form, setForm] = useState(defaultForm);
 
   // Filter warehouse stock by selected warehouse and aggregate by material name
@@ -150,7 +155,26 @@ export default function MaterialIssue() {
   }
 
   function openAdd() {
+    setEditItem(null);
     setForm({ ...defaultForm, issueNumber: generateIssueNumber() });
+    setDialogOpen(true);
+  }
+
+  function openEdit(item: MaterialIssueType) {
+    setEditItem(item);
+    const dateStr = new Date(Number(item.issueDate) / 1_000_000)
+      .toISOString()
+      .substring(0, 10);
+    setForm({
+      issueNumber: item.issueNumber,
+      issueDate: dateStr,
+      department: item.department,
+      warehouse: item.warehouse as typeof form.warehouse,
+      materialName: item.materialName,
+      grade: item.grade,
+      issuedQty: String(Number(item.issuedQty)),
+      remarks: item.remarks,
+    });
     setDialogOpen(true);
   }
 
@@ -165,49 +189,67 @@ export default function MaterialIssue() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.department) {
-      toast.error("Please select a department");
-      return;
-    }
-    if (!form.warehouse) {
-      toast.error("Please select a warehouse");
-      return;
-    }
-    if (!form.materialName.trim()) {
-      toast.error("Please enter material name");
-      return;
-    }
     const qty = Number(form.issuedQty);
     if (!qty || qty <= 0) {
       toast.error("Please enter a valid quantity");
       return;
     }
+    if (!editItem) {
+      if (!form.department) {
+        toast.error("Please select a department");
+        return;
+      }
+      if (!form.warehouse) {
+        toast.error("Please select a warehouse");
+        return;
+      }
+      if (!form.materialName.trim()) {
+        toast.error("Please enter material name");
+        return;
+      }
+    }
 
     try {
-      await withRetry(() =>
-        createMutation.mutateAsync({
-          department: form.department,
-          warehouse: form.warehouse as Warehouse,
-          materialName: form.materialName.trim(),
-          grade: form.grade.trim(),
-          issuedQty: BigInt(Math.round(qty)),
-          remarks: form.remarks.trim(),
-          issueDate:
-            BigInt(new Date(form.issueDate).getTime()) * BigInt(1_000_000),
-        }),
-      );
-      toast.success(
-        `Issue ${form.issueNumber} created — stock deducted from ${warehouseLabel(form.warehouse as Warehouse)}`,
-      );
+      if (editItem) {
+        await withRetry(() =>
+          updateMutation.mutateAsync({
+            id: editItem.id,
+            department: form.department,
+            warehouse: form.warehouse as Warehouse,
+            materialName: form.materialName.trim(),
+            grade: form.grade.trim(),
+            issuedQty: BigInt(Math.round(qty)),
+            remarks: form.remarks.trim(),
+            issueDate:
+              BigInt(new Date(form.issueDate).getTime()) * BigInt(1_000_000),
+          }),
+        );
+        toast.success("Material issue updated");
+        setEditItem(null);
+      } else {
+        await withRetry(() =>
+          createMutation.mutateAsync({
+            department: form.department,
+            warehouse: form.warehouse as Warehouse,
+            materialName: form.materialName.trim(),
+            grade: form.grade.trim(),
+            issuedQty: BigInt(Math.round(qty)),
+            remarks: form.remarks.trim(),
+            issueDate:
+              BigInt(new Date(form.issueDate).getTime()) * BigInt(1_000_000),
+          }),
+        );
+        toast.success(
+          `Issue ${form.issueNumber} created — stock deducted from ${warehouseLabel(form.warehouse as Warehouse)}`,
+        );
+      }
       setDialogOpen(false);
     } catch (err) {
       console.error("Operation failed:", err);
       if (!isLoggedIn) {
         toast.error("Please sign in to save data");
       } else {
-        // Extract meaningful message from backend error
         const msg = err instanceof Error ? err.message : String(err);
-        // Backend trap messages are often in format "Reject text: ..."
         const match = msg.match(/Reject text: (.+)/);
         const displayMsg = match
           ? match[1]
@@ -394,15 +436,26 @@ export default function MaterialIssue() {
                   </TableCell>
                   <TableCell className="text-right">
                     {isAdmin && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        data-ocid={`material-issue.delete_button.${idx + 1}`}
-                        onClick={() => setDeleteId(issue.id)}
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-ocid={`material-issue.edit_button.${idx + 1}`}
+                          onClick={() => openEdit(issue)}
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-ocid={`material-issue.delete_button.${idx + 1}`}
+                          onClick={() => setDeleteId(issue.id)}
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>
@@ -413,7 +466,13 @@ export default function MaterialIssue() {
       </div>
 
       {/* New Issue Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(o) => {
+          if (!o) setEditItem(null);
+          setDialogOpen(o);
+        }}
+      >
         <DialogContent
           data-ocid="material-issue.dialog"
           className="sm:max-w-lg"
@@ -421,7 +480,7 @@ export default function MaterialIssue() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ArrowUpFromLine className="w-4 h-4 text-primary" />
-              New Material Issue
+              {editItem ? "Edit Material Issue" : "New Material Issue"}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -620,12 +679,12 @@ export default function MaterialIssue() {
               <Button
                 type="submit"
                 data-ocid="material-issue.submit_button"
-                disabled={createMutation.isPending}
+                disabled={createMutation.isPending || updateMutation.isPending}
               >
-                {createMutation.isPending && (
+                {(createMutation.isPending || updateMutation.isPending) && (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 )}
-                Issue Material
+                {editItem ? "Update" : "Issue Material"}
               </Button>
             </DialogFooter>
           </form>

@@ -33,6 +33,7 @@ import {
   CheckCircle2,
   Layers,
   Loader2,
+  Pencil,
   Plus,
   Trash2,
   X,
@@ -50,7 +51,9 @@ import {
   usePackingBalance,
   usePackingEntries,
   useProductionOrders,
+  useUpdatePackingEntry,
 } from "../hooks/useQueries";
+import type { PackingEntry as PackingEntryType } from "../types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -380,9 +383,11 @@ export default function PackingEntryPage() {
   const { data: productionOrders = [] } = useProductionOrders();
   const createMutation = useCreatePackingEntry();
   const deleteMutation = useDeletePackingEntry();
+  const updateMutation = useUpdatePackingEntry();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
+  const [editItem, setEditItem] = useState<PackingEntryType | null>(null);
   const [form, setForm] = useState(defaultForm);
   const [nextPackingNumber, setNextPackingNumber] = useState<string>("");
 
@@ -459,8 +464,25 @@ export default function PackingEntryPage() {
   }
 
   function openAdd() {
+    setEditItem(null);
     setNextPackingNumber(generatePackingNumber());
     setForm(defaultForm);
+    setDialogOpen(true);
+  }
+
+  function openEdit(item: PackingEntryType) {
+    setEditItem(item);
+    const dateStr = new Date(Number(item.packingDate) / 1_000_000)
+      .toISOString()
+      .substring(0, 10);
+    setForm({
+      date: dateStr,
+      unit: item.spinningUnit as string,
+      lotNumber: item.lotNumber,
+      quantityKg: String(Number(item.quantityKg)),
+      remarks: item.remarks,
+    });
+    setNextPackingNumber(item.packingNumber);
     setDialogOpen(true);
   }
 
@@ -482,18 +504,31 @@ export default function PackingEntryPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (isSubmitBlocked) return;
+    if (!editItem && isSubmitBlocked) return;
     const packingDateTs = BigInt(new Date(form.date).getTime() * 1_000_000);
     try {
-      await withRetry(() =>
-        createMutation.mutateAsync({
-          lotNumber: form.lotNumber,
-          quantityKg: BigInt(Math.round(Number(form.quantityKg))),
-          remarks: form.remarks,
-          packingDate: packingDateTs,
-        }),
-      );
-      toast.success("Packing entry saved");
+      if (editItem) {
+        await withRetry(() =>
+          updateMutation.mutateAsync({
+            id: editItem.id,
+            packingDate: packingDateTs,
+            quantityKg: BigInt(Math.round(Number(form.quantityKg))),
+            remarks: form.remarks,
+          }),
+        );
+        toast.success("Packing entry updated");
+        setEditItem(null);
+      } else {
+        await withRetry(() =>
+          createMutation.mutateAsync({
+            lotNumber: form.lotNumber,
+            quantityKg: BigInt(Math.round(Number(form.quantityKg))),
+            remarks: form.remarks,
+            packingDate: packingDateTs,
+          }),
+        );
+        toast.success("Packing entry saved");
+      }
       setDialogOpen(false);
     } catch (error) {
       console.error("Operation failed:", error);
@@ -786,15 +821,26 @@ export default function PackingEntryPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     {isAdmin && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        data-ocid={`packing.delete_button.${idx + 1}`}
-                        onClick={() => setDeleteId(entry.id)}
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-ocid={`packing.edit_button.${idx + 1}`}
+                          onClick={() => openEdit(entry)}
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-ocid={`packing.delete_button.${idx + 1}`}
+                          onClick={() => setDeleteId(entry.id)}
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>
@@ -805,10 +851,18 @@ export default function PackingEntryPage() {
       </div>
 
       {/* New Packing Entry Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(o) => {
+          if (!o) setEditItem(null);
+          setDialogOpen(o);
+        }}
+      >
         <DialogContent data-ocid="packing.dialog" className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>New Packing Entry</DialogTitle>
+            <DialogTitle>
+              {editItem ? "Edit Packing Entry" : "New Packing Entry"}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Packing Number (auto-generated) */}
@@ -958,10 +1012,16 @@ export default function PackingEntryPage() {
               <Button
                 type="submit"
                 data-ocid="packing.submit_button"
-                disabled={isPending || isSubmitBlocked}
+                disabled={
+                  editItem
+                    ? updateMutation.isPending
+                    : isPending || isSubmitBlocked
+                }
               >
-                {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Save Entry
+                {(isPending || updateMutation.isPending) && (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                )}
+                {editItem ? "Update" : "Save Entry"}
               </Button>
             </DialogFooter>
           </form>

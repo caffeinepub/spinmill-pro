@@ -865,6 +865,35 @@ export function useAddInwardEntry() {
   });
 }
 
+export function useUpdateInwardEntry() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: bigint;
+      inwardDate: bigint;
+      vehicleNumber: string;
+      remarks: string;
+      receivedQty: bigint;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return fullActor(actor).updateInwardEntry(
+        args.id,
+        args.inwardDate,
+        args.vehicleNumber,
+        args.remarks,
+        args.receivedQty,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inwardEntries"] });
+      qc.invalidateQueries({ queryKey: ["warehouseStock"] });
+      qc.invalidateQueries({ queryKey: ["rawMaterials"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+}
+
 export function useDeleteInwardEntry() {
   const { actor } = useActor();
   const qc = useQueryClient();
@@ -1020,6 +1049,40 @@ export function useCreateMaterialIssue() {
   });
 }
 
+export function useUpdateMaterialIssue() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: bigint;
+      department: string;
+      warehouse: import("../types").Warehouse;
+      materialName: string;
+      grade: string;
+      issuedQty: bigint;
+      remarks: string;
+      issueDate: bigint;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return fullActor(actor).updateMaterialIssue(
+        args.id,
+        args.department,
+        args.warehouse,
+        args.materialName,
+        args.grade,
+        args.issuedQty,
+        args.remarks,
+        args.issueDate,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["materialIssues"] });
+      qc.invalidateQueries({ queryKey: ["warehouseStock"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+}
+
 export function useDeleteMaterialIssue() {
   const { actor } = useActor();
   const qc = useQueryClient();
@@ -1091,6 +1154,33 @@ export function useCreateDispatchEntry() {
       qc.invalidateQueries({ queryKey: ["dispatchEntries"] });
       qc.invalidateQueries({ queryKey: ["dispatchBalance"] });
       qc.invalidateQueries({ queryKey: ["nextDispatchNumber"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+}
+
+export function useUpdateDispatchEntry() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: bigint;
+      dispatchDate: bigint;
+      destination: import("../types").DispatchDestination;
+      quantityKg: bigint;
+      remarks: string;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return fullActor(actor).updateDispatchEntry(
+        args.id,
+        args.dispatchDate,
+        args.destination,
+        args.quantityKg,
+        args.remarks,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["dispatchEntries"] });
       qc.invalidateQueries({ queryKey: ["dashboardStats"] });
     },
   });
@@ -1180,6 +1270,32 @@ export function useCreatePackingEntry() {
       qc.invalidateQueries({ queryKey: ["yarnInventory"] });
       qc.invalidateQueries({ queryKey: ["nextPackingNumber"] });
       qc.invalidateQueries({ queryKey: ["packingBalance"] });
+    },
+  });
+}
+
+export function useUpdatePackingEntry() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: bigint;
+      packingDate: bigint;
+      quantityKg: bigint;
+      remarks: string;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return fullActor(actor).updatePackingEntry(
+        args.id,
+        args.packingDate,
+        args.quantityKg,
+        args.remarks,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["packingEntries"] });
+      qc.invalidateQueries({ queryKey: ["yarnInventory"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
     },
   });
 }
@@ -1276,6 +1392,39 @@ export function useAddRawMaterialOpeningStock() {
   });
 }
 
+export function useUpdateRawMaterialOpeningStock() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: bigint;
+      materialName: string;
+      supplier: string;
+      grade: string;
+      weightKg: bigint;
+      warehouse: import("../types").Warehouse;
+      date: bigint;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return fullActor(actor).updateRawMaterialOpeningStock(
+        args.id,
+        args.materialName,
+        args.supplier,
+        args.grade,
+        args.weightKg,
+        args.warehouse,
+        args.date,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["rawMaterialOpeningStock"] });
+      qc.invalidateQueries({ queryKey: ["rawMaterials"] });
+      qc.invalidateQueries({ queryKey: ["warehouseStock"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+}
+
 export function useDeleteRawMaterialOpeningStock() {
   const { actor } = useActor();
   const qc = useQueryClient();
@@ -1321,6 +1470,38 @@ export function useAddYarnOpeningStock() {
     }) => {
       if (!actor) throw new Error("No actor");
       return fullActor(actor).addYarnOpeningStock(
+        args.lotNumber,
+        args.yarnCountNe,
+        args.spinningUnit,
+        args.productType,
+        args.endUse,
+        args.weightKg,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["yarnOpeningStock"] });
+      qc.invalidateQueries({ queryKey: ["yarnInventory"] });
+      qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+    },
+  });
+}
+
+export function useUpdateYarnOpeningStock() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: bigint;
+      lotNumber: string;
+      yarnCountNe: bigint;
+      spinningUnit: import("../types").SpinningUnit;
+      productType: import("../types").ProductType;
+      endUse: import("../types").EndUse;
+      weightKg: bigint;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return fullActor(actor).updateYarnOpeningStock(
+        args.id,
         args.lotNumber,
         args.yarnCountNe,
         args.spinningUnit,

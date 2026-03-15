@@ -32,6 +32,7 @@ import {
   CheckCircle2,
   Loader2,
   MapPin,
+  Pencil,
   Plus,
   Search,
   Trash2,
@@ -53,9 +54,13 @@ import {
   useDispatchEntries,
   usePackingEntries,
   useProductionOrders,
+  useUpdateDispatchEntry,
   useYarnOpeningStock,
 } from "../hooks/useQueries";
-import type { DispatchDestination } from "../types";
+import type {
+  DispatchDestination,
+  DispatchEntry as DispatchEntryType,
+} from "../types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -366,9 +371,11 @@ export default function YarnDispatch() {
   const { data: yarnOpeningStockEntries = [] } = useYarnOpeningStock();
   const createMutation = useCreateDispatchEntry();
   const deleteMutation = useDeleteDispatchEntry();
+  const updateMutation = useUpdateDispatchEntry();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
+  const [editItem, setEditItem] = useState<DispatchEntryType | null>(null);
   const [form, setForm] = useState(defaultForm);
   const [nextDispatchNumber, setNextDispatchNumber] = useState<string>("");
 
@@ -467,8 +474,25 @@ export default function YarnDispatch() {
   }
 
   function openAdd() {
+    setEditItem(null);
     setNextDispatchNumber(generateDispatchNumber());
     setForm(defaultForm);
+    setDialogOpen(true);
+  }
+
+  function openEdit(item: DispatchEntryType) {
+    setEditItem(item);
+    const dateStr = new Date(Number(item.dispatchDate) / 1_000_000)
+      .toISOString()
+      .substring(0, 10);
+    setForm({
+      date: dateStr,
+      lotNumber: item.lotNumber,
+      destination: item.destination as string,
+      quantityKg: String(Number(item.quantityKg)),
+      remarks: item.remarks,
+    });
+    setNextDispatchNumber(item.dispatchNumber);
     setDialogOpen(true);
   }
 
@@ -483,19 +507,33 @@ export default function YarnDispatch() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (isSubmitBlocked) return;
+    if (!editItem && isSubmitBlocked) return;
     const dispatchDateTs = BigInt(new Date(form.date).getTime() * 1_000_000);
     try {
-      await withRetry(() =>
-        createMutation.mutateAsync({
-          lotNumber: form.lotNumber,
-          destination: form.destination as DispatchDestination,
-          quantityKg: BigInt(Math.round(Number(form.quantityKg))),
-          dispatchDate: dispatchDateTs,
-          remarks: form.remarks,
-        }),
-      );
-      toast.success("Dispatch entry saved");
+      if (editItem) {
+        await withRetry(() =>
+          updateMutation.mutateAsync({
+            id: editItem.id,
+            dispatchDate: dispatchDateTs,
+            destination: form.destination as DispatchDestination,
+            quantityKg: BigInt(Math.round(Number(form.quantityKg))),
+            remarks: form.remarks,
+          }),
+        );
+        toast.success("Dispatch entry updated");
+        setEditItem(null);
+      } else {
+        await withRetry(() =>
+          createMutation.mutateAsync({
+            lotNumber: form.lotNumber,
+            destination: form.destination as DispatchDestination,
+            quantityKg: BigInt(Math.round(Number(form.quantityKg))),
+            dispatchDate: dispatchDateTs,
+            remarks: form.remarks,
+          }),
+        );
+        toast.success("Dispatch entry saved");
+      }
       setDialogOpen(false);
     } catch (err) {
       console.error("Operation failed:", err);
@@ -716,15 +754,26 @@ export default function YarnDispatch() {
                     </TableCell>
                     <TableCell className="text-right">
                       {isAdmin && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          data-ocid={`dispatch.delete_button.${idx + 1}`}
-                          onClick={() => setDeleteId(entry.id)}
-                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            data-ocid={`dispatch.edit_button.${idx + 1}`}
+                            onClick={() => openEdit(entry)}
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            data-ocid={`dispatch.delete_button.${idx + 1}`}
+                            onClick={() => setDeleteId(entry.id)}
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
@@ -736,10 +785,18 @@ export default function YarnDispatch() {
       </div>
 
       {/* New Dispatch Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(o) => {
+          if (!o) setEditItem(null);
+          setDialogOpen(o);
+        }}
+      >
         <DialogContent data-ocid="dispatch.dialog" className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>New Dispatch Entry</DialogTitle>
+            <DialogTitle>
+              {editItem ? "Edit Dispatch Entry" : "New Dispatch Entry"}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Dispatch Number (auto-generated) */}
@@ -860,10 +917,16 @@ export default function YarnDispatch() {
               <Button
                 type="submit"
                 data-ocid="dispatch.submit_button"
-                disabled={isPending || isSubmitBlocked}
+                disabled={
+                  editItem
+                    ? updateMutation.isPending
+                    : isPending || isSubmitBlocked
+                }
               >
-                {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Save Dispatch
+                {(isPending || updateMutation.isPending) && (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                )}
+                {editItem ? "Update" : "Save Dispatch"}
               </Button>
             </DialogFooter>
           </form>

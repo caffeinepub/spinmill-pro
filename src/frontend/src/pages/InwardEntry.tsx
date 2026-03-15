@@ -26,7 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, PackageOpen, Plus, Trash2, X } from "lucide-react";
+import { Loader2, PackageOpen, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Warehouse } from "../backend.d";
@@ -42,6 +42,7 @@ import {
   useInwardEntries,
   usePOBalance,
   usePurchaseOrders,
+  useUpdateInwardEntry,
 } from "../hooks/useQueries";
 import type { InwardEntry as InwardEntryType } from "../types";
 
@@ -238,9 +239,11 @@ export default function InwardEntry() {
     usePurchaseOrders();
   const addMutation = useAddInwardEntry();
   const deleteMutation = useDeleteInwardEntry();
+  const updateMutation = useUpdateInwardEntry();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
+  const [editItem, setEditItem] = useState<InwardEntryType | null>(null);
   const [form, setForm] = useState(defaultForm);
 
   const isLoading = entriesLoading || poLoading;
@@ -274,7 +277,26 @@ export default function InwardEntry() {
   }, [form.purchaseOrderId, purchaseOrders]);
 
   function openAdd() {
+    setEditItem(null);
     setForm({ ...defaultForm, inwardNumber: generateInwardNumber() });
+    setDialogOpen(true);
+  }
+
+  function openEdit(item: InwardEntryType) {
+    setEditItem(item);
+    const dateStr = new Date(Number(item.inwardDate) / 1_000_000)
+      .toISOString()
+      .substring(0, 10);
+    setForm({
+      inwardNumber: item.inwardNumber,
+      purchaseOrderId: String(item.purchaseOrderId),
+      inwardDate: dateStr,
+      materialName: item.materialName,
+      receivedQty: String(Number(item.receivedQty)),
+      warehouse: item.warehouse as typeof form.warehouse,
+      vehicleNumber: item.vehicleNumber,
+      remarks: item.remarks,
+    });
     setDialogOpen(true);
   }
 
@@ -289,35 +311,52 @@ export default function InwardEntry() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.warehouse) {
+    if (!editItem && !form.warehouse) {
       toast.error("Please select a warehouse");
       return;
     }
-    if (!form.purchaseOrderId) {
+    if (!editItem && !form.purchaseOrderId) {
       toast.error("Please select a purchase order");
       return;
     }
-    // Validate quantity against PO balance
-    if (poBalance && Number(form.receivedQty) > Number(poBalance.balanceQty)) {
-      toast.error(
-        `Cannot exceed balance qty (${Number(poBalance.balanceQty)} kg)`,
-      );
-      return;
-    }
     try {
-      await withRetry(() =>
-        addMutation.mutateAsync({
-          inwardNumber: form.inwardNumber,
-          purchaseOrderId: BigInt(form.purchaseOrderId),
-          inwardDate: dateStringToNs(form.inwardDate),
-          materialName: form.materialName,
-          receivedQty: BigInt(Math.round(Number(form.receivedQty))),
-          warehouse: form.warehouse as Warehouse,
-          vehicleNumber: form.vehicleNumber,
-          remarks: form.remarks,
-        }),
-      );
-      toast.success("Inward entry recorded");
+      if (editItem) {
+        await withRetry(() =>
+          updateMutation.mutateAsync({
+            id: editItem.id,
+            inwardDate: dateStringToNs(form.inwardDate),
+            vehicleNumber: form.vehicleNumber,
+            remarks: form.remarks,
+            receivedQty: BigInt(Math.round(Number(form.receivedQty))),
+          }),
+        );
+        toast.success("Inward entry updated");
+        setEditItem(null);
+      } else {
+        // Validate quantity against PO balance
+        if (
+          poBalance &&
+          Number(form.receivedQty) > Number(poBalance.balanceQty)
+        ) {
+          toast.error(
+            `Cannot exceed balance qty (${Number(poBalance.balanceQty)} kg)`,
+          );
+          return;
+        }
+        await withRetry(() =>
+          addMutation.mutateAsync({
+            inwardNumber: form.inwardNumber,
+            purchaseOrderId: BigInt(form.purchaseOrderId),
+            inwardDate: dateStringToNs(form.inwardDate),
+            materialName: form.materialName,
+            receivedQty: BigInt(Math.round(Number(form.receivedQty))),
+            warehouse: form.warehouse as Warehouse,
+            vehicleNumber: form.vehicleNumber,
+            remarks: form.remarks,
+          }),
+        );
+        toast.success("Inward entry recorded");
+      }
       setDialogOpen(false);
     } catch (error) {
       console.error("Operation failed:", error);
@@ -453,15 +492,26 @@ export default function InwardEntry() {
                   </TableCell>
                   <TableCell className="text-right">
                     {isAdmin && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        data-ocid={`inward.delete_button.${idx + 1}`}
-                        onClick={() => setDeleteId(entry.id)}
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-ocid={`inward.edit_button.${idx + 1}`}
+                          onClick={() => openEdit(entry)}
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-ocid={`inward.delete_button.${idx + 1}`}
+                          onClick={() => setDeleteId(entry.id)}
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>
@@ -472,10 +522,18 @@ export default function InwardEntry() {
       </div>
 
       {/* Add Inward Entry Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(o) => {
+          if (!o) setEditItem(null);
+          setDialogOpen(o);
+        }}
+      >
         <DialogContent data-ocid="inward.dialog" className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>New Inward Entry</DialogTitle>
+            <DialogTitle>
+              {editItem ? "Edit Inward Entry" : "New Inward Entry"}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -654,12 +712,12 @@ export default function InwardEntry() {
               <Button
                 type="submit"
                 data-ocid="inward.submit_button"
-                disabled={addMutation.isPending}
+                disabled={addMutation.isPending || updateMutation.isPending}
               >
-                {addMutation.isPending && (
+                {(addMutation.isPending || updateMutation.isPending) && (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 )}
-                Record Inward
+                {editItem ? "Update" : "Record Inward"}
               </Button>
             </DialogFooter>
           </form>

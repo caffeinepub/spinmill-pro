@@ -384,5 +384,11 @@ export interface backendInterface {
     updatePurchaseOrder(id: bigint, poNumber: string, supplier: string, materialName: string, orderedQty: bigint, orderDate: Time, expectedDeliveryDate: Time): Promise<void>;
     updateQualityTest(id: bigint, batchId: bigint, csp: bigint, elongationPercent: bigint, evennessPercent: bigint, thinPlaces: bigint, thickPlaces: bigint, neps: bigint, hairinessIndex: bigint, pass: boolean): Promise<void>;
     updateRawMaterial(id: bigint, lotNumber: string, supplier: string, grade: string, weightKg: bigint, status: RawMaterialStatus, warehouse: Warehouse): Promise<void>;
+    updateDispatchEntry(id: bigint, dispatchDate: Time, destination: DispatchDestination, quantityKg: bigint, remarks: string): Promise<void>;
+    updateInwardEntry(id: bigint, inwardDate: Time, vehicleNumber: string, remarks: string, receivedQty: bigint): Promise<void>;
+    updateMaterialIssue(id: bigint, department: string, warehouse: Warehouse, materialName: string, grade: string, issuedQty: bigint, remarks: string, issueDate: bigint): Promise<void>;
+    updatePackingEntry(id: bigint, packingDate: Time, quantityKg: bigint, remarks: string): Promise<void>;
+    updateRawMaterialOpeningStock(id: bigint, materialName: string, supplier: string, grade: string, weightKg: bigint, warehouse: Warehouse, date: Time): Promise<void>;
     updateYarnInventory(id: bigint, lotNumber: string, yarnCountNe: bigint, twistDirection: TwistDirection, quantityCones: bigint, weightKg: bigint, status: InventoryStatus): Promise<void>;
+    updateYarnOpeningStock(id: bigint, lotNumber: string, yarnCountNe: bigint, spinningUnit: SpinningUnit, productType: ProductType, endUse: EndUse, weightKg: bigint): Promise<void>;
 }
