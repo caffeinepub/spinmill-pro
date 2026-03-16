@@ -58,7 +58,7 @@ const unitLabels: Record<string, string> = {
   [MachineType.autocoro]: "OE Spinning",
   [MachineType.ringFrame]: "Ring Spinning",
   [MachineType.winding]: "TFO",
-  [MachineType.outsideYarn]: "Outside Yarn",
+  outsideYarn: "Outside Yarn",
 };
 
 const defaultForm = {
@@ -212,6 +212,15 @@ export default function Machines() {
     unitFilter === "all"
       ? machines
       : machines.filter((m) => m.machineType === unitFilter);
+  const LATEST_COUNT_MACHINES = 25;
+  const hasActiveMachineFilters = unitFilter !== "all";
+  const displayedMachines = hasActiveMachineFilters
+    ? filteredMachines
+    : [...filteredMachines]
+        .sort((a, b) => (a.id > b.id ? -1 : 1))
+        .slice(0, LATEST_COUNT_MACHINES);
+  const isShowingLimitedMachines =
+    !hasActiveMachineFilters && filteredMachines.length > LATEST_COUNT_MACHINES;
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -348,7 +357,7 @@ export default function Machines() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredMachines.map((machine, idx) => {
+              {displayedMachines.map((machine, idx) => {
                 const currentOrder = machine.currentOrderId
                   ? orders.find((o) => o.id === machine.currentOrderId)
                   : null;
@@ -432,6 +441,12 @@ export default function Machines() {
           </Table>
         )}
       </div>
+
+      {isShowingLimitedMachines && (
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          Showing 25 most recent. Change unit filter to find others.
+        </p>
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent data-ocid="machines.dialog" className="sm:max-w-md">

@@ -107,6 +107,11 @@ export default function RawMaterialOpeningStock() {
   const updateMutation = useUpdateRawMaterialOpeningStock();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const LATEST_COUNT_RMOS = 25;
+  const displayedRMOSEntries = [...entries]
+    .sort((a, b) => (a.id > b.id ? -1 : 1))
+    .slice(0, LATEST_COUNT_RMOS);
+  const isShowingLimitedRMOS = entries.length > LATEST_COUNT_RMOS;
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [editItem, setEditItem] = useState<RawMaterial | null>(null);
   const [form, setForm] = useState(defaultForm);
@@ -277,7 +282,7 @@ export default function RawMaterialOpeningStock() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {entries.map((entry: RawMaterial, idx: number) => (
+              {displayedRMOSEntries.map((entry: RawMaterial, idx: number) => (
                 <TableRow
                   key={String(entry.id)}
                   data-ocid={`rm-opening.item.${idx + 1}`}
@@ -480,6 +485,12 @@ export default function RawMaterialOpeningStock() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {isShowingLimitedRMOS && (
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          Showing 25 most recent. Search to find older entries.
+        </p>
+      )}
 
       <ConfirmDialog
         open={!!deleteId}

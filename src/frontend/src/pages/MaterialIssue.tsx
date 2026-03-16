@@ -28,6 +28,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowUpFromLine,
+  Layers,
   Loader2,
   PackageOpen,
   Pencil,
@@ -277,6 +278,75 @@ export default function MaterialIssue() {
     }
   }
 
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkForm, setBulkForm] = useState({
+    issueDate: todayStr(),
+    warehouse: "" as Warehouse | "",
+    materialName: "",
+    grade: "",
+  });
+  const [bulkQtyMap, setBulkQtyMap] = useState<Map<string, string>>(new Map());
+  const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
+
+  const LATEST_COUNT_MI = 25;
+  const displayedIssues = [...issues]
+    .sort((a, b) => (a.id > b.id ? -1 : 1))
+    .slice(0, LATEST_COUNT_MI);
+  const isShowingLimitedMI = issues.length > LATEST_COUNT_MI;
+
+  async function handleBulkSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const entries = Array.from(bulkQtyMap.entries()).filter(
+      ([, qty]) => qty && Number(qty) > 0,
+    );
+    if (entries.length === 0) {
+      toast.error("Please enter quantity for at least one department");
+      return;
+    }
+    if (!bulkForm.warehouse) {
+      toast.error("Please select a warehouse");
+      return;
+    }
+    if (!bulkForm.materialName.trim()) {
+      toast.error("Please enter a material name");
+      return;
+    }
+    setIsBulkSubmitting(true);
+    let successCount = 0;
+    let errorCount = 0;
+    for (const [dept, qty] of entries) {
+      try {
+        await withRetry(() =>
+          createMutation.mutateAsync({
+            department: dept,
+            warehouse: bulkForm.warehouse as Warehouse,
+            materialName: bulkForm.materialName.trim(),
+            grade: bulkForm.grade.trim(),
+            issuedQty: BigInt(Math.round(Number(qty))),
+            remarks: "",
+            issueDate:
+              BigInt(new Date(bulkForm.issueDate).getTime()) *
+              BigInt(1_000_000),
+          }),
+        );
+        successCount++;
+      } catch {
+        errorCount++;
+      }
+    }
+    setIsBulkSubmitting(false);
+    if (successCount > 0)
+      toast.success(
+        `${successCount} issue${successCount > 1 ? "s" : ""} created`,
+      );
+    if (errorCount > 0)
+      toast.error(`${errorCount} issue${errorCount > 1 ? "s" : ""} failed`);
+    if (successCount > 0) {
+      setBulkDialogOpen(false);
+      setBulkQtyMap(new Map());
+    }
+  }
+
   // Summary: total issued today
   const todayNs = BigInt(new Date().setHours(0, 0, 0, 0)) * BigInt(1_000_000);
   const issuedToday = issues.filter((i) => i.issueDate >= todayNs);
@@ -291,14 +361,34 @@ export default function MaterialIssue() {
         title="Material Issue"
         description="Issue raw materials to departments — stock is deducted automatically from the respective warehouse"
         action={
-          <Button
-            data-ocid="material-issue.primary_button"
-            onClick={openAdd}
-            className="gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            New Issue
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              data-ocid="material-issue.secondary_button"
+              onClick={() => {
+                setBulkForm({
+                  issueDate: todayStr(),
+                  warehouse: "" as Warehouse | "",
+                  materialName: "",
+                  grade: "",
+                });
+                setBulkQtyMap(new Map());
+                setBulkDialogOpen(true);
+              }}
+              className="gap-2"
+            >
+              <Layers className="w-4 h-4" />
+              Bulk Issue
+            </Button>
+            <Button
+              data-ocid="material-issue.primary_button"
+              onClick={openAdd}
+              className="gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              New Issue
+            </Button>
+          </div>
         }
       />
 
@@ -356,7 +446,7 @@ export default function MaterialIssue() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
-        ) : issues.length === 0 ? (
+        ) : displayedIssues.length === 0 && issues.length === 0 ? (
           <EmptyState
             data-ocid="material-issue.empty_state"
             icon={<ArrowUpFromLine className="w-7 h-7" />}
@@ -399,7 +489,7 @@ export default function MaterialIssue() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {issues.map((issue, idx) => (
+              {displayedIssues.map((issue, idx) => (
                 <TableRow
                   key={String(issue.id)}
                   data-ocid={`material-issue.item.${idx + 1}`}
@@ -685,6 +775,165 @@ export default function MaterialIssue() {
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 )}
                 {editItem ? "Update" : "Issue Material"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {isShowingLimitedMI && (
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          Showing 25 most recent. Search above to find older entries.
+        </p>
+      )}
+
+      {/* Bulk Issue Dialog */}
+      <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
+        <DialogContent
+          data-ocid="material-issue.dialog"
+          className="sm:max-w-2xl max-h-[90vh] flex flex-col"
+        >
+          <DialogHeader>
+            <DialogTitle>Bulk Material Issue</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={handleBulkSubmit}
+            className="flex flex-col gap-4 overflow-hidden"
+          >
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Issue Date</Label>
+                <input
+                  type="date"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  value={bulkForm.issueDate}
+                  onChange={(e) =>
+                    setBulkForm((p) => ({ ...p, issueDate: e.target.value }))
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Warehouse</Label>
+                <Select
+                  value={bulkForm.warehouse}
+                  onValueChange={(v) =>
+                    setBulkForm((p) => ({
+                      ...p,
+                      warehouse: v as Warehouse | "",
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select warehouse" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {WAREHOUSE_OPTIONS.map((w) => (
+                      <SelectItem key={w.value} value={w.value}>
+                        {w.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Material Name</Label>
+                <Select
+                  value={bulkForm.materialName}
+                  onValueChange={(v) =>
+                    setBulkForm((p) => ({ ...p, materialName: v }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select material" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {materialNames.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Grade (optional)</Label>
+                <input
+                  type="text"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  value={bulkForm.grade}
+                  onChange={(e) =>
+                    setBulkForm((p) => ({ ...p, grade: e.target.value }))
+                  }
+                  placeholder="e.g. Grade A"
+                />
+              </div>
+            </div>
+            <div className="overflow-y-auto flex-1 min-h-0 max-h-[40vh] border rounded-md">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm border-b">
+                  <tr>
+                    <th className="text-left px-4 py-2.5 font-semibold text-xs uppercase tracking-wider">
+                      Department
+                    </th>
+                    <th className="text-left px-4 py-2.5 font-semibold text-xs uppercase tracking-wider w-40">
+                      Quantity (kg)
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {departments.map((dept, i) => (
+                    <tr
+                      key={dept}
+                      className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}
+                    >
+                      <td className="px-4 py-2">{dept}</td>
+                      <td className="px-4 py-2">
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          value={bulkQtyMap.get(dept) ?? ""}
+                          onChange={(e) => {
+                            setBulkQtyMap((prev) => {
+                              const next = new Map(prev);
+                              if (e.target.value) {
+                                next.set(dept, e.target.value);
+                              } else {
+                                next.delete(dept);
+                              }
+                              return next;
+                            });
+                          }}
+                          placeholder="0"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                data-ocid="material-issue.cancel_button"
+                onClick={() => setBulkDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                data-ocid="material-issue.submit_button"
+                disabled={isBulkSubmitting}
+              >
+                {isBulkSubmitting && (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                )}
+                Issue to All Departments
               </Button>
             </DialogFooter>
           </form>

@@ -116,6 +116,11 @@ export default function YarnOpeningStock() {
   const updateMutation = useUpdateYarnOpeningStock();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const LATEST_COUNT_YOS = 25;
+  const displayedYarnOpeningEntries = [...entries]
+    .sort((a, b) => (a.id > b.id ? -1 : 1))
+    .slice(0, LATEST_COUNT_YOS);
+  const isShowingLimitedYOS = entries.length > LATEST_COUNT_YOS;
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [editItem, setEditItem] = useState<YarnOpeningStockRecord | null>(null);
   const [form, setForm] = useState(defaultForm);
@@ -307,7 +312,7 @@ export default function YarnOpeningStock() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {entries.map((entry, idx) => (
+              {displayedYarnOpeningEntries.map((entry, idx) => (
                 <TableRow
                   key={String(entry.id)}
                   data-ocid={`yarn-opening.item.${idx + 1}`}
@@ -525,6 +530,12 @@ export default function YarnOpeningStock() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {isShowingLimitedYOS && (
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          Showing 25 most recent. Search to find older entries.
+        </p>
+      )}
 
       <ConfirmDialog
         open={!!deleteId}

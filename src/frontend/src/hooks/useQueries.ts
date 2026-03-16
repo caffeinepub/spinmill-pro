@@ -976,6 +976,7 @@ export function usePOBalance(purchaseOrderId: bigint | null) {
 export function useProductionOrderBalance(
   yarnCountNe: bigint | null,
   lotNumber: string | null,
+  machineId?: string | null,
 ) {
   const { actor } = useActor();
   return useQuery<ProductionOrderBalance | null>({
@@ -983,6 +984,7 @@ export function useProductionOrderBalance(
       "productionOrderBalance",
       yarnCountNe !== null ? String(yarnCountNe) : null,
       lotNumber,
+      machineId ?? null,
     ],
     queryFn: async () => {
       if (!actor || yarnCountNe === null || !lotNumber)

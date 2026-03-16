@@ -32,6 +32,7 @@ import {
   TrendingDown,
   TrendingUp,
   Warehouse,
+  X,
   Zap,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -2124,6 +2125,197 @@ function YarnStockReport({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+// ─── Outside Yarn Inward Report ───────────────────────────────────────────────
+
+function OutsideYarnInwardReport({
+  openingStockEntries,
+  isLoading,
+  countLabels,
+}: {
+  openingStockEntries: YarnOpeningStockRecord[];
+  isLoading: boolean;
+  countLabels: Map<string, string> | undefined;
+}) {
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [lotSearch, setLotSearch] = useState("");
+
+  const outsideEntries = openingStockEntries.filter(
+    (e) => String(e.spinningUnit) === "outsideYarn",
+  );
+
+  const filtered = outsideEntries.filter((e) => {
+    const d = new Date(Number(e.createdAt) / 1_000_000);
+    if (fromDate) {
+      const from = new Date(fromDate);
+      if (d < from) return false;
+    }
+    if (toDate) {
+      const to = new Date(toDate);
+      to.setHours(23, 59, 59, 999);
+      if (d > to) return false;
+    }
+    if (
+      lotSearch &&
+      !e.lotNumber.toLowerCase().includes(lotSearch.toLowerCase())
+    )
+      return false;
+    return true;
+  });
+
+  const totalQty = filtered.reduce((a, e) => a + Number(e.weightKg), 0);
+
+  return (
+    <div className="space-y-4 pt-4">
+      {/* Filters */}
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1">
+          <Label className="text-xs">From Date</Label>
+          <Input
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="h-8 text-sm w-36"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">To Date</Label>
+          <Input
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="h-8 text-sm w-36"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Lot Number</Label>
+          <Input
+            placeholder="Search lot..."
+            value={lotSearch}
+            onChange={(e) => setLotSearch(e.target.value)}
+            className="h-8 text-sm w-40"
+          />
+        </div>
+        {(fromDate || toDate || lotSearch) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setFromDate("");
+              setToDate("");
+              setLotSearch("");
+            }}
+            className="gap-1 text-muted-foreground"
+          >
+            <X className="w-3.5 h-3.5" />
+            Clear
+          </Button>
+        )}
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="rounded-lg border border-border/60 bg-card shadow-sm p-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+            Total Entries
+          </p>
+          <p className="text-2xl font-bold mt-1">
+            {isLoading ? "—" : filtered.length}
+          </p>
+        </div>
+        <div className="rounded-lg border border-border/60 bg-card shadow-sm p-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+            Total Qty (kg)
+          </p>
+          <p className="text-2xl font-bold mt-1">
+            {isLoading ? "—" : totalQty.toLocaleString()}
+          </p>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-lg border border-border/60 overflow-hidden">
+        {isLoading ? (
+          <div className="p-4 space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            No outside yarn inward entries found.
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border/60 hover:bg-transparent">
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                  Date
+                </TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                  Lot Number
+                </TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                  Yarn Count (Ne)
+                </TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                  Product Type
+                </TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                  End Use
+                </TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider text-right">
+                  Qty (kg)
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((entry) => (
+                <TableRow
+                  key={String(entry.id)}
+                  className="border-border/40 hover:bg-muted/40"
+                >
+                  <TableCell className="text-sm text-muted-foreground">
+                    {new Date(
+                      Number(entry.createdAt) / 1_000_000,
+                    ).toLocaleDateString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </TableCell>
+                  <TableCell className="font-mono text-sm font-medium">
+                    {entry.lotNumber}
+                  </TableCell>
+                  <TableCell className="font-mono text-sm">
+                    {countLabels?.get(entry.lotNumber) ??
+                      String(entry.yarnCountNe)}
+                  </TableCell>
+                  <TableCell className="text-sm capitalize">
+                    {String(entry.productType) === "lt"
+                      ? "LT"
+                      : String(entry.productType).charAt(0).toUpperCase() +
+                        String(entry.productType).slice(1)}
+                  </TableCell>
+                  <TableCell className="text-sm capitalize">
+                    {String(entry.endUse) === "tfo"
+                      ? "TFO"
+                      : String(entry.endUse).charAt(0).toUpperCase() +
+                        String(entry.endUse).slice(1)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm font-medium">
+                    {Number(entry.weightKg).toLocaleString()}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Reports() {
   const { data: logs = [], isLoading: logsLoading } = useProductionLogs();
   const { data: machines = [], isLoading: machinesLoading } = useMachines();
@@ -2213,6 +2405,14 @@ export default function Reports() {
               <Layers className="w-3.5 h-3.5" />
               Yarn Stock
             </TabsTrigger>
+            <TabsTrigger
+              value="outsideyarninward"
+              data-ocid="reports.outsideyarninward.tab"
+              className="gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm whitespace-nowrap"
+            >
+              <Package className="w-3.5 h-3.5" />
+              Outside Yarn Inward
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -2254,6 +2454,14 @@ export default function Reports() {
           <YarnStockReport
             packingEntries={packingEntries}
             dispatchEntries={dispatchEntries}
+            openingStockEntries={yarnOpeningStock}
+            isLoading={yarnStockLoading}
+            countLabels={countLabels}
+          />
+        </TabsContent>
+
+        <TabsContent value="outsideyarninward" className="mt-0">
+          <OutsideYarnInwardReport
             openingStockEntries={yarnOpeningStock}
             isLoading={yarnStockLoading}
             countLabels={countLabels}

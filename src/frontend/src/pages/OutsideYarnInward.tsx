@@ -276,6 +276,14 @@ export default function OutsideYarnInward() {
   });
 
   const hasFilters = !!lotSearch || !!fromDate || !!toDate;
+  const LATEST_COUNT_OYI = 25;
+  const displayedOYIEntries = hasFilters
+    ? filteredEntries
+    : [...filteredEntries]
+        .sort((a, b) => (a.id > b.id ? -1 : 1))
+        .slice(0, LATEST_COUNT_OYI);
+  const isShowingLimitedOYI =
+    !hasFilters && filteredEntries.length > LATEST_COUNT_OYI;
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -398,7 +406,7 @@ export default function OutsideYarnInward() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredEntries.map((entry, idx) => (
+              {displayedOYIEntries.map((entry, idx) => (
                 <TableRow
                   key={String(entry.id)}
                   data-ocid={`outside-yarn-inward.item.${idx + 1}`}
@@ -689,6 +697,12 @@ export default function OutsideYarnInward() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {isShowingLimitedOYI && (
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          Showing 25 most recent. Use date or lot filters to find older entries.
+        </p>
+      )}
 
       <ConfirmDialog
         open={!!deleteId}

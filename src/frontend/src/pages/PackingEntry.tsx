@@ -627,6 +627,14 @@ export default function PackingEntryPage() {
   }, [entries, filterDateFrom, filterDateTo, filterLotSearch]);
 
   const hasActiveFilters = filterDateFrom || filterDateTo || filterLotSearch;
+  const LATEST_COUNT_PACKING = 25;
+  const displayedPackingEntries = hasActiveFilters
+    ? filteredEntries
+    : [...filteredEntries]
+        .sort((a, b) => (a.id > b.id ? -1 : 1))
+        .slice(0, LATEST_COUNT_PACKING);
+  const isShowingLimitedPacking =
+    !hasActiveFilters && filteredEntries.length > LATEST_COUNT_PACKING;
   function clearPackingFilters() {
     setFilterDateFrom("");
     setFilterDateTo("");
@@ -782,7 +790,7 @@ export default function PackingEntryPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredEntries.map((entry, idx) => (
+              {displayedPackingEntries.map((entry, idx) => (
                 <TableRow
                   key={String(entry.id)}
                   data-ocid={`packing.item.${idx + 1}`}
@@ -1181,6 +1189,12 @@ export default function PackingEntryPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {isShowingLimitedPacking && (
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          Showing 25 most recent. Use filters to find older entries.
+        </p>
+      )}
 
       <ConfirmDialog
         open={!!deleteId}

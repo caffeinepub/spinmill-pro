@@ -9,7 +9,6 @@ import {
   Layers,
   Package,
   Settings2,
-  ShieldCheck,
   Truck,
   Warehouse,
 } from "lucide-react";
@@ -152,28 +151,37 @@ export default function Dashboard() {
         />
         <KpiCard
           data-ocid="dashboard.card.4"
-          title="Yarn Inventory"
-          value={stats ? Number(stats.totalYarnInventoryWeight) : 0}
+          title="OE Production Today"
+          value={stats ? Number(stats.oeProductionTodayKg) : 0}
           suffix="kg"
-          icon={
-            <Layers className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-          }
-          accent="bg-purple-500/15"
+          icon={<Layers className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+          accent="bg-blue-500/15"
           loading={isLoading}
         />
         <KpiCard
           data-ocid="dashboard.card.5"
-          title="QC Pass Rate"
-          value={stats ? Number(stats.recentQualityTestPassRate) : 0}
-          suffix="%"
+          title="TFO Production Today"
+          value={stats ? Number(stats.tfoProductionTodayKg) : 0}
+          suffix="kg"
           icon={
-            <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <Layers className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+          }
+          accent="bg-violet-500/15"
+          loading={isLoading}
+        />
+        <KpiCard
+          data-ocid="dashboard.card.6"
+          title="Ring Spinning Today"
+          value={stats ? Number(stats.ringProductionTodayKg) : 0}
+          suffix="kg"
+          icon={
+            <Layers className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           }
           accent="bg-emerald-500/15"
           loading={isLoading}
         />
         <KpiCard
-          data-ocid="dashboard.card.6"
+          data-ocid="dashboard.card.7"
           title="Inward Today"
           value={stats ? Number(stats.totalInwardTodayKg) : 0}
           suffix="kg"
@@ -184,25 +192,14 @@ export default function Dashboard() {
           loading={isLoading}
         />
         <KpiCard
-          data-ocid="dashboard.card.7"
+          data-ocid="dashboard.card.8"
           title="OE Warehouse Stock"
           value={stats ? Number(stats.oeWarehouseStockKg) : 0}
           suffix="kg"
           icon={
-            <Warehouse className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <Warehouse className="w-4 h-4 text-orange-600 dark:text-orange-400" />
           }
-          accent="bg-blue-500/15"
-          loading={isLoading}
-        />
-        <KpiCard
-          data-ocid="dashboard.card.8"
-          title="Ring Warehouse Stock"
-          value={stats ? Number(stats.ringWarehouseStockKg) : 0}
-          suffix="kg"
-          icon={
-            <Warehouse className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-          }
-          accent="bg-violet-500/15"
+          accent="bg-orange-500/15"
           loading={isLoading}
         />
         <KpiCard
@@ -210,22 +207,19 @@ export default function Dashboard() {
           title="Dispatched Today"
           value={stats ? Number(stats.totalDispatchedTodayKg) : 0}
           suffix="kg"
-          icon={
-            <Truck className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-          }
-          accent="bg-orange-500/15"
+          icon={<Truck className="w-4 h-4 text-rose-600 dark:text-rose-400" />}
+          accent="bg-rose-500/15"
           loading={isLoading}
         />
       </motion.div>
 
-      {/* Quick Stats Grid */}
+      {/* System Status */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.5 }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-4"
       >
-        <Card className="border-border/60 shadow-card col-span-1 md:col-span-2">
+        <Card className="border-border/60 shadow-card">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
               System Status
@@ -262,31 +256,6 @@ export default function Dashboard() {
                   {item.status}
                 </Badge>
               </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/60 shadow-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Quick Actions
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {[
-              { label: "Log Production", href: "/production-logs" },
-              { label: "New Batch Stage", href: "/batch-tracking" },
-              { label: "Add Quality Test", href: "/quality-control" },
-              { label: "Check Inventory", href: "/yarn-inventory" },
-            ].map((item) => (
-              <a
-                key={item.label}
-                href={item.href}
-                className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm font-medium group"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-primary/40 group-hover:bg-primary transition-colors" />
-                {item.label}
-              </a>
             ))}
           </CardContent>
         </Card>

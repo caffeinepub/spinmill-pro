@@ -175,6 +175,9 @@ export interface DashboardStats {
     totalActiveOrders: bigint;
     totalMachinesRunning: bigint;
     totalInwardTodayKg: bigint;
+    oeProductionTodayKg: bigint;
+    tfoProductionTodayKg: bigint;
+    ringProductionTodayKg: bigint;
 }
 export interface YarnInventory {
     id: bigint;
@@ -367,6 +370,8 @@ export interface backendInterface {
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getDashboardStats(): Promise<DashboardStats>;
+    getDropdownOptions(): Promise<string>;
+    setDropdownOptions(json: string): Promise<void>;
     getDispatchBalance(lotNumber: string): Promise<DispatchBalance | null>;
     getNextDispatchNumber(): Promise<string>;
     getNextInwardNumber(): Promise<string>;

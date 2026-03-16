@@ -260,6 +260,15 @@ export interface WarehouseStock {
   'warehouse' : Warehouse,
   'materialName' : string,
 }
+export interface WarehouseTransfer {
+  'id' : bigint,
+  'materialName' : string,
+  'fromWarehouse' : Warehouse,
+  'toWarehouse' : Warehouse,
+  'qty' : bigint,
+  'transferDate' : bigint,
+  'remarks' : string,
+}
 export interface YarnInventory {
   'id' : bigint,
   'status' : InventoryStatus,
@@ -280,7 +289,6 @@ export interface YarnOpeningStockRecord {
   'endUse' : EndUse,
 }
 export interface _SERVICE {
-  '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addBatchStage' : ActorMethod<
     [bigint, ProcessStage, bigint, bigint, bigint, Time, Time, string],
     bigint
@@ -370,6 +378,8 @@ export interface _SERVICE {
   'getAllRawMaterialOpeningStock' : ActorMethod<[], Array<RawMaterial>>,
   'getAllRawMaterials' : ActorMethod<[], Array<RawMaterial>>,
   'getAllWarehouseStock' : ActorMethod<[], Array<WarehouseStock>>,
+  'getAllWarehouseTransfers' : ActorMethod<[], Array<WarehouseTransfer>>,
+  'transferWarehouseStock' : ActorMethod<[string, Warehouse, Warehouse, bigint, bigint, string], bigint>,
   'getAllYarnCountLabels' : ActorMethod<[], Array<[string, string]>>,
   'getAllYarnInventory' : ActorMethod<[], Array<YarnInventory>>,
   'getAllYarnOpeningStock' : ActorMethod<[], Array<YarnOpeningStockRecord>>,

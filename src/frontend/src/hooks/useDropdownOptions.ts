@@ -1,11 +1,13 @@
 /**
- * useDropdownOptions — centralized, editable dropdown lists stored in localStorage.
- * Provides default values on first use and allows admin to add/remove/reorder items.
+ * useDropdownOptions — centralized, editable dropdown lists.
+ * Stores in both localStorage (for immediate rendering) AND the backend (for cross-env sync).
+ * Backend is the source of truth for productTypes, endUses, destinations, materialNames, departments.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useActor } from "./useActor";
 
-// ─── Default Lists ─────────────────────────────────────────────────────────────
+// ─── Default Lists ──────────────────────────────────────────────────────────────────
 
 export const DEFAULT_MATERIAL_NAMES = [
   "Cotton",
@@ -60,7 +62,7 @@ export const DEFAULT_DESTINATIONS = [
   { value: "tfo", label: "TFO" },
 ];
 
-// ─── Storage Keys ──────────────────────────────────────────────────────────────
+// ─── Storage Keys ──────────────────────────────────────────────────────────────────
 
 const KEYS = {
   materialNames: "spinmill_material_names",
@@ -70,7 +72,7 @@ const KEYS = {
   destinations: "spinmill_destinations",
 } as const;
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────────
 
 function loadList<T>(key: string, defaults: T[]): T[] {
   try {
@@ -90,7 +92,7 @@ function saveList<T>(key: string, list: T[]): void {
   }
 }
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
+// ─── Hook ──────────────────────────────────────────────────────────────────────────
 
 export interface LabeledOption {
   value: string;
@@ -118,6 +120,13 @@ export interface DropdownOptionsStore {
 }
 
 export function useDropdownOptions(): DropdownOptionsStore {
+  const { actor } = useActor();
+  // Keep a ref so callbacks can access the latest actor without needing it in deps
+  const actorRef = useRef(actor);
+  actorRef.current = actor;
+
+  const syncedFromBackend = useRef(false);
+
   const [materialNames, setMaterialNamesState] = useState<string[]>(() =>
     loadList(KEYS.materialNames, DEFAULT_MATERIAL_NAMES),
   );
@@ -134,30 +143,138 @@ export function useDropdownOptions(): DropdownOptionsStore {
     loadList(KEYS.destinations, DEFAULT_DESTINATIONS),
   );
 
-  const setMaterialNames = useCallback((list: string[]) => {
-    saveList(KEYS.materialNames, list);
-    setMaterialNamesState(list);
-  }, []);
+  // Load from backend once on mount (when actor is ready)
+  useEffect(() => {
+    if (!actor || syncedFromBackend.current) return;
+    syncedFromBackend.current = true;
+    (async () => {
+      try {
+        const json = await (actor as any).getDropdownOptions();
+        if (!json || json.trim() === "") return;
+        const data = JSON.parse(json);
+        if (data.materialNames?.length) {
+          saveList(KEYS.materialNames, data.materialNames);
+          setMaterialNamesState(data.materialNames);
+        }
+        if (data.departments?.length) {
+          saveList(KEYS.departments, data.departments);
+          setDepartmentsState(data.departments);
+        }
+        if (data.productTypes?.length) {
+          saveList(KEYS.productTypes, data.productTypes);
+          setProductTypesState(data.productTypes);
+        }
+        if (data.endUses?.length) {
+          saveList(KEYS.endUses, data.endUses);
+          setEndUsesState(data.endUses);
+        }
+        if (data.destinations?.length) {
+          saveList(KEYS.destinations, data.destinations);
+          setDestinationsState(data.destinations);
+        }
+      } catch {
+        // Backend doesn't have the function yet or failed; use localStorage
+      }
+    })();
+  }, [actor]);
 
-  const setDepartments = useCallback((list: string[]) => {
-    saveList(KEYS.departments, list);
-    setDepartmentsState(list);
-  }, []);
+  // Helper: save all options to backend (uses ref so it's stable)
+  const saveToBackend = useCallback(
+    (
+      mn: string[],
+      dpt: string[],
+      pt: LabeledOption[],
+      eu: LabeledOption[],
+      dst: LabeledOption[],
+    ) => {
+      const currentActor = actorRef.current;
+      if (!currentActor) return;
+      const json = JSON.stringify({
+        materialNames: mn,
+        departments: dpt,
+        productTypes: pt,
+        endUses: eu,
+        destinations: dst,
+      });
+      (currentActor as any).setDropdownOptions(json).catch(() => {});
+    },
+    [],
+  );
 
-  const setProductTypes = useCallback((list: LabeledOption[]) => {
-    saveList(KEYS.productTypes, list);
-    setProductTypesState(list);
-  }, []);
+  const setMaterialNames = useCallback(
+    (list: string[]) => {
+      saveList(KEYS.materialNames, list);
+      setMaterialNamesState(list);
+      saveToBackend(
+        list,
+        loadList(KEYS.departments, DEFAULT_DEPARTMENTS),
+        loadList(KEYS.productTypes, DEFAULT_PRODUCT_TYPES),
+        loadList(KEYS.endUses, DEFAULT_END_USES),
+        loadList(KEYS.destinations, DEFAULT_DESTINATIONS),
+      );
+    },
+    [saveToBackend],
+  );
 
-  const setEndUses = useCallback((list: LabeledOption[]) => {
-    saveList(KEYS.endUses, list);
-    setEndUsesState(list);
-  }, []);
+  const setDepartments = useCallback(
+    (list: string[]) => {
+      saveList(KEYS.departments, list);
+      setDepartmentsState(list);
+      saveToBackend(
+        loadList(KEYS.materialNames, DEFAULT_MATERIAL_NAMES),
+        list,
+        loadList(KEYS.productTypes, DEFAULT_PRODUCT_TYPES),
+        loadList(KEYS.endUses, DEFAULT_END_USES),
+        loadList(KEYS.destinations, DEFAULT_DESTINATIONS),
+      );
+    },
+    [saveToBackend],
+  );
 
-  const setDestinations = useCallback((list: LabeledOption[]) => {
-    saveList(KEYS.destinations, list);
-    setDestinationsState(list);
-  }, []);
+  const setProductTypes = useCallback(
+    (list: LabeledOption[]) => {
+      saveList(KEYS.productTypes, list);
+      setProductTypesState(list);
+      saveToBackend(
+        loadList(KEYS.materialNames, DEFAULT_MATERIAL_NAMES),
+        loadList(KEYS.departments, DEFAULT_DEPARTMENTS),
+        list,
+        loadList(KEYS.endUses, DEFAULT_END_USES),
+        loadList(KEYS.destinations, DEFAULT_DESTINATIONS),
+      );
+    },
+    [saveToBackend],
+  );
+
+  const setEndUses = useCallback(
+    (list: LabeledOption[]) => {
+      saveList(KEYS.endUses, list);
+      setEndUsesState(list);
+      saveToBackend(
+        loadList(KEYS.materialNames, DEFAULT_MATERIAL_NAMES),
+        loadList(KEYS.departments, DEFAULT_DEPARTMENTS),
+        loadList(KEYS.productTypes, DEFAULT_PRODUCT_TYPES),
+        list,
+        loadList(KEYS.destinations, DEFAULT_DESTINATIONS),
+      );
+    },
+    [saveToBackend],
+  );
+
+  const setDestinations = useCallback(
+    (list: LabeledOption[]) => {
+      saveList(KEYS.destinations, list);
+      setDestinationsState(list);
+      saveToBackend(
+        loadList(KEYS.materialNames, DEFAULT_MATERIAL_NAMES),
+        loadList(KEYS.departments, DEFAULT_DEPARTMENTS),
+        loadList(KEYS.productTypes, DEFAULT_PRODUCT_TYPES),
+        loadList(KEYS.endUses, DEFAULT_END_USES),
+        list,
+      );
+    },
+    [saveToBackend],
+  );
 
   const resetMaterialNames = useCallback(() => {
     saveList(KEYS.materialNames, DEFAULT_MATERIAL_NAMES);

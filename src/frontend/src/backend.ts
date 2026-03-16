@@ -391,7 +391,6 @@ export enum Warehouse {
     ringRawMaterial = "ringRawMaterial"
 }
 export interface backendInterface {
-    _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     addBatchStage(batchId: bigint, stage: ProcessStage, weightInKg: bigint, weightOutKg: bigint, machineId: bigint, startTime: Time, endTime: Time, operatorNotes: string): Promise<bigint>;
     addInwardEntry(inwardNumber: string, purchaseOrderId: bigint, inwardDate: Time, materialName: string, receivedQty: bigint, warehouse: Warehouse, vehicleNumber: string, remarks: string): Promise<bigint>;
     addProductionLog(shift: Shift, date: Time, machineId: bigint, quantityKg: bigint, efficiencyPercent: bigint, operatorName: string): Promise<bigint>;
@@ -439,6 +438,8 @@ export interface backendInterface {
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getDashboardStats(): Promise<DashboardStats>;
+    getDropdownOptions(): Promise<string>;
+    setDropdownOptions(json: string): Promise<void>;
     getDispatchBalance(lotNumber: string): Promise<DispatchBalance | null>;
     getNextDispatchNumber(): Promise<string>;
     getNextInwardNumber(): Promise<string>;
@@ -470,20 +471,6 @@ export interface backendInterface {
 import type { ApprovalStatus as _ApprovalStatus, BatchStage as _BatchStage, DispatchBalance as _DispatchBalance, DispatchDestination as _DispatchDestination, DispatchEntry as _DispatchEntry, EndUse as _EndUse, InventoryStatus as _InventoryStatus, InwardEntry as _InwardEntry, Machine as _Machine, MachineStatus as _MachineStatus, MachineType as _MachineType, MaterialIssue as _MaterialIssue, OrderStatus as _OrderStatus, POBalance as _POBalance, PackingBalance as _PackingBalance, PackingEntry as _PackingEntry, ProcessStage as _ProcessStage, ProductType as _ProductType, ProductionLog as _ProductionLog, ProductionOrder as _ProductionOrder, ProductionOrderBalance as _ProductionOrderBalance, PurchaseOrder as _PurchaseOrder, PurchaseOrderStatus as _PurchaseOrderStatus, RawMaterial as _RawMaterial, RawMaterialStatus as _RawMaterialStatus, Shift as _Shift, SpinningUnit as _SpinningUnit, Time as _Time, TwistDirection as _TwistDirection, UserApprovalInfo as _UserApprovalInfo, UserProfile as _UserProfile, UserRole as _UserRole, Warehouse as _Warehouse, WarehouseStock as _WarehouseStock, YarnInventory as _YarnInventory, YarnOpeningStockRecord as _YarnOpeningStockRecord } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
-    async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor._initializeAccessControlWithSecret(arg0);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor._initializeAccessControlWithSecret(arg0);
-            return result;
-        }
-    }
     async addBatchStage(arg0: bigint, arg1: ProcessStage, arg2: bigint, arg3: bigint, arg4: bigint, arg5: Time, arg6: Time, arg7: string): Promise<bigint> {
         if (this.processError) {
             try {
@@ -1140,6 +1127,32 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.getDashboardStats();
             return result;
+        }
+    }
+    async getDropdownOptions(): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getDropdownOptions();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getDropdownOptions();
+            return result;
+        }
+    }
+    async setDropdownOptions(json: string): Promise<void> {
+        if (this.processError) {
+            try {
+                await this.actor.setDropdownOptions(json);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            await this.actor.setDropdownOptions(json);
         }
     }
     async getDispatchBalance(arg0: string): Promise<DispatchBalance | null> {

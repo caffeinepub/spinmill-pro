@@ -129,6 +129,20 @@ export default function PurchaseOrders() {
   const [editItem, setEditItem] = useState<PurchaseOrder | null>(null);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [form, setForm] = useState(defaultForm);
+  const [showClosed, setShowClosed] = useState(false);
+
+  const LATEST_COUNT_PO = 25;
+  const filteredOrders = orders.filter(
+    (o) => showClosed || (o.status as string) !== "closed",
+  );
+  const hasActiveFilters = showClosed;
+  const displayedOrders = hasActiveFilters
+    ? filteredOrders
+    : [...filteredOrders]
+        .sort((a, b) => (a.id > b.id ? -1 : 1))
+        .slice(0, LATEST_COUNT_PO);
+  const isShowingLimitedPO =
+    !hasActiveFilters && filteredOrders.length > LATEST_COUNT_PO;
 
   function generatePONumber() {
     const year = new Date().getFullYear();
@@ -238,6 +252,20 @@ export default function PurchaseOrders() {
         }
       />
 
+      {/* Filter Controls */}
+      <div className="flex items-center gap-3 mb-4">
+        <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-border accent-primary"
+            checked={showClosed}
+            onChange={(e) => setShowClosed(e.target.checked)}
+            data-ocid="purchaseorders.toggle"
+          />
+          Show Closed POs
+        </label>
+      </div>
+
       <div className="rounded-lg border border-border/60 bg-card shadow-card overflow-hidden">
         {isLoading ? (
           <div className="p-4 space-y-3">
@@ -245,7 +273,7 @@ export default function PurchaseOrders() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
-        ) : orders.length === 0 ? (
+        ) : displayedOrders.length === 0 ? (
           <EmptyState
             data-ocid="purchaseorders.empty_state"
             icon={<ShoppingCart className="w-7 h-7" />}
@@ -285,7 +313,7 @@ export default function PurchaseOrders() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.map((order, idx) => (
+              {displayedOrders.map((order, idx) => (
                 <TableRow
                   key={String(order.id)}
                   data-ocid={`purchaseorders.item.${idx + 1}`}
@@ -342,6 +370,13 @@ export default function PurchaseOrders() {
       </div>
 
       {/* Add/Edit Dialog */}
+      {isShowingLimitedPO && (
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          Showing 25 most recent. Toggle 201cShow Closed POs201d or search to
+          find older entries.
+        </p>
+      )}
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent
           data-ocid="purchaseorders.dialog"

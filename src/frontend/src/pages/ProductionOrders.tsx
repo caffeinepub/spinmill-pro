@@ -40,6 +40,7 @@ import {
   useProductionOrders,
   useSetYarnCountLabel,
   useUpdateProductionOrder,
+  useYarnCountLabels,
 } from "../hooks/useQueries";
 import type {
   EndUse,
@@ -49,6 +50,8 @@ import type {
   SpinningUnit,
   TwistDirection,
 } from "../types";
+
+const LATEST_COUNT = 25;
 
 const defaultForm = {
   orderNumber: "",
@@ -70,6 +73,7 @@ export default function ProductionOrders() {
   const isLoggedIn = !!identity;
   const { productTypes, endUses } = useDropdownOptionsContext();
   const { data: orders = [], isLoading } = useProductionOrders();
+  const { data: countLabels } = useYarnCountLabels();
   const createMutation = useCreateProductionOrder();
   const updateMutation = useUpdateProductionOrder();
   const setYarnCountLabelMutation = useSetYarnCountLabel();
@@ -79,7 +83,9 @@ export default function ProductionOrders() {
   const [editItem, setEditItem] = useState<ProductionOrder | null>(null);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
   const [form, setForm] = useState(defaultForm);
-  const [filterStatus, setFilterStatus] = useState<string>("all");
+  // Default to "active" to hide completed/cancelled
+  const [filterStatus, setFilterStatus] = useState<string>("active");
+  const [filterUnit, setFilterUnit] = useState<string>("all");
   const [lotSearch, setLotSearch] = useState<string>("");
 
   function generateOrderNumber() {
@@ -104,7 +110,7 @@ export default function ProductionOrders() {
       productType: item.productType,
       spinningUnit: item.spinningUnit,
       endUse: item.endUse,
-      yarnCountNe: String(item.yarnCountNe),
+      yarnCountNe: countLabels?.get(item.lotNumber) ?? String(item.yarnCountNe),
       twistDirection: item.twistDirection,
       quantityKg: String(Number(item.quantityKg)),
       targetDate: d.toISOString().substring(0, 10),
@@ -207,13 +213,33 @@ export default function ProductionOrders() {
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
+  const hasActiveFilters =
+    filterStatus !== "active" ||
+    filterUnit !== "all" ||
+    lotSearch.trim() !== "";
+
   const filteredOrders = orders
-    .filter((o) => filterStatus === "all" || o.status === filterStatus)
+    .filter((o) => {
+      if (filterStatus === "active")
+        return o.status === "pending" || o.status === "inProgress";
+      if (filterStatus === "all") return true;
+      return o.status === filterStatus;
+    })
+    .filter((o) => filterUnit === "all" || o.spinningUnit === filterUnit)
     .filter(
       (o) =>
         !lotSearch.trim() ||
         o.lotNumber.toLowerCase().includes(lotSearch.trim().toLowerCase()),
     );
+
+  // If no search/filter active, show only latest 25
+  const displayedOrders = hasActiveFilters
+    ? filteredOrders
+    : [...filteredOrders]
+        .sort((a, b) => (a.id > b.id ? -1 : 1))
+        .slice(0, LATEST_COUNT);
+  const isShowingLimited =
+    !hasActiveFilters && filteredOrders.length > LATEST_COUNT;
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -232,23 +258,45 @@ export default function ProductionOrders() {
         }
       />
 
-      {/* Status Filter */}
-      <div className="flex items-center gap-3 mb-4">
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger
-            className="w-48"
-            data-ocid="orders.status_filter_select"
-          >
-            <SelectValue placeholder="Filter by Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="inProgress">In Progress</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Filters */}
+      <div className="flex flex-wrap items-end gap-3 mb-4">
+        <div className="space-y-1">
+          <Label className="text-xs">Status</Label>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger
+              className="w-44"
+              data-ocid="orders.status_filter_select"
+            >
+              <SelectValue placeholder="Filter by Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Active Orders</SelectItem>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="inProgress">In Progress</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Unit</Label>
+          <Select value={filterUnit} onValueChange={setFilterUnit}>
+            <SelectTrigger
+              className="w-44"
+              data-ocid="orders.unit_filter_select"
+            >
+              <SelectValue placeholder="Filter by Unit" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Units</SelectItem>
+              <SelectItem value="openend">OE Spinning</SelectItem>
+              <SelectItem value="ringSpinning">Ring Spinning</SelectItem>
+              <SelectItem value="tfo">TFO</SelectItem>
+              <SelectItem value="outsideYarn">Outside Yarn</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="space-y-1">
           <Label className="text-xs">Lot Number</Label>
           <Input
@@ -256,16 +304,17 @@ export default function ProductionOrders() {
             data-ocid="orders.lot_search_input"
             value={lotSearch}
             onChange={(e) => setLotSearch(e.target.value)}
-            className="h-8 text-sm w-40"
+            className="h-9 text-sm w-40"
           />
         </div>
-        {(filterStatus !== "all" || lotSearch) && (
+        {hasActiveFilters && (
           <Button
             variant="ghost"
             size="sm"
             data-ocid="orders.clear_filter_button"
             onClick={() => {
-              setFilterStatus("all");
+              setFilterStatus("active");
+              setFilterUnit("all");
               setLotSearch("");
             }}
             className="gap-1 text-muted-foreground"
@@ -283,22 +332,22 @@ export default function ProductionOrders() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
-        ) : filteredOrders.length === 0 ? (
+        ) : displayedOrders.length === 0 ? (
           <EmptyState
             data-ocid="orders.empty_state"
             icon={<ClipboardList className="w-7 h-7" />}
             title={
-              filterStatus !== "all"
-                ? "No orders match this status"
-                : "No production orders"
+              hasActiveFilters
+                ? "No orders match these filters"
+                : "No active production orders"
             }
             description={
-              filterStatus !== "all"
-                ? "Try selecting a different status filter."
+              hasActiveFilters
+                ? "Try adjusting your filters."
                 : "Create your first production order to begin tracking yarn manufacturing."
             }
-            actionLabel={filterStatus !== "all" ? undefined : "Create Order"}
-            onAction={filterStatus !== "all" ? undefined : openAdd}
+            actionLabel={hasActiveFilters ? undefined : "Create Order"}
+            onAction={hasActiveFilters ? undefined : openAdd}
           />
         ) : (
           <Table>
@@ -343,7 +392,7 @@ export default function ProductionOrders() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredOrders.map((order, idx) => (
+              {displayedOrders.map((order, idx) => (
                 <TableRow
                   key={String(order.id)}
                   data-ocid={`orders.item.${idx + 1}`}
@@ -386,7 +435,8 @@ export default function ProductionOrders() {
                         order.endUse.slice(1)}
                   </TableCell>
                   <TableCell className="font-mono-nums">
-                    {order.yarnCountNe}
+                    {countLabels?.get(order.lotNumber) ??
+                      String(order.yarnCountNe)}
                   </TableCell>
                   <TableCell className="font-mono-nums">
                     {order.twistDirection === "s" ? "OE" : "RS"}
@@ -434,6 +484,13 @@ export default function ProductionOrders() {
           </Table>
         )}
       </div>
+
+      {isShowingLimited && (
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          Showing {LATEST_COUNT} most recent. Search or change filters to find
+          older entries.
+        </p>
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent data-ocid="orders.dialog" className="sm:max-w-xl">

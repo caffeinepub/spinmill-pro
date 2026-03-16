@@ -247,6 +247,11 @@ export default function InwardEntry() {
   const [form, setForm] = useState(defaultForm);
 
   const isLoading = entriesLoading || poLoading;
+  const LATEST_COUNT_IW = 25;
+  const displayedEntries = [...entries]
+    .sort((a, b) => (a.id > b.id ? -1 : 1))
+    .slice(0, LATEST_COUNT_IW);
+  const isShowingLimitedIW = entries.length > LATEST_COUNT_IW;
 
   // Build a map from PO id -> PO for quick lookups
   const poMap = new Map(purchaseOrders.map((po) => [String(po.id), po]));
@@ -460,7 +465,7 @@ export default function InwardEntry() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {entries.map((entry, idx) => (
+              {displayedEntries.map((entry, idx) => (
                 <TableRow
                   key={String(entry.id)}
                   data-ocid={`inward.item.${idx + 1}`}
@@ -572,7 +577,9 @@ export default function InwardEntry() {
             <div className="space-y-1.5">
               <Label>Purchase Order</Label>
               <POSearchInput
-                purchaseOrders={purchaseOrders}
+                purchaseOrders={purchaseOrders.filter(
+                  (po) => (po.status as string) !== "closed",
+                )}
                 value={form.purchaseOrderId}
                 onChange={(id) =>
                   setForm((p) => ({ ...p, purchaseOrderId: id }))
@@ -723,6 +730,12 @@ export default function InwardEntry() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {isShowingLimitedIW && (
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          Showing 25 most recent. Search to find older entries.
+        </p>
+      )}
 
       <ConfirmDialog
         open={!!deleteId}

@@ -215,6 +215,9 @@ actor {
     oeWarehouseStockKg : Nat;
     ringWarehouseStockKg : Nat;
     totalDispatchedTodayKg : Nat;
+    oeProductionTodayKg : Nat;
+    tfoProductionTodayKg : Nat;
+    ringProductionTodayKg : Nat;
   };
 
   type POBalance = {
@@ -296,6 +299,7 @@ actor {
   let dispatchEntries = Map.empty<Nat, DispatchEntry>();
   let yarnOpeningStock = Map.empty<Nat, YarnOpeningStockRecord>();
   stable var yarnCountLabels = Map.empty<Text, Text>();
+  stable var dropdownOptionsStore = Map.empty<Text, Text>();
   // Stable backing for user management (persists across upgrades)
   stable var _stableUserRoles = Map.empty<Principal, AccessControl.UserRole>();
   stable var _stableAdminAssigned : Bool = false;
@@ -1388,6 +1392,34 @@ actor {
     for ((_, ie) in inwardEntries.entries()) {
       if (ie.inwardDate >= todayStart) { inwardToday += ie.receivedQty };
     };
+    var oeProductionToday : Nat = 0;
+    var tfoProductionToday : Nat = 0;
+    var ringProductionToday : Nat = 0;
+    for ((_, pl) in productionLogs.entries()) {
+      if (pl.date >= todayStart) {
+        switch (machines.get(pl.machineId)) {
+          case (?m) {
+            switch (m.currentOrderId) {
+              case (?oid) {
+                switch (productionOrders.get(oid)) {
+                  case (?po) {
+                    switch (po.spinningUnit) {
+                      case (#openend) { oeProductionToday += pl.quantityKg };
+                      case (#tfo) { tfoProductionToday += pl.quantityKg };
+                      case (#ringSpinning) { ringProductionToday += pl.quantityKg };
+                      case (_) {};
+                    };
+                  };
+                  case null {};
+                };
+              };
+              case null {};
+            };
+          };
+          case null {};
+        };
+      };
+    };
     {
       totalActiveOrders;
       totalMachinesRunning;
@@ -1398,6 +1430,20 @@ actor {
       oeWarehouseStockKg = oeStock;
       ringWarehouseStockKg = ringStock;
       totalDispatchedTodayKg = dispatchedToday;
+      oeProductionTodayKg = oeProductionToday;
+      tfoProductionTodayKg = tfoProductionToday;
+      ringProductionTodayKg = ringProductionToday;
     };
+  };
+
+  public query ({ caller }) func getDropdownOptions() : async Text {
+    switch (dropdownOptionsStore.get("options")) {
+      case (?json) { json };
+      case null { "" };
+    };
+  };
+
+  public shared ({ caller }) func setDropdownOptions(json : Text) : async () {
+    dropdownOptionsStore.add("options", json);
   };
 };

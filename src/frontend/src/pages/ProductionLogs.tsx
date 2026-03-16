@@ -74,7 +74,7 @@ const unitOptions = [
   { value: MachineType.autocoro, label: "OE Spinning" },
   { value: MachineType.ringFrame, label: "Ring Spinning" },
   { value: MachineType.winding, label: "TFO" },
-  { value: MachineType.outsideYarn, label: "Outside Yarn" },
+  { value: "outsideYarn" as MachineType, label: "Outside Yarn" },
 ];
 
 const defaultForm = {
@@ -337,6 +337,15 @@ export default function ProductionLogs() {
   const hasActiveFilters =
     filterMachineId || filterUnit || filterDateFrom || filterDateTo;
 
+  const LATEST_COUNT_LOGS = 25;
+  const displayedLogs = hasActiveFilters
+    ? filteredLogs
+    : [...filteredLogs]
+        .sort((a, b) => (a.id > b.id ? -1 : 1))
+        .slice(0, LATEST_COUNT_LOGS);
+  const isShowingLimitedLogs =
+    !hasActiveFilters && filteredLogs.length > LATEST_COUNT_LOGS;
+
   function clearFilters() {
     setFilterMachineId("");
     setFilterUnit("");
@@ -383,6 +392,7 @@ export default function ProductionLogs() {
   } = useProductionOrderBalance(
     hasInProgressOrder ? BigInt(0) : null,
     hasInProgressOrder ? machineRunningLot : null,
+    form.machineId || null,
   );
 
   const enteredQty = form.quantityKg ? Number(form.quantityKg) : 0;
@@ -731,7 +741,7 @@ export default function ProductionLogs() {
                   </TableCell>
                 </TableRow>
               ) : null}
-              {filteredLogs.map((log, idx) => {
+              {displayedLogs.map((log, idx) => {
                 const machine = machines.find((m) => m.id === log.machineId);
                 const efficiency = Number(log.efficiencyPercent);
                 return (
@@ -804,6 +814,12 @@ export default function ProductionLogs() {
       </div>
 
       {/* ── Single-entry dialog (unchanged) ── */}
+      {isShowingLimitedLogs && (
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          Showing 25 most recent. Use filters above to find older entries.
+        </p>
+      )}
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent data-ocid="logs.dialog" className="sm:max-w-lg">
           <DialogHeader>

@@ -1,29 +1,41 @@
 # SpinMill Pro
 
 ## Current State
-The app has raw material tracking with two warehouses (OE Raw Material and Ring Raw Material). Stock is managed via inward entries and opening stock. There is no way to transfer raw material between warehouses.
+SpinMill Pro is a full-stack textile spinning mill management app with modules for procurement, inventory, production, packing, dispatch, and reporting. The backend uses Motoko with fixed variant types for ProductType and EndUse. Dropdown options (product types, end uses, etc.) are stored in localStorage, making them browser/environment-specific. The dashboard shows Yarn Inventory, QC Pass Rate, and a Quick Actions card. Production Orders shows all orders including completed/cancelled. Purchase Orders and Inward Entry show closed POs. Production balance in ProductionLogs doesn't re-fetch when the machine's order changes mid-entry. All data entry pages show all records without pagination.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Backend: `transferWarehouseStock(materialName, fromWarehouse, toWarehouse, qty, transferDate, remarks)` function that deducts from source warehouse and adds to destination warehouse
-- Backend: `WarehouseTransfer` type and stable storage for transfer records
-- Backend: `getAllWarehouseTransfers()` query function
-- Frontend: New `WarehouseTransfer.tsx` page under Procurement group in sidebar
-- Page shows current warehouse stock summary, a transfer form, and a history table of all transfers
-- backend.d.ts updated with new functions and types
+- Unit filter dropdown to Production Orders filter bar
+- Outside Yarn Inward report tab in Reports section with date filter and lot number search bar
+- Backend: `getDropdownOptions()` and `setDropdownOptions(json: Text)` functions to store dropdown config in the backend (stable)
+- Backend: `oeProductionTodayKg`, `tfoProductionTodayKg`, `ringProductionTodayKg` to DashboardStats
+- Bulk Issue dialog in Material Issue section (select warehouse + material, enter quantities for multiple departments at once)
+- Backend: `getDropdownOptions` and `setDropdownOptions` for syncing dropdown lists across environments
 
 ### Modify
-- App.tsx: Add `warehouse-transfer` PageId, nav item under Procurement group, and page component mapping
+- ProductionOrders.tsx: Use yarn count labels (from useYarnCountLabels) to display TFO count correctly
+- ProductionOrders.tsx: Add Unit filter; default status filter excludes completed/cancelled orders
+- Dashboard.tsx: Remove Yarn Inventory KPI, QC Pass Rate KPI, Quick Actions card; add Daily Production cards for OE Spinning, TFO, and Ring Spinning (kg today)
+- PurchaseOrders.tsx: Filter out closed POs from the table by default (show only open/partiallyReceived)
+- InwardEntry.tsx: Filter out closed POs from the PO search/selection
+- ProductionLogs.tsx: Fix balance re-fetch — invalidate/refetch getProductionOrderBalance query when machine selection changes (use key change)
+- All data entry pages: Show only the latest 25 records by default; full list visible when user types in search
+- useDropdownOptions.ts: Load from backend instead of localStorage; save to backend on change
 
 ### Remove
-- Nothing
+- Dashboard: Yarn Inventory KPI card, QC Pass Rate KPI card, Quick Actions card
+- No closed Production Orders shown in the table (completed and cancelled orders excluded from default view — user can still see them by changing the status filter)
 
 ## Implementation Plan
-1. Add `WarehouseTransfer` type to backend Motoko with fields: id, materialName, fromWarehouse, toWarehouse, qty, transferDate, remarks
-2. Add stable storage for transfers and next transfer ID
-3. Add `transferWarehouseStock` shared function that validates stock, deducts from source, adds to destination
-4. Add `getAllWarehouseTransfers` query function
-5. Update backend.d.ts with new type and function signatures
-6. Create `WarehouseTransfer.tsx` frontend page with stock summary, form, and history
-7. Update App.tsx with new PageId, nav item (ArrowLeftRight icon), and page mapping
+1. Update backend main.mo: add stable dropdown options store, add dropdown get/set functions, add daily production by unit to DashboardStats
+2. Regenerate backend.d.ts type bindings
+3. Update useDropdownOptions.ts to load/save from backend
+4. Update ProductionOrders.tsx: use count labels for TFO, add unit filter, default filter excludes closed orders
+5. Update Dashboard.tsx: remove yarn inventory/QC/quick actions, add 3 daily production unit cards
+6. Update PurchaseOrders.tsx: hide closed POs by default
+7. Update InwardEntry.tsx: filter closed POs from selection
+8. Update ProductionLogs.tsx: force balance re-fetch when machine changes
+9. Add bulk issue dialog to MaterialIssue.tsx
+10. Add Outside Yarn Inward tab to Reports.tsx
+11. Apply latest-25-entries limit to all data entry pages

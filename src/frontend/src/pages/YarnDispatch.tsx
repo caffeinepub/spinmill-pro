@@ -461,6 +461,14 @@ export default function YarnDispatch() {
   }, [sortedEntries, filterDateFrom, filterDateTo, filterLotSearch]);
 
   const hasActiveFilters = filterDateFrom || filterDateTo || filterLotSearch;
+  const LATEST_COUNT_DISPATCH = 25;
+  const displayedDispatchEntries = hasActiveFilters
+    ? filteredEntries
+    : [...filteredEntries]
+        .sort((a, b) => (a.id > b.id ? -1 : 1))
+        .slice(0, LATEST_COUNT_DISPATCH);
+  const isShowingLimitedDispatch =
+    !hasActiveFilters && filteredEntries.length > LATEST_COUNT_DISPATCH;
   function clearDispatchFilters() {
     setFilterDateFrom("");
     setFilterDateTo("");
@@ -704,7 +712,7 @@ export default function YarnDispatch() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredEntries.map((entry, idx) => (
+                {displayedDispatchEntries.map((entry, idx) => (
                   <TableRow
                     key={String(entry.id)}
                     data-ocid={`dispatch.item.${idx + 1}`}
@@ -932,6 +940,12 @@ export default function YarnDispatch() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {isShowingLimitedDispatch && (
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          Showing 25 most recent. Use filters to find older entries.
+        </p>
+      )}
 
       <ConfirmDialog
         open={!!deleteId}

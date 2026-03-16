@@ -231,6 +231,16 @@ export const WarehouseStock = IDL.Record({
   'warehouse' : Warehouse,
   'materialName' : IDL.Text,
 });
+export const WarehouseTransfer = IDL.Record({
+  'id' : IDL.Nat,
+  'materialName' : IDL.Text,
+  'fromWarehouse' : Warehouse,
+  'toWarehouse' : Warehouse,
+  'qty' : IDL.Nat,
+  'transferDate' : IDL.Int,
+  'remarks' : IDL.Text,
+});
+
 export const YarnInventory = IDL.Record({
   'id' : IDL.Nat,
   'status' : InventoryStatus,
@@ -441,6 +451,8 @@ export const idlService = IDL.Service({
     ),
   'getAllRawMaterials' : IDL.Func([], [IDL.Vec(RawMaterial)], ['query']),
   'getAllWarehouseStock' : IDL.Func([], [IDL.Vec(WarehouseStock)], ['query']),
+  'getAllWarehouseTransfers' : IDL.Func([], [IDL.Vec(WarehouseTransfer)], ['query']),
+  'transferWarehouseStock' : IDL.Func([IDL.Text, Warehouse, Warehouse, IDL.Nat, IDL.Int, IDL.Text], [IDL.Nat], []),
   'getAllYarnCountLabels' : IDL.Func(
       [],
       [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))],
@@ -829,6 +841,15 @@ export const idlFactory = ({ IDL }) => {
     'warehouse' : Warehouse,
     'materialName' : IDL.Text,
   });
+  const WarehouseTransfer = IDL.Record({
+    'id' : IDL.Nat,
+    'materialName' : IDL.Text,
+    'fromWarehouse' : Warehouse,
+    'toWarehouse' : Warehouse,
+    'qty' : IDL.Nat,
+    'transferDate' : IDL.Int,
+    'remarks' : IDL.Text,
+  });
   const YarnInventory = IDL.Record({
     'id' : IDL.Nat,
     'status' : InventoryStatus,
@@ -1048,6 +1069,8 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getAllRawMaterials' : IDL.Func([], [IDL.Vec(RawMaterial)], ['query']),
     'getAllWarehouseStock' : IDL.Func([], [IDL.Vec(WarehouseStock)], ['query']),
+  'getAllWarehouseTransfers' : IDL.Func([], [IDL.Vec(WarehouseTransfer)], ['query']),
+  'transferWarehouseStock' : IDL.Func([IDL.Text, Warehouse, Warehouse, IDL.Nat, IDL.Int, IDL.Text], [IDL.Nat], []),
     'getAllYarnCountLabels' : IDL.Func(
         [],
         [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))],
