@@ -1190,9 +1190,11 @@ function DailyInwardReport({
 function DailyPackingReport({
   entries,
   isLoading,
+  countLabels,
 }: {
   entries: PackingEntry[];
   isLoading: boolean;
+  countLabels?: Map<string, string>;
 }) {
   const [fromDate, setFromDate] = useState(defaultFromDate);
   const [toDate, setToDate] = useState(defaultToDate);
@@ -1439,7 +1441,8 @@ function DailyPackingReport({
                       {entry.lotNumber}
                     </TableCell>
                     <TableCell className="text-right text-sm font-medium">
-                      {String(entry.yarnCountNe)}
+                      {countLabels?.get(entry.lotNumber) ??
+                        String(entry.yarnCountNe)}
                     </TableCell>
                     <TableCell>
                       <UnitBadge unit={entry.spinningUnit as string} />
@@ -1482,9 +1485,11 @@ const ALL_DESTINATIONS = [
 function DailyDispatchReport({
   entries,
   isLoading,
+  countLabels,
 }: {
   entries: DispatchEntry[];
   isLoading: boolean;
+  countLabels?: Map<string, string>;
 }) {
   const [fromDate, setFromDate] = useState(defaultFromDate);
   const [toDate, setToDate] = useState(defaultToDate);
@@ -1773,7 +1778,8 @@ function DailyDispatchReport({
                       />
                     </TableCell>
                     <TableCell className="text-right text-sm font-medium">
-                      {String(entry.yarnCountNe)}
+                      {countLabels?.get(entry.lotNumber) ??
+                        String(entry.yarnCountNe)}
                     </TableCell>
                     <TableCell>
                       <UnitBadge unit={entry.spinningUnit as string} />
@@ -2440,6 +2446,7 @@ export default function Reports() {
           <DailyPackingReport
             entries={packingEntries}
             isLoading={packingLoading}
+            countLabels={countLabels}
           />
         </TabsContent>
 
@@ -2447,6 +2454,7 @@ export default function Reports() {
           <DailyDispatchReport
             entries={dispatchEntries}
             isLoading={dispatchLoading}
+            countLabels={countLabels}
           />
         </TabsContent>
 

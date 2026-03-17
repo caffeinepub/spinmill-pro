@@ -27,7 +27,6 @@ import { useUserRole } from "../hooks/UserRoleContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useDeleteRawMaterial,
-  useMaterialIssues,
   useRawMaterials,
   useWarehouseStock,
 } from "../hooks/useQueries";
@@ -236,7 +235,6 @@ export default function RawMaterials() {
   const { identity } = useInternetIdentity();
   const isLoggedIn = !!identity;
   const { data: materials = [], isLoading } = useRawMaterials();
-  const { data: issues = [] } = useMaterialIssues();
   const { data: warehouseStock = [] } = useWarehouseStock();
   const deleteMutation = useDeleteRawMaterial();
 
@@ -257,39 +255,20 @@ export default function RawMaterials() {
   const [warehouseFilter, setWarehouseFilter] = useState<string>("all");
   const [monthFilter, setMonthFilter] = useState<string>("all");
 
-  // Total issued qty per (materialName + warehouse) from material issues
-  const issuedByMaterialWarehouse = useMemo(() => {
-    return issues.reduce(
-      (acc, issue) => {
-        const key = `${issue.materialName}||${issue.warehouse as string}`;
-        acc[key] = (acc[key] || 0) + Number(issue.issuedQty);
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
-  }, [issues]);
-
-  // Grade-wise stock summary: group by grade (material name) + warehouse
-  // For both inward entries and opening stock entries, m.grade holds the material name
-  // (e.g. "Cotton", "Comber Noil"). Never use lotNumber (which is "IW-2026-xxx" for inward).
+  // Grade-wise stock summary: use backend's authoritative stock (already accounts for issues + transfers)
   const gradeStockEntries = useMemo((): GradeStockEntry[] => {
-    const entries: GradeStockEntry[] = warehouseStock.map((s) => {
-      const warehouse = s.warehouse as string;
-      const issueKey = `${s.materialName}||${warehouse}`;
-      const issued = issuedByMaterialWarehouse[issueKey] || 0;
-      return {
-        materialName: s.materialName,
-        grade: s.materialName,
-        warehouse,
-        totalKg: Math.max(0, Number(s.totalQty) - issued),
-      };
-    });
+    const entries: GradeStockEntry[] = warehouseStock.map((s) => ({
+      materialName: s.materialName,
+      grade: s.materialName,
+      warehouse: s.warehouse as string,
+      totalKg: Number(s.totalQty),
+    }));
     return entries.sort((a, b) => {
       const wCompare = a.warehouse.localeCompare(b.warehouse);
       if (wCompare !== 0) return wCompare;
       return a.materialName.localeCompare(b.materialName);
     });
-  }, [warehouseStock, issuedByMaterialWarehouse]);
+  }, [warehouseStock]);
 
   // Derive unique filter options from the data
   const supplierOptions = useMemo(() => {
@@ -423,15 +402,12 @@ export default function RawMaterials() {
         }
       />
 
-      {/* Grade-wise Stock Summary */}
-      {materials.length > 0 && (
+      {/* Grade-wise Stock Summary — shown whenever warehouseStock has data */}
+      {warehouseStock.length > 0 && (
         <div className="mb-4" data-ocid="rawmaterials.section">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Current Stock by Grade
-            </span>
-            <span className="text-xs text-muted-foreground/60">
-              (after deducting issues)
             </span>
           </div>
           {/* OE Raw Material */}

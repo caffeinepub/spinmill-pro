@@ -8,7 +8,6 @@ import {
   Box,
   ChevronRight,
   ClipboardList,
-  Factory,
   FileText,
   LayoutDashboard,
   ListChecks,
@@ -19,6 +18,7 @@ import {
   Package2,
   PackageOpen,
   PackageSearch,
+  PrinterIcon,
   RefreshCw,
   Settings2,
   ShoppingCart,
@@ -29,6 +29,7 @@ import { useState } from "react";
 import { DropdownOptionsProvider } from "./hooks/DropdownOptionsContext";
 import { UserRoleProvider } from "./hooks/UserRoleContext";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
+import CombinedStockReport from "./pages/CombinedStockReport";
 import Dashboard from "./pages/Dashboard";
 import DropdownOptionsPage from "./pages/DropdownOptions";
 import InwardEntry from "./pages/InwardEntry";
@@ -65,6 +66,7 @@ type PageId =
   | "yarn-inventory"
   | "yarn-dispatch"
   | "reports"
+  | "combined-stock-report"
   | "dropdown-options"
   | "warehouse-transfer"
   | "waste-production"
@@ -174,6 +176,12 @@ const navItems: NavItem[] = [
     group: "Reports",
   },
   {
+    id: "combined-stock-report",
+    label: "Combined Stock Report",
+    icon: <PrinterIcon className="w-4 h-4" />,
+    group: "Reports",
+  },
+  {
     id: "yarn-inventory",
     label: "Yarn Inventory",
     icon: <Package2 className="w-4 h-4" />,
@@ -209,6 +217,7 @@ const pageComponents: Record<PageId, React.ReactNode> = {
   "yarn-inventory": <YarnInventory />,
   "yarn-dispatch": <YarnDispatch />,
   reports: <Reports />,
+  "combined-stock-report": <CombinedStockReport />,
   "dropdown-options": <DropdownOptionsPage />,
   "warehouse-transfer": <WarehouseTransferPage />,
   "waste-production": <WasteProduction />,

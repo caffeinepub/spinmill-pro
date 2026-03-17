@@ -55,6 +55,7 @@ import {
   usePackingEntries,
   useProductionOrders,
   useUpdateDispatchEntry,
+  useYarnCountLabels,
   useYarnOpeningStock,
 } from "../hooks/useQueries";
 import type {
@@ -182,6 +183,7 @@ function DispatchBalancePanel({
     isLoading,
     isError,
   } = useDispatchBalance(lotNumber || null);
+  const { data: countLabels } = useYarnCountLabels();
 
   const availableKg = balance ? Number(balance.availableKg) : null;
   const isExceeding =
@@ -239,7 +241,7 @@ function DispatchBalancePanel({
                 variant="secondary"
                 className="text-xs font-semibold font-mono bg-primary/10 text-primary border-primary/20"
               >
-                Ne {String(balance.yarnCountNe)}
+                Ne {countLabels?.get(lotNumber) ?? String(balance.yarnCountNe)}
               </Badge>
             </div>
             <div>
@@ -369,6 +371,7 @@ export default function YarnDispatch() {
   const { data: packingEntries = [] } = usePackingEntries();
   const { data: productionOrders = [] } = useProductionOrders();
   const { data: yarnOpeningStockEntries = [] } = useYarnOpeningStock();
+  const { data: countLabels } = useYarnCountLabels();
   const createMutation = useCreateDispatchEntry();
   const deleteMutation = useDeleteDispatchEntry();
   const updateMutation = useUpdateDispatchEntry();
@@ -732,7 +735,9 @@ export default function YarnDispatch() {
                       </Badge>
                     </TableCell>
                     <TableCell className="font-mono text-sm">
-                      Ne {String(entry.yarnCountNe)}
+                      Ne{" "}
+                      {countLabels?.get(entry.lotNumber) ??
+                        String(entry.yarnCountNe)}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatUnit(entry.spinningUnit)}
