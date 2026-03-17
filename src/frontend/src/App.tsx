@@ -43,6 +43,8 @@ import RawMaterialOpeningStock from "./pages/RawMaterialOpeningStock";
 import RawMaterials from "./pages/RawMaterials";
 import Reports from "./pages/Reports";
 import WarehouseTransferPage from "./pages/WarehouseTransfer";
+import WasteProduction from "./pages/WasteProduction";
+import WasteSale from "./pages/WasteSale";
 import YarnDispatch from "./pages/YarnDispatch";
 import YarnInventory from "./pages/YarnInventory";
 import YarnOpeningStock from "./pages/YarnOpeningStock";
@@ -64,7 +66,9 @@ type PageId =
   | "yarn-dispatch"
   | "reports"
   | "dropdown-options"
-  | "warehouse-transfer";
+  | "warehouse-transfer"
+  | "waste-production"
+  | "waste-sale";
 
 interface NavItem {
   id: PageId;
@@ -114,6 +118,18 @@ const navItems: NavItem[] = [
     label: "Warehouse Transfer",
     icon: <ArrowLeftRight className="w-4 h-4" />,
     group: "Procurement",
+  },
+  {
+    id: "waste-production",
+    label: "Waste Production",
+    icon: <Package className="w-4 h-4" />,
+    group: "Waste",
+  },
+  {
+    id: "waste-sale",
+    label: "Waste Sale",
+    icon: <Truck className="w-4 h-4" />,
+    group: "Waste",
   },
   {
     id: "rm-opening-stock",
@@ -195,10 +211,13 @@ const pageComponents: Record<PageId, React.ReactNode> = {
   reports: <Reports />,
   "dropdown-options": <DropdownOptionsPage />,
   "warehouse-transfer": <WarehouseTransferPage />,
+  "waste-production": <WasteProduction />,
+  "waste-sale": <WasteSale />,
 };
 
 const groups = [
   "Procurement",
+  "Waste",
   "Opening Stock",
   "Production",
   "Packing",

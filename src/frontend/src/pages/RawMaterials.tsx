@@ -29,6 +29,7 @@ import {
   useDeleteRawMaterial,
   useMaterialIssues,
   useRawMaterials,
+  useWarehouseStock,
 } from "../hooks/useQueries";
 
 function WarehouseBadge({ warehouse }: { warehouse: Warehouse }) {
@@ -236,6 +237,7 @@ export default function RawMaterials() {
   const isLoggedIn = !!identity;
   const { data: materials = [], isLoading } = useRawMaterials();
   const { data: issues = [] } = useMaterialIssues();
+  const { data: warehouseStock = [] } = useWarehouseStock();
   const deleteMutation = useDeleteRawMaterial();
 
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
@@ -271,51 +273,23 @@ export default function RawMaterials() {
   // For both inward entries and opening stock entries, m.grade holds the material name
   // (e.g. "Cotton", "Comber Noil"). Never use lotNumber (which is "IW-2026-xxx" for inward).
   const gradeStockEntries = useMemo((): GradeStockEntry[] => {
-    // Step 1: aggregate raw totals per (grade/material name + warehouse)
-    const inwardMap: Record<
-      string,
-      {
-        materialName: string;
-        grade: string;
-        warehouse: string;
-        totalKg: number;
-      }
-    > = {};
-    for (const m of materials) {
-      const warehouse = m.warehouse as string;
-      // m.grade always holds the material name for both inward entries and opening stock
-      const displayName =
-        m.grade && m.grade.trim() !== "" ? m.grade : m.lotNumber;
-      const key = `${displayName}||${warehouse}`;
-      if (!inwardMap[key]) {
-        inwardMap[key] = {
-          materialName: displayName,
-          grade: m.grade,
-          warehouse,
-          totalKg: 0,
-        };
-      }
-      inwardMap[key].totalKg += Number(m.weightKg);
-    }
-
-    // Step 2: subtract issued quantities
-    // Issues track materialName + warehouse; materialName matches the grade field
-    const entries: GradeStockEntry[] = Object.values(inwardMap).map((entry) => {
-      const issueKey = `${entry.materialName}||${entry.warehouse}`;
+    const entries: GradeStockEntry[] = warehouseStock.map((s) => {
+      const warehouse = s.warehouse as string;
+      const issueKey = `${s.materialName}||${warehouse}`;
       const issued = issuedByMaterialWarehouse[issueKey] || 0;
       return {
-        ...entry,
-        totalKg: Math.max(0, entry.totalKg - issued),
+        materialName: s.materialName,
+        grade: s.materialName,
+        warehouse,
+        totalKg: Math.max(0, Number(s.totalQty) - issued),
       };
     });
-
     return entries.sort((a, b) => {
-      // Sort by warehouse then material name
       const wCompare = a.warehouse.localeCompare(b.warehouse);
       if (wCompare !== 0) return wCompare;
       return a.materialName.localeCompare(b.materialName);
     });
-  }, [materials, issuedByMaterialWarehouse]);
+  }, [warehouseStock, issuedByMaterialWarehouse]);
 
   // Derive unique filter options from the data
   const supplierOptions = useMemo(() => {

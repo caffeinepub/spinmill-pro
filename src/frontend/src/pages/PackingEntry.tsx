@@ -52,6 +52,7 @@ import {
   usePackingEntries,
   useProductionOrders,
   useUpdatePackingEntry,
+  useYarnCountLabels,
 } from "../hooks/useQueries";
 import type { PackingEntry as PackingEntryType } from "../types";
 
@@ -96,9 +97,14 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
 interface BalancePanelProps {
   lotNumber: string;
   enteredQty: number;
+  countLabel?: string;
 }
 
-function BalancePanel({ lotNumber, enteredQty }: BalancePanelProps) {
+function BalancePanel({
+  lotNumber,
+  enteredQty,
+  countLabel,
+}: BalancePanelProps) {
   const {
     data: balance,
     isLoading,
@@ -161,7 +167,7 @@ function BalancePanel({ lotNumber, enteredQty }: BalancePanelProps) {
                 variant="secondary"
                 className="text-xs font-semibold font-mono bg-primary/10 text-primary border-primary/20"
               >
-                Ne {String(balance.yarnCountNe)}
+                Ne {countLabel ?? String(balance.yarnCountNe)}
               </Badge>
             </div>
             <div>
@@ -262,6 +268,7 @@ interface BulkLotRowProps {
   lotNumber: string;
   qty: string;
   rowIndex: number;
+  countLabel?: string;
   onQtyChange: (lotNumber: string, qty: string) => void;
 }
 
@@ -269,6 +276,7 @@ function BulkLotRow({
   lotNumber,
   qty,
   rowIndex,
+  countLabel,
   onQtyChange,
 }: BulkLotRowProps) {
   const { data: balance, isLoading } = usePackingBalance(lotNumber);
@@ -296,7 +304,7 @@ function BulkLotRow({
         {isLoading ? (
           <Skeleton className="h-4 w-16" />
         ) : balance ? (
-          `Ne ${String(balance.yarnCountNe)}`
+          `Ne ${countLabel ?? String(balance.yarnCountNe)}`
         ) : (
           "—"
         )}
@@ -381,6 +389,7 @@ export default function PackingEntryPage() {
 
   const { data: entries = [], isLoading } = usePackingEntries();
   const { data: productionOrders = [] } = useProductionOrders();
+  const { data: countLabels } = useYarnCountLabels();
   const createMutation = useCreatePackingEntry();
   const deleteMutation = useDeletePackingEntry();
   const updateMutation = useUpdatePackingEntry();
@@ -810,7 +819,9 @@ export default function PackingEntryPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="font-mono text-sm">
-                    Ne {String(entry.yarnCountNe)}
+                    Ne{" "}
+                    {countLabels?.get(entry.lotNumber) ??
+                      String(entry.yarnCountNe)}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {formatUnit(entry.spinningUnit)}
@@ -971,6 +982,7 @@ export default function PackingEntryPage() {
               <BalancePanel
                 lotNumber={form.lotNumber}
                 enteredQty={enteredQty}
+                countLabel={countLabels?.get(form.lotNumber)}
               />
             )}
 
@@ -1138,6 +1150,7 @@ export default function PackingEntryPage() {
                           lotNumber={lot}
                           qty={bulkQtyMap.get(lot) ?? ""}
                           rowIndex={idx + 1}
+                          countLabel={countLabels?.get(lot)}
                           onQtyChange={handleBulkQtyChange}
                         />
                       ))}

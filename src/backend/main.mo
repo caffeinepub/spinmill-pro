@@ -30,6 +30,32 @@ actor {
   type ProcessStage = { #blowroom; #carding; #drawing; #combing; #roving; #ringSpinning; #winding; #qualityCheck; #finished };
   type DispatchDestination = { #weaving; #kolhapur; #ambala; #outside; #amravati; #softWinding; #tfo };
   type InventoryStatus = { #inStock; #dispatched };
+  type WasteWarehouse = { #ringWaste; #oeWaste };
+
+  type WasteEntry = {
+    id : Nat;
+    entryNumber : Text;
+    entryDate : Time.Time;
+    spinningUnit : SpinningUnit;
+    wasteType : Text;
+    quantityKg : Nat;
+    remarks : Text;
+  };
+
+  type WasteSale = {
+    id : Nat;
+    saleNumber : Text;
+    saleDate : Time.Time;
+    buyer : Text;
+    wasteWarehouse : WasteWarehouse;
+    wasteType : Text;
+    quantityKg : Nat;
+    ratePerKg : Nat;
+    totalAmount : Nat;
+    remarks : Text;
+  };
+
+
 
   type RawMaterial = {
     id : Nat;
@@ -282,6 +308,13 @@ actor {
   var dispatchEntryIdCounter = 1;
   var yarnOpeningStockIdCounter = 1;
   var warehouseTransferIdCounter = 1;
+  var wasteEntryIdCounter = 1;
+  var wasteSaleIdCounter = 1;
+
+  let wasteEntries = Map.empty<Nat, WasteEntry>();
+  let wasteSales = Map.empty<Nat, WasteSale>();
+
+
 
   let rawMaterials = Map.empty<Nat, RawMaterial>();
   let purchaseOrders = Map.empty<Nat, PurchaseOrder>();
@@ -577,10 +610,57 @@ actor {
 
   // ─── Warehouse Stock ──────────────────────────────────────────────────────
 
+  // Compute warehouse stock dynamically from underlying records so it stays
+  // correct even after upgrades (the in-memory warehouseStock cache resets).
   public query ({ caller }) func getAllWarehouseStock() : async [WarehouseStock] {
+    type Entry = { warehouse : Warehouse; materialName : Text; var qty : Int };
+    let stockMap = Map.empty<Text, Entry>();
+
+    func addQty(w : Warehouse, mat : Text, amount : Nat) {
+      let key = warehouseToText(w) # "||" # mat;
+      switch (stockMap.get(key)) {
+        case (null) { stockMap.add(key, { warehouse = w; materialName = mat; var qty = (amount : Int) }) };
+        case (?e)   { e.qty += amount };
+      };
+    };
+
+    func subQty(w : Warehouse, mat : Text, amount : Nat) {
+      let key = warehouseToText(w) # "||" # mat;
+      switch (stockMap.get(key)) {
+        case (null) { stockMap.add(key, { warehouse = w; materialName = mat; var qty = -(amount : Int) }) };
+        case (?e)   { e.qty -= amount };
+      };
+    };
+
+    // 1. Inward entries
+    for ((_, ie) in inwardEntries.entries()) {
+      addQty(ie.warehouse, ie.materialName, ie.receivedQty);
+    };
+
+    // 2. Raw material opening stock
+    for (id in openingStockRawMaterialIds.values()) {
+      switch (rawMaterials.get(id)) {
+        case (?m) { addQty(m.warehouse, m.lotNumber, m.weightKg) };
+        case (null) {};
+      };
+    };
+
+    // 3. Material issues (deduct)
+    for ((_, mi) in materialIssues.entries()) {
+      subQty(mi.warehouse, mi.materialName, mi.issuedQty);
+    };
+
+    // 4. Warehouse transfers
+    for ((_, t) in warehouseTransfers.entries()) {
+      subQty(t.fromWarehouse, t.materialName, t.qty);
+      addQty(t.toWarehouse, t.materialName, t.qty);
+    };
+
     let out = List.empty<WarehouseStock>();
-    for ((_, s) in warehouseStock.entries()) {
-      if (s.totalQty > 0) { out.add(s) };
+    for ((_, e) in stockMap.entries()) {
+      if (e.qty > 0) {
+        out.add({ warehouse = e.warehouse; materialName = e.materialName; totalQty = Int.abs(e.qty) });
+      };
     };
     out.toArray();
   };
@@ -1446,4 +1526,80 @@ actor {
   public shared ({ caller }) func setDropdownOptions(json : Text) : async () {
     dropdownOptionsStore.add("options", json);
   };
+
+  // ─── Waste Production Entries ─────────────────────────────────────────────
+
+  func wasteWarehouseToText(w : WasteWarehouse) : Text {
+    switch (w) {
+      case (#ringWaste) { "ringWaste" };
+      case (#oeWaste) { "oeWaste" };
+    };
+  };
+
+  public query ({ caller }) func getAllWasteEntries() : async [WasteEntry] {
+    let out = List.empty<WasteEntry>();
+    for ((_, e) in wasteEntries.entries()) { out.add(e) };
+    out.toArray().sort(func(a : WasteEntry, b : WasteEntry) : Order.Order { Nat.compare(a.id, b.id) });
+  };
+
+  public shared ({ caller }) func createWasteEntry(entryDate : Time.Time, spinningUnit : SpinningUnit, wasteType : Text, quantityKg : Nat, remarks : Text) : async Nat {
+    requireUser(caller);
+    let id = wasteEntryIdCounter;
+    let entryNumber = "WE-" # currentYear() # "-" # padNum(id, 3);
+    wasteEntries.add(id, { id; entryNumber; entryDate; spinningUnit; wasteType; quantityKg; remarks });
+    wasteEntryIdCounter += 1;
+    id;
+  };
+
+  public shared ({ caller }) func updateWasteEntry(id : Nat, entryDate : Time.Time, spinningUnit : SpinningUnit, wasteType : Text, quantityKg : Nat, remarks : Text) : async () {
+    requireUser(caller);
+    switch (wasteEntries.get(id)) {
+      case null { Runtime.trap("Waste entry not found") };
+      case (?e) {
+        wasteEntries.add(id, { e with entryDate; spinningUnit; wasteType; quantityKg; remarks });
+      };
+    };
+  };
+
+  public shared ({ caller }) func deleteWasteEntry(id : Nat) : async () {
+    requireUser(caller);
+    wasteEntries.remove(id);
+  };
+
+
+
+  // ─── Waste Sales ──────────────────────────────────────────────────────────
+
+  public query ({ caller }) func getAllWasteSales() : async [WasteSale] {
+    let out = List.empty<WasteSale>();
+    for ((_, s) in wasteSales.entries()) { out.add(s) };
+    out.toArray().sort(func(a : WasteSale, b : WasteSale) : Order.Order { Nat.compare(a.id, b.id) });
+  };
+
+  public shared ({ caller }) func createWasteSale(saleDate : Time.Time, buyer : Text, wasteWarehouse : WasteWarehouse, wasteType : Text, quantityKg : Nat, ratePerKg : Nat, remarks : Text) : async Nat {
+    requireUser(caller);
+    let totalAmount = quantityKg * ratePerKg;
+    let id = wasteSaleIdCounter;
+    let saleNumber = "WS-" # currentYear() # "-" # padNum(id, 3);
+    wasteSales.add(id, { id; saleNumber; saleDate; buyer; wasteWarehouse; wasteType; quantityKg; ratePerKg; totalAmount; remarks });
+    wasteSaleIdCounter += 1;
+    id;
+  };
+
+  public shared ({ caller }) func updateWasteSale(id : Nat, saleDate : Time.Time, buyer : Text, wasteWarehouse : WasteWarehouse, wasteType : Text, quantityKg : Nat, ratePerKg : Nat, remarks : Text) : async () {
+    requireUser(caller);
+    switch (wasteSales.get(id)) {
+      case null { Runtime.trap("Waste sale not found") };
+      case (?s) {
+        let totalAmount = quantityKg * ratePerKg;
+        wasteSales.add(id, { s with saleDate; buyer; wasteWarehouse; wasteType; quantityKg; ratePerKg; totalAmount; remarks });
+      };
+    };
+  };
+
+  public shared ({ caller }) func deleteWasteSale(id : Nat) : async () {
+    requireUser(caller);
+    wasteSales.remove(id);
+  };
+
 };

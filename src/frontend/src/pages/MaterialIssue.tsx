@@ -282,10 +282,12 @@ export default function MaterialIssue() {
   const [bulkForm, setBulkForm] = useState({
     issueDate: todayStr(),
     warehouse: "" as Warehouse | "",
-    materialName: "",
-    grade: "",
+    department: "",
   });
-  const [bulkQtyMap, setBulkQtyMap] = useState<Map<string, string>>(new Map());
+  // bulkMaterialMap: materialName -> { qty: string, grade: string }
+  const [bulkMaterialMap, setBulkMaterialMap] = useState<
+    Map<string, { qty: string; grade: string }>
+  >(new Map());
   const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
 
   const LATEST_COUNT_MI = 25;
@@ -296,32 +298,32 @@ export default function MaterialIssue() {
 
   async function handleBulkSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const entries = Array.from(bulkQtyMap.entries()).filter(
-      ([, qty]) => qty && Number(qty) > 0,
+    const entries = Array.from(bulkMaterialMap.entries()).filter(
+      ([, { qty }]) => qty && Number(qty) > 0,
     );
     if (entries.length === 0) {
-      toast.error("Please enter quantity for at least one department");
+      toast.error("Please enter quantity for at least one material");
       return;
     }
     if (!bulkForm.warehouse) {
       toast.error("Please select a warehouse");
       return;
     }
-    if (!bulkForm.materialName.trim()) {
-      toast.error("Please enter a material name");
+    if (!bulkForm.department) {
+      toast.error("Please select a department");
       return;
     }
     setIsBulkSubmitting(true);
     let successCount = 0;
     let errorCount = 0;
-    for (const [dept, qty] of entries) {
+    for (const [materialName, { qty, grade }] of entries) {
       try {
         await withRetry(() =>
           createMutation.mutateAsync({
-            department: dept,
+            department: bulkForm.department,
             warehouse: bulkForm.warehouse as Warehouse,
-            materialName: bulkForm.materialName.trim(),
-            grade: bulkForm.grade.trim(),
+            materialName: materialName,
+            grade: grade.trim(),
             issuedQty: BigInt(Math.round(Number(qty))),
             remarks: "",
             issueDate:
@@ -343,7 +345,7 @@ export default function MaterialIssue() {
       toast.error(`${errorCount} issue${errorCount > 1 ? "s" : ""} failed`);
     if (successCount > 0) {
       setBulkDialogOpen(false);
-      setBulkQtyMap(new Map());
+      setBulkMaterialMap(new Map());
     }
   }
 
@@ -369,10 +371,9 @@ export default function MaterialIssue() {
                 setBulkForm({
                   issueDate: todayStr(),
                   warehouse: "" as Warehouse | "",
-                  materialName: "",
-                  grade: "",
+                  department: "",
                 });
-                setBulkQtyMap(new Map());
+                setBulkMaterialMap(new Map());
                 setBulkDialogOpen(true);
               }}
               className="gap-2"
@@ -800,7 +801,7 @@ export default function MaterialIssue() {
             onSubmit={handleBulkSubmit}
             className="flex flex-col gap-4 overflow-hidden"
           >
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label>Issue Date</Label>
                 <input
@@ -836,74 +837,92 @@ export default function MaterialIssue() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Material Name</Label>
+                <Label>Department</Label>
                 <Select
-                  value={bulkForm.materialName}
+                  value={bulkForm.department}
                   onValueChange={(v) =>
-                    setBulkForm((p) => ({ ...p, materialName: v }))
+                    setBulkForm((p) => ({ ...p, department: v }))
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select material" />
+                    <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
-                    {materialNames.map((m) => (
-                      <SelectItem key={m} value={m}>
-                        {m}
+                    {departments.map((d) => (
+                      <SelectItem key={d} value={d}>
+                        {d}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label>Grade (optional)</Label>
-                <input
-                  type="text"
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  value={bulkForm.grade}
-                  onChange={(e) =>
-                    setBulkForm((p) => ({ ...p, grade: e.target.value }))
-                  }
-                  placeholder="e.g. Grade A"
-                />
-              </div>
             </div>
-            <div className="overflow-y-auto flex-1 min-h-0 max-h-[40vh] border rounded-md">
+            <div className="overflow-y-auto flex-1 min-h-0 max-h-[50vh] border rounded-md">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm border-b">
                   <tr>
                     <th className="text-left px-4 py-2.5 font-semibold text-xs uppercase tracking-wider">
-                      Department
+                      Material Name
                     </th>
-                    <th className="text-left px-4 py-2.5 font-semibold text-xs uppercase tracking-wider w-40">
+                    <th className="text-left px-4 py-2.5 font-semibold text-xs uppercase tracking-wider w-28">
+                      Grade
+                    </th>
+                    <th className="text-left px-4 py-2.5 font-semibold text-xs uppercase tracking-wider w-36">
                       Quantity (kg)
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {departments.map((dept, i) => (
+                  {materialNames.map((mat, i) => (
                     <tr
-                      key={dept}
+                      key={mat}
                       className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}
                     >
-                      <td className="px-4 py-2">{dept}</td>
+                      <td className="px-4 py-2 font-medium">{mat}</td>
+                      <td className="px-4 py-2">
+                        <input
+                          type="text"
+                          className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          value={bulkMaterialMap.get(mat)?.grade ?? ""}
+                          onChange={(e) => {
+                            setBulkMaterialMap((prev) => {
+                              const next = new Map(prev);
+                              const existing = next.get(mat) ?? {
+                                qty: "",
+                                grade: "",
+                              };
+                              next.set(mat, {
+                                ...existing,
+                                grade: e.target.value,
+                              });
+                              return next;
+                            });
+                          }}
+                          placeholder="e.g. A"
+                        />
+                      </td>
                       <td className="px-4 py-2">
                         <input
                           type="number"
                           min="0"
                           step="any"
                           className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                          value={bulkQtyMap.get(dept) ?? ""}
+                          value={bulkMaterialMap.get(mat)?.qty ?? ""}
                           onChange={(e) => {
-                            setBulkQtyMap((prev) => {
+                            setBulkMaterialMap((prev) => {
                               const next = new Map(prev);
+                              const existing = next.get(mat) ?? {
+                                qty: "",
+                                grade: "",
+                              };
                               if (e.target.value) {
-                                next.set(dept, e.target.value);
+                                next.set(mat, {
+                                  ...existing,
+                                  qty: e.target.value,
+                                });
                               } else {
-                                next.delete(dept);
+                                next.set(mat, { ...existing, qty: "" });
                               }
                               return next;
                             });
@@ -933,7 +952,7 @@ export default function MaterialIssue() {
                 {isBulkSubmitting && (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 )}
-                Issue to All Departments
+                Issue Materials
               </Button>
             </DialogFooter>
           </form>

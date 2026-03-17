@@ -241,6 +241,32 @@ export const WarehouseTransfer = IDL.Record({
   'remarks' : IDL.Text,
 });
 
+
+export const WasteWarehouse = IDL.Variant({
+  'ringWaste' : IDL.Null,
+  'oeWaste' : IDL.Null,
+});
+export const WasteEntry = IDL.Record({
+  'id' : IDL.Nat,
+  'entryNumber' : IDL.Text,
+  'entryDate' : IDL.Int,
+  'spinningUnit' : IDL.Variant({ 'openend': IDL.Null, 'ringSpinning': IDL.Null, 'tfo': IDL.Null, 'outsideYarn': IDL.Null }),
+  'wasteType' : IDL.Text,
+  'quantityKg' : IDL.Nat,
+  'remarks' : IDL.Text,
+});
+export const WasteSale = IDL.Record({
+  'id' : IDL.Nat,
+  'saleNumber' : IDL.Text,
+  'saleDate' : IDL.Int,
+  'buyer' : IDL.Text,
+  'wasteWarehouse' : WasteWarehouse,
+  'wasteType' : IDL.Text,
+  'quantityKg' : IDL.Nat,
+  'ratePerKg' : IDL.Nat,
+  'totalAmount' : IDL.Nat,
+  'remarks' : IDL.Text,
+});
 export const YarnInventory = IDL.Record({
   'id' : IDL.Nat,
   'status' : InventoryStatus,
@@ -275,6 +301,9 @@ export const DashboardStats = IDL.Record({
   'totalActiveOrders' : IDL.Nat,
   'totalMachinesRunning' : IDL.Nat,
   'totalInwardTodayKg' : IDL.Nat,
+  'oeProductionTodayKg' : IDL.Nat,
+  'tfoProductionTodayKg' : IDL.Nat,
+  'ringProductionTodayKg' : IDL.Nat,
 });
 export const DispatchBalance = IDL.Record({
   'yarnCountNe' : IDL.Nat,
@@ -318,7 +347,6 @@ export const UserApprovalInfo = IDL.Record({
 });
 
 export const idlService = IDL.Service({
-  '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addBatchStage' : IDL.Func(
       [IDL.Nat, ProcessStage, IDL.Nat, IDL.Nat, IDL.Nat, Time, Time, IDL.Text],
       [IDL.Nat],
@@ -451,6 +479,14 @@ export const idlService = IDL.Service({
     ),
   'getAllRawMaterials' : IDL.Func([], [IDL.Vec(RawMaterial)], ['query']),
   'getAllWarehouseStock' : IDL.Func([], [IDL.Vec(WarehouseStock)], ['query']),
+  'getAllWasteEntries' : IDL.Func([], [IDL.Vec(WasteEntry)], ['query']),
+  'createWasteEntry' : IDL.Func([IDL.Int, IDL.Variant({ 'openend': IDL.Null, 'ringSpinning': IDL.Null, 'tfo': IDL.Null, 'outsideYarn': IDL.Null }), IDL.Text, IDL.Nat, IDL.Text], [IDL.Nat], []),
+  'updateWasteEntry' : IDL.Func([IDL.Nat, IDL.Int, IDL.Variant({ 'openend': IDL.Null, 'ringSpinning': IDL.Null, 'tfo': IDL.Null, 'outsideYarn': IDL.Null }), IDL.Text, IDL.Nat, IDL.Text], [], []),
+  'deleteWasteEntry' : IDL.Func([IDL.Nat], [], []),
+  'getAllWasteSales' : IDL.Func([], [IDL.Vec(WasteSale)], ['query']),
+  'createWasteSale' : IDL.Func([IDL.Int, IDL.Text, WasteWarehouse, IDL.Text, IDL.Nat, IDL.Nat, IDL.Text], [IDL.Nat], []),
+  'updateWasteSale' : IDL.Func([IDL.Nat, IDL.Int, IDL.Text, WasteWarehouse, IDL.Text, IDL.Nat, IDL.Nat, IDL.Text], [], []),
+  'deleteWasteSale' : IDL.Func([IDL.Nat], [], []),
   'getAllWarehouseTransfers' : IDL.Func([], [IDL.Vec(WarehouseTransfer)], ['query']),
   'transferWarehouseStock' : IDL.Func([IDL.Text, Warehouse, Warehouse, IDL.Nat, IDL.Int, IDL.Text], [IDL.Nat], []),
   'getAllYarnCountLabels' : IDL.Func(
@@ -884,6 +920,9 @@ export const idlFactory = ({ IDL }) => {
     'totalActiveOrders' : IDL.Nat,
     'totalMachinesRunning' : IDL.Nat,
     'totalInwardTodayKg' : IDL.Nat,
+    'oeProductionTodayKg' : IDL.Nat,
+    'tfoProductionTodayKg' : IDL.Nat,
+    'ringProductionTodayKg' : IDL.Nat,
   });
   const DispatchBalance = IDL.Record({
     'yarnCountNe' : IDL.Nat,
@@ -927,7 +966,6 @@ export const idlFactory = ({ IDL }) => {
   });
   
   return IDL.Service({
-    '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addBatchStage' : IDL.Func(
         [
           IDL.Nat,

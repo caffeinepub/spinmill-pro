@@ -320,6 +320,31 @@ export enum Warehouse {
     oeRawMaterial = "oeRawMaterial",
     ringRawMaterial = "ringRawMaterial"
 }
+export enum WasteWarehouse {
+    ringWaste = 'ringWaste',
+    oeWaste = 'oeWaste'
+}
+export interface WasteEntry {
+    id: bigint;
+    entryNumber: string;
+    entryDate: Time;
+    spinningUnit: SpinningUnit;
+    wasteType: string;
+    quantityKg: bigint;
+    remarks: string;
+}
+export interface WasteSale {
+    id: bigint;
+    saleNumber: string;
+    saleDate: Time;
+    buyer: string;
+    wasteWarehouse: WasteWarehouse;
+    wasteType: string;
+    quantityKg: bigint;
+    ratePerKg: bigint;
+    totalAmount: bigint;
+    remarks: string;
+}
 export interface backendInterface {
     addBatchStage(batchId: bigint, stage: ProcessStage, weightInKg: bigint, weightOutKg: bigint, machineId: bigint, startTime: Time, endTime: Time, operatorNotes: string): Promise<bigint>;
     addInwardEntry(inwardNumber: string, purchaseOrderId: bigint, inwardDate: Time, materialName: string, receivedQty: bigint, warehouse: Warehouse, vehicleNumber: string, remarks: string): Promise<bigint>;
@@ -406,5 +431,13 @@ export interface backendInterface {
     updatePackingEntry(id: bigint, packingDate: Time, quantityKg: bigint, remarks: string): Promise<void>;
     updateRawMaterialOpeningStock(id: bigint, materialName: string, supplier: string, grade: string, weightKg: bigint, warehouse: Warehouse, date: Time): Promise<void>;
     updateYarnInventory(id: bigint, lotNumber: string, yarnCountNe: bigint, twistDirection: TwistDirection, quantityCones: bigint, weightKg: bigint, status: InventoryStatus): Promise<void>;
+    getAllWasteEntries(): Promise<Array<WasteEntry>>;
+    createWasteEntry(entryDate: Time, spinningUnit: SpinningUnit, wasteType: string, quantityKg: bigint, remarks: string): Promise<bigint>;
+    updateWasteEntry(id: bigint, entryDate: Time, spinningUnit: SpinningUnit, wasteType: string, quantityKg: bigint, remarks: string): Promise<void>;
+    deleteWasteEntry(id: bigint): Promise<void>;
+    getAllWasteSales(): Promise<Array<WasteSale>>;
+    createWasteSale(saleDate: Time, buyer: string, wasteWarehouse: WasteWarehouse, wasteType: string, quantityKg: bigint, ratePerKg: bigint, remarks: string): Promise<bigint>;
+    updateWasteSale(id: bigint, saleDate: Time, buyer: string, wasteWarehouse: WasteWarehouse, wasteType: string, quantityKg: bigint, ratePerKg: bigint, remarks: string): Promise<void>;
+    deleteWasteSale(id: bigint): Promise<void>;
     updateYarnOpeningStock(id: bigint, lotNumber: string, yarnCountNe: bigint, spinningUnit: SpinningUnit, productType: ProductType, endUse: EndUse, weightKg: bigint): Promise<void>;
 }

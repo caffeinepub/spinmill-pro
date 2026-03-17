@@ -1533,6 +1533,139 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async transferWarehouseStock(arg0, arg1, arg2, arg3, arg4, arg5) {
+        if (this.processError) {
+            try {
+                const result = await this.actor.transferWarehouseStock(arg0, to_candid_Warehouse_n3(this._uploadFile, this._downloadFile, arg1), to_candid_Warehouse_n3(this._uploadFile, this._downloadFile, arg2), arg3, arg4, arg5);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.transferWarehouseStock(arg0, to_candid_Warehouse_n3(this._uploadFile, this._downloadFile, arg1), to_candid_Warehouse_n3(this._uploadFile, this._downloadFile, arg2), arg3, arg4, arg5);
+            return result;
+        }
+    }
+    async getAllWarehouseTransfers() {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllWarehouseTransfers();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllWarehouseTransfers();
+            return result;
+        }
+    }
+    async getAllWasteEntries() {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllWasteEntries();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllWasteEntries();
+            return result;
+        }
+    }
+    async createWasteEntry(arg0, arg1, arg2, arg3, arg4) {
+        if (this.processError) {
+            try {
+                const result = await this.actor.createWasteEntry(arg0, to_candid_SpinningUnit_n12(this._uploadFile, this._downloadFile, arg1), arg2, arg3, arg4);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.createWasteEntry(arg0, to_candid_SpinningUnit_n12(this._uploadFile, this._downloadFile, arg1), arg2, arg3, arg4);
+            return result;
+        }
+    }
+    async updateWasteEntry(arg0, arg1, arg2, arg3, arg4, arg5) {
+        if (this.processError) {
+            try {
+                await this.actor.updateWasteEntry(arg0, arg1, to_candid_SpinningUnit_n12(this._uploadFile, this._downloadFile, arg2), arg3, arg4, arg5);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            await this.actor.updateWasteEntry(arg0, arg1, to_candid_SpinningUnit_n12(this._uploadFile, this._downloadFile, arg2), arg3, arg4, arg5);
+        }
+    }
+    async deleteWasteEntry(arg0) {
+        if (this.processError) {
+            try {
+                await this.actor.deleteWasteEntry(arg0);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            await this.actor.deleteWasteEntry(arg0);
+        }
+    }
+    async getAllWasteSales() {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllWasteSales();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllWasteSales();
+            return result;
+        }
+    }
+    async createWasteSale(arg0, arg1, arg2, arg3, arg4, arg5, arg6) {
+        if (this.processError) {
+            try {
+                const result = await this.actor.createWasteSale(arg0, arg1, to_candid_WasteWarehouse(this._uploadFile, this._downloadFile, arg2), arg3, arg4, arg5, arg6);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.createWasteSale(arg0, arg1, to_candid_WasteWarehouse(this._uploadFile, this._downloadFile, arg2), arg3, arg4, arg5, arg6);
+            return result;
+        }
+    }
+    async updateWasteSale(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+        if (this.processError) {
+            try {
+                await this.actor.updateWasteSale(arg0, arg1, arg2, to_candid_WasteWarehouse(this._uploadFile, this._downloadFile, arg3), arg4, arg5, arg6, arg7);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            await this.actor.updateWasteSale(arg0, arg1, arg2, to_candid_WasteWarehouse(this._uploadFile, this._downloadFile, arg3), arg4, arg5, arg6, arg7);
+        }
+    }
+    async deleteWasteSale(arg0) {
+        if (this.processError) {
+            try {
+                await this.actor.deleteWasteSale(arg0);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            await this.actor.deleteWasteSale(arg0);
+        }
+    }
+
 }
 function from_candid_ApprovalStatus_n109(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ApprovalStatus): ApprovalStatus {
     return from_candid_variant_n110(_uploadFile, _downloadFile, value);
@@ -2405,6 +2538,9 @@ function to_candid_UserRole_n18(_uploadFile: (file: ExternalBlob) => Promise<Uin
 }
 function to_candid_Warehouse_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Warehouse): _Warehouse {
     return to_candid_variant_n4(_uploadFile, _downloadFile, value);
+}
+function to_candid_WasteWarehouse(_uploadFile, _downloadFile, value) {
+    return value == 'ringWaste' ? { ringWaste: null } : { oeWaste: null };
 }
 function to_candid_opt_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: string | null): [] | [string] {
     return value === null ? candid_none() : candid_some(value);

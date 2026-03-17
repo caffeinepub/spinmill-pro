@@ -33,6 +33,8 @@ export type {
   UserRole,
   WarehouseStock,
   WarehouseTransfer,
+  WasteEntry,
+  WasteSale,
   YarnInventory,
   YarnOpeningStockRecord,
   backendInterface as FullBackendInterface,
@@ -53,4 +55,5 @@ export {
   SpinningUnit,
   TwistDirection,
   Warehouse,
+  WasteWarehouse,
 } from "./backend.d";

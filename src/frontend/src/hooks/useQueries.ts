@@ -1612,3 +1612,178 @@ export function useTransferWarehouseStock() {
     },
   });
 }
+
+// ─── Waste Production & Sales ─────────────────────────────────────────────────
+
+export function useWasteEntries() {
+  const { actor } = useActor();
+  return useQuery<import("../types").WasteEntry[]>({
+    queryKey: ["wasteEntries"],
+    queryFn: async () => {
+      if (!actor) return [];
+      const result = await fullActor(actor).getAllWasteEntries();
+      return normalizeRecord(result) as import("../types").WasteEntry[];
+    },
+    enabled: !!actor,
+    retry: 2,
+  });
+}
+
+export function useCreateWasteEntry() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      entryDate: bigint;
+      spinningUnit: import("../types").SpinningUnit;
+      wasteType: string;
+      quantityKg: bigint;
+      remarks: string;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return fullActor(actor).createWasteEntry(
+        args.entryDate,
+        args.spinningUnit,
+        args.wasteType,
+        args.quantityKg,
+        args.remarks,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wasteEntries"] });
+    },
+  });
+}
+
+export function useUpdateWasteEntry() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: bigint;
+      entryDate: bigint;
+      spinningUnit: import("../types").SpinningUnit;
+      wasteType: string;
+      quantityKg: bigint;
+      remarks: string;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return fullActor(actor).updateWasteEntry(
+        args.id,
+        args.entryDate,
+        args.spinningUnit,
+        args.wasteType,
+        args.quantityKg,
+        args.remarks,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wasteEntries"] });
+    },
+  });
+}
+
+export function useDeleteWasteEntry() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("No actor");
+      return fullActor(actor).deleteWasteEntry(id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wasteEntries"] });
+    },
+  });
+}
+
+export function useWasteSales() {
+  const { actor } = useActor();
+  return useQuery<import("../types").WasteSale[]>({
+    queryKey: ["wasteSales"],
+    queryFn: async () => {
+      if (!actor) return [];
+      const result = await fullActor(actor).getAllWasteSales();
+      return normalizeRecord(result) as import("../types").WasteSale[];
+    },
+    enabled: !!actor,
+    retry: 2,
+  });
+}
+
+export function useCreateWasteSale() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      saleDate: bigint;
+      buyer: string;
+      wasteWarehouse: import("../types").WasteWarehouse;
+      wasteType: string;
+      quantityKg: bigint;
+      ratePerKg: bigint;
+      remarks: string;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return fullActor(actor).createWasteSale(
+        args.saleDate,
+        args.buyer,
+        args.wasteWarehouse,
+        args.wasteType,
+        args.quantityKg,
+        args.ratePerKg,
+        args.remarks,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wasteSales"] });
+      qc.invalidateQueries({ queryKey: ["wasteEntries"] });
+    },
+  });
+}
+
+export function useUpdateWasteSale() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: bigint;
+      saleDate: bigint;
+      buyer: string;
+      wasteWarehouse: import("../types").WasteWarehouse;
+      wasteType: string;
+      quantityKg: bigint;
+      ratePerKg: bigint;
+      remarks: string;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return fullActor(actor).updateWasteSale(
+        args.id,
+        args.saleDate,
+        args.buyer,
+        args.wasteWarehouse,
+        args.wasteType,
+        args.quantityKg,
+        args.ratePerKg,
+        args.remarks,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wasteSales"] });
+    },
+  });
+}
+
+export function useDeleteWasteSale() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("No actor");
+      return fullActor(actor).deleteWasteSale(id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wasteSales"] });
+    },
+  });
+}

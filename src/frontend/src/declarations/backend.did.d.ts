@@ -34,6 +34,9 @@ export interface DashboardStats {
   'totalActiveOrders' : bigint,
   'totalMachinesRunning' : bigint,
   'totalInwardTodayKg' : bigint,
+  'oeProductionTodayKg' : bigint,
+  'tfoProductionTodayKg' : bigint,
+  'ringProductionTodayKg' : bigint,
 }
 export interface DispatchBalance {
   'yarnCountNe' : bigint,
@@ -288,6 +291,29 @@ export interface YarnOpeningStockRecord {
   'spinningUnit' : SpinningUnit,
   'endUse' : EndUse,
 }
+export type WasteWarehouse = { 'ringWaste' : null } |
+  { 'oeWaste' : null };
+export interface WasteEntry {
+  'id' : bigint,
+  'entryNumber' : string,
+  'entryDate' : bigint,
+  'spinningUnit' : SpinningUnit,
+  'wasteType' : string,
+  'quantityKg' : bigint,
+  'remarks' : string,
+}
+export interface WasteSale {
+  'id' : bigint,
+  'saleNumber' : string,
+  'saleDate' : bigint,
+  'buyer' : string,
+  'wasteWarehouse' : WasteWarehouse,
+  'wasteType' : string,
+  'quantityKg' : bigint,
+  'ratePerKg' : bigint,
+  'totalAmount' : bigint,
+  'remarks' : string,
+}
 export interface _SERVICE {
   'addBatchStage' : ActorMethod<
     [bigint, ProcessStage, bigint, bigint, bigint, Time, Time, string],
@@ -480,6 +506,14 @@ export interface _SERVICE {
     [bigint, string, string, string, bigint, RawMaterialStatus, Warehouse],
     undefined
   >,
+  'getAllWasteEntries' : ActorMethod<[], Array<WasteEntry>>,
+  'createWasteEntry' : ActorMethod<[bigint, SpinningUnit, string, bigint, string], bigint>,
+  'updateWasteEntry' : ActorMethod<[bigint, bigint, SpinningUnit, string, bigint, string], undefined>,
+  'deleteWasteEntry' : ActorMethod<[bigint], undefined>,
+  'getAllWasteSales' : ActorMethod<[], Array<WasteSale>>,
+  'createWasteSale' : ActorMethod<[bigint, string, WasteWarehouse, string, bigint, bigint, string], bigint>,
+  'updateWasteSale' : ActorMethod<[bigint, bigint, string, WasteWarehouse, string, bigint, bigint, string], undefined>,
+  'deleteWasteSale' : ActorMethod<[bigint], undefined>,
   'updateYarnInventory' : ActorMethod<
     [bigint, string, bigint, TwistDirection, bigint, bigint, InventoryStatus],
     undefined
