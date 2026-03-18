@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react";
+import { useAdminPin } from "./AdminPinContext";
 import { useInternetIdentity } from "./useInternetIdentity";
 
 interface UserRoleContextValue {
@@ -9,7 +10,7 @@ interface UserRoleContextValue {
 }
 
 const UserRoleContext = createContext<UserRoleContextValue>({
-  isAdmin: true,
+  isAdmin: false,
   isApproved: true,
   isLoading: false,
   refresh: () => {},
@@ -18,11 +19,12 @@ const UserRoleContext = createContext<UserRoleContextValue>({
 export function UserRoleProvider({ children }: { children: React.ReactNode }) {
   const { identity } = useInternetIdentity();
   const isLoggedIn = !!identity;
+  const { isAdminUnlocked } = useAdminPin();
 
   return (
     <UserRoleContext.Provider
       value={{
-        isAdmin: isLoggedIn,
+        isAdmin: isAdminUnlocked,
         isApproved: isLoggedIn,
         isLoading: false,
         refresh: () => {},

@@ -45,8 +45,15 @@ export default function CombinedStockReport() {
     const style = document.createElement("style");
     style.innerHTML = `
       @media print {
-        body > * { display: none !important; }
-        #combined-stock-print-region { display: block !important; }
+        body * { visibility: hidden !important; }
+        #combined-stock-print-region,
+        #combined-stock-print-region * { visibility: visible !important; }
+        #combined-stock-print-region {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100% !important;
+        }
         @page { size: A4 portrait; margin: 15mm; }
       }
     `;
@@ -377,7 +384,16 @@ export default function CombinedStockReport() {
       {/* ============================================================ */}
       {/* PRINT-ONLY REGION */}
       {/* ============================================================ */}
-      <div id="combined-stock-print-region" style={{ display: "none" }}>
+      <div
+        id="combined-stock-print-region"
+        style={{
+          visibility: "hidden",
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+        }}
+      >
         <div
           style={{
             fontFamily: "Arial, sans-serif",
