@@ -467,6 +467,10 @@ export interface backendInterface {
     updateQualityTest(id: bigint, batchId: bigint, csp: bigint, elongationPercent: bigint, evennessPercent: bigint, thinPlaces: bigint, thickPlaces: bigint, neps: bigint, hairinessIndex: bigint, pass: boolean): Promise<void>;
     updateRawMaterial(id: bigint, lotNumber: string, supplier: string, grade: string, weightKg: bigint, status: RawMaterialStatus, warehouse: Warehouse): Promise<void>;
     updateYarnInventory(id: bigint, lotNumber: string, yarnCountNe: bigint, twistDirection: TwistDirection, quantityCones: bigint, weightKg: bigint, status: InventoryStatus): Promise<void>;
+    updateRawMaterialOpeningStock(id: bigint, materialName: string, supplier: string, grade: string, weightKg: bigint, warehouse: Warehouse, date: Time): Promise<void>;
+    updateYarnOpeningStock(id: bigint, lotNumber: string, yarnCountNe: bigint, spinningUnit: SpinningUnit, productType: ProductType, endUse: EndUse, weightKg: bigint): Promise<void>;
+    updateMaterialIssue(id: bigint, department: string, warehouse: Warehouse, materialName: string, grade: string, issuedQty: bigint, remarks: string, issueDate: bigint): Promise<void>;
+    updatePackingEntry(id: bigint, packingDate: Time, quantityKg: bigint, remarks: string): Promise<void>;
 }
 import type { ApprovalStatus as _ApprovalStatus, BatchStage as _BatchStage, DispatchBalance as _DispatchBalance, DispatchDestination as _DispatchDestination, DispatchEntry as _DispatchEntry, EndUse as _EndUse, InventoryStatus as _InventoryStatus, InwardEntry as _InwardEntry, Machine as _Machine, MachineStatus as _MachineStatus, MachineType as _MachineType, MaterialIssue as _MaterialIssue, OrderStatus as _OrderStatus, POBalance as _POBalance, PackingBalance as _PackingBalance, PackingEntry as _PackingEntry, ProcessStage as _ProcessStage, ProductType as _ProductType, ProductionLog as _ProductionLog, ProductionOrder as _ProductionOrder, ProductionOrderBalance as _ProductionOrderBalance, PurchaseOrder as _PurchaseOrder, PurchaseOrderStatus as _PurchaseOrderStatus, RawMaterial as _RawMaterial, RawMaterialStatus as _RawMaterialStatus, Shift as _Shift, SpinningUnit as _SpinningUnit, Time as _Time, TwistDirection as _TwistDirection, UserApprovalInfo as _UserApprovalInfo, UserProfile as _UserProfile, UserRole as _UserRole, Warehouse as _Warehouse, WarehouseStock as _WarehouseStock, YarnInventory as _YarnInventory, YarnOpeningStockRecord as _YarnOpeningStockRecord } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -1530,6 +1534,62 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.updateYarnInventory(arg0, arg1, arg2, to_candid_TwistDirection_n8(this._uploadFile, this._downloadFile, arg3), arg4, arg5, to_candid_InventoryStatus_n10(this._uploadFile, this._downloadFile, arg6));
+            return result;
+        }
+    }
+    async updateRawMaterialOpeningStock(arg0: bigint, arg1: string, arg2: string, arg3: string, arg4: bigint, arg5: Warehouse, arg6: Time): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateRawMaterialOpeningStock(arg0, arg1, arg2, arg3, arg4, to_candid_Warehouse_n3(this._uploadFile, this._downloadFile, arg5), arg6);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateRawMaterialOpeningStock(arg0, arg1, arg2, arg3, arg4, to_candid_Warehouse_n3(this._uploadFile, this._downloadFile, arg5), arg6);
+            return result;
+        }
+    }
+    async updateYarnOpeningStock(arg0: bigint, arg1: string, arg2: bigint, arg3: SpinningUnit, arg4: ProductType, arg5: EndUse, arg6: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateYarnOpeningStock(arg0, arg1, arg2, to_candid_SpinningUnit_n12(this._uploadFile, this._downloadFile, arg3), to_candid_ProductType_n14(this._uploadFile, this._downloadFile, arg4), to_candid_EndUse_n16(this._uploadFile, this._downloadFile, arg5), arg6);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateYarnOpeningStock(arg0, arg1, arg2, to_candid_SpinningUnit_n12(this._uploadFile, this._downloadFile, arg3), to_candid_ProductType_n14(this._uploadFile, this._downloadFile, arg4), to_candid_EndUse_n16(this._uploadFile, this._downloadFile, arg5), arg6);
+            return result;
+        }
+    }
+    async updateMaterialIssue(arg0: bigint, arg1: string, arg2: Warehouse, arg3: string, arg4: string, arg5: bigint, arg6: string, arg7: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateMaterialIssue(arg0, arg1, to_candid_Warehouse_n3(this._uploadFile, this._downloadFile, arg2), arg3, arg4, arg5, arg6, arg7);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateMaterialIssue(arg0, arg1, to_candid_Warehouse_n3(this._uploadFile, this._downloadFile, arg2), arg3, arg4, arg5, arg6, arg7);
+            return result;
+        }
+    }
+    async updatePackingEntry(arg0: bigint, arg1: Time, arg2: bigint, arg3: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updatePackingEntry(arg0, arg1, arg2, arg3);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updatePackingEntry(arg0, arg1, arg2, arg3);
             return result;
         }
     }

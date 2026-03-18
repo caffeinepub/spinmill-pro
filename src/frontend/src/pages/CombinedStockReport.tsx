@@ -15,7 +15,7 @@ import {
   useYarnOpeningStock,
 } from "@/hooks/useQueries";
 import { Loader2, Printer } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 
 function spinningUnitLabel(u: string): string {
   const s = u.toLowerCase();
@@ -27,6 +27,17 @@ function spinningUnitLabel(u: string): string {
 }
 
 const UNIT_ORDER = ["OE Spinning", "Ring Spinning", "TFO", "Outside Yarn"];
+const PAGE1_UNITS = ["OE Spinning", "Ring Spinning"];
+const PAGE2_UNITS = ["TFO", "Outside Yarn"];
+
+/** Returns true if a yarn count string looks like a bad/numeric-only value */
+function isCountBad(count: string): boolean {
+  if (!count || count === "NaN" || count === "undefined" || count === "")
+    return true;
+  // A plain number with no "/" or "@" is likely a truncated TFO count (e.g. "30" instead of "30/1")
+  const asNum = Number(count);
+  return !Number.isNaN(asNum) && !count.includes("/") && !count.includes("@");
+}
 
 export default function CombinedStockReport() {
   const { data: warehouseStock = [], isLoading: loadingWS } =
@@ -39,31 +50,6 @@ export default function CombinedStockReport() {
     useYarnOpeningStock();
 
   const isLoading = loadingWS || loadingPE || loadingDE || loadingOS;
-  const printStyleRef = useRef<HTMLStyleElement | null>(null);
-
-  useEffect(() => {
-    const style = document.createElement("style");
-    style.innerHTML = `
-      @media print {
-        body * { visibility: hidden !important; }
-        #combined-stock-print-region,
-        #combined-stock-print-region * { visibility: visible !important; }
-        #combined-stock-print-region {
-          position: fixed !important;
-          top: 0 !important;
-          left: 0 !important;
-          width: 100% !important;
-        }
-        @page { size: A4 portrait; margin: 15mm; }
-      }
-    `;
-    document.head.appendChild(style);
-    printStyleRef.current = style;
-    return () => {
-      if (printStyleRef.current)
-        document.head.removeChild(printStyleRef.current);
-    };
-  }, []);
 
   // ---- Raw Material Stock ----
   const rawMaterialRows = useMemo(() => {
@@ -112,12 +98,15 @@ export default function CombinedStockReport() {
         endUse: string;
       }
     >();
+
+    // Step 1: seed from packing entries
     for (const p of packingEntries) {
       const key = p.lotNumber;
       if (!packMap.has(key)) {
         packMap.set(key, {
           totalPackedKg: 0,
-          yarnCountNe: String(p.yarnCountNe),
+          // Use empty string fallback to avoid "undefined" string
+          yarnCountNe: String(p.yarnCountNe ?? ""),
           spinningUnit: p.spinningUnit as string,
           productType: p.productType as string,
           endUse: p.endUse as string,
@@ -125,19 +114,35 @@ export default function CombinedStockReport() {
       }
       packMap.get(key)!.totalPackedKg += Number(p.quantityKg);
     }
+
+    // Step 2: merge opening stock entries
+    // Opening stock stores yarnCountNe as Text (reliable for TFO / Outside Yarn)
+    // so if the existing count looks wrong (numeric-only, NaN, empty), overwrite it
     for (const os of openingStockEntries) {
       const key = os.lotNumber;
+      const osCount = String(os.yarnCountNe ?? "");
       if (!packMap.has(key)) {
         packMap.set(key, {
           totalPackedKg: 0,
-          yarnCountNe: String(os.yarnCountNe),
+          yarnCountNe: osCount,
           spinningUnit: os.spinningUnit as string,
           productType: os.productType as string,
           endUse: os.endUse as string,
         });
+      } else {
+        // Update yarnCountNe when opening stock has a better (text) value
+        const existing = packMap.get(key)!;
+        if (
+          isCountBad(existing.yarnCountNe) &&
+          osCount &&
+          !isCountBad(osCount)
+        ) {
+          existing.yarnCountNe = osCount;
+        }
       }
       packMap.get(key)!.totalPackedKg += Number(os.weightKg);
     }
+
     const dispatchMap = new Map<string, number>();
     for (const d of dispatchEntries) {
       dispatchMap.set(
@@ -183,6 +188,14 @@ export default function CombinedStockReport() {
     }));
   }, [yarnRows]);
 
+  const yarnByUnitMap = useMemo(() => {
+    const map = new Map<string, typeof yarnRows>();
+    for (const { unit, rows } of yarnByUnit) {
+      map.set(unit, rows);
+    }
+    return map;
+  }, [yarnByUnit]);
+
   const yarnGrandTotal = useMemo(
     () => yarnRows.reduce((s, r) => s + r.availableKg, 0),
     [yarnRows],
@@ -195,7 +208,115 @@ export default function CombinedStockReport() {
   });
   const printedAt = new Date().toLocaleString("en-IN");
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    const printRegion = document.getElementById("combined-stock-print-region");
+    if (!printRegion) return;
+    const win = window.open("", "_blank", "width=900,height=700");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Combined Stock Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 11px; color: #000; margin: 15mm; }
+    table { width: 100%; border-collapse: collapse; font-size: 10px; }
+    th { border: 1px solid #999; padding: 4px 6px; text-align: left; font-weight: bold; background: #f0f0f0; }
+    td { border: 1px solid #ccc; padding: 3px 6px; }
+    .print-page-break { page-break-before: always; break-before: page; margin-top: 0; }
+    @page { size: A4 portrait; margin: 15mm; }
+  </style>
+</head>
+<body>
+${printRegion.innerHTML}
+</body>
+</html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => {
+      win.print();
+      win.close();
+    }, 500);
+  };
+
+  const PrintHeader = () => (
+    <div
+      style={{
+        textAlign: "center",
+        borderBottom: "2px solid #000",
+        paddingBottom: "8px",
+        marginBottom: "16px",
+      }}
+    >
+      <div style={{ fontSize: "16px", fontWeight: "bold" }}>
+        Sudarshan Jeans (P)Ltd Spinning
+      </div>
+      <div style={{ fontSize: "13px", fontWeight: "bold", marginTop: "2px" }}>
+        Combined Stock Report
+      </div>
+      <div style={{ marginTop: "4px" }}>Date: {today}</div>
+    </div>
+  );
+
+  const PrintYarnSection = ({ unit }: { unit: string }) => {
+    const unitRows = yarnByUnitMap.get(unit);
+    if (!unitRows || unitRows.length === 0) return null;
+    const unitTotal = unitRows.reduce((s, r) => s + r.availableKg, 0);
+    return (
+      <div style={{ marginBottom: "12px" }}>
+        <div
+          style={{
+            fontWeight: "bold",
+            fontSize: "11px",
+            margin: "6px 0 3px",
+            padding: "2px 4px",
+            backgroundColor: "#f5f5f5",
+            border: "1px solid #ccc",
+          }}
+        >
+          {unit}
+        </div>
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            fontSize: "10px",
+          }}
+        >
+          <thead>
+            <tr style={{ backgroundColor: "#f0f0f0" }}>
+              <th style={thStyle}>Lot No.</th>
+              <th style={thStyle}>Count (Ne)</th>
+              <th style={thStyle}>Product Type</th>
+              <th style={thStyle}>End Use</th>
+              <th style={{ ...thStyle, textAlign: "right" }}>Available (kg)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {unitRows.map((row) => (
+              <tr key={row.lotNumber}>
+                <td style={tdStyle}>{row.lotNumber}</td>
+                <td style={tdStyle}>{row.yarnCountNe}</td>
+                <td style={tdStyle}>{row.productType}</td>
+                <td style={tdStyle}>{row.endUse}</td>
+                <td style={{ ...tdStyle, textAlign: "right" }}>
+                  {row.availableKg.toFixed(2)}
+                </td>
+              </tr>
+            ))}
+            <tr style={{ backgroundColor: "#e8e8e8", fontWeight: "bold" }}>
+              <td style={tdStyle} colSpan={4}>
+                {unit} – Sub Total
+              </td>
+              <td style={{ ...tdStyle, textAlign: "right" }}>
+                {unitTotal.toFixed(2)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -206,7 +327,7 @@ export default function CombinedStockReport() {
             Combined Stock Report
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Raw Material & Yarn Stock – {today}
+            Raw Material &amp; Yarn Stock – {today}
           </p>
         </div>
         <Button
@@ -382,18 +503,9 @@ export default function CombinedStockReport() {
       )}
 
       {/* ============================================================ */}
-      {/* PRINT-ONLY REGION */}
+      {/* PRINT-ONLY REGION – hidden on screen, cloned into new window */}
       {/* ============================================================ */}
-      <div
-        id="combined-stock-print-region"
-        style={{
-          visibility: "hidden",
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-        }}
-      >
+      <div id="combined-stock-print-region" style={{ display: "none" }}>
         <div
           style={{
             fontFamily: "Arial, sans-serif",
@@ -401,183 +513,161 @@ export default function CombinedStockReport() {
             color: "#000",
           }}
         >
-          {/* Print Header */}
-          <div
-            style={{
-              textAlign: "center",
-              borderBottom: "2px solid #000",
-              paddingBottom: "8px",
-              marginBottom: "16px",
-            }}
-          >
-            <div style={{ fontSize: "16px", fontWeight: "bold" }}>
-              SpinMill Pro
-            </div>
-            <div
-              style={{ fontSize: "13px", fontWeight: "bold", marginTop: "2px" }}
-            >
-              Combined Stock Report
-            </div>
-            <div style={{ marginTop: "4px" }}>Date: {today}</div>
-          </div>
-
-          {/* Section 1 Print */}
-          <div style={{ marginBottom: "24px" }}>
-            <div
-              style={{
-                fontSize: "12px",
-                fontWeight: "bold",
-                marginBottom: "6px",
-                borderBottom: "1px solid #000",
-                paddingBottom: "3px",
-              }}
-            >
-              Section 1: Raw Material Stock – Grade Wise &amp; Warehouse Wise
-            </div>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: "10px",
-              }}
-            >
-              <thead>
-                <tr style={{ backgroundColor: "#f0f0f0" }}>
-                  <th style={thStyle}>Grade / Material</th>
-                  <th style={{ ...thStyle, textAlign: "right" }}>
-                    OE Raw Material (kg)
-                  </th>
-                  <th style={{ ...thStyle, textAlign: "right" }}>
-                    Ring Raw Material (kg)
-                  </th>
-                  <th style={{ ...thStyle, textAlign: "right" }}>Total (kg)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rawMaterialRows.map((row) => (
-                  <tr key={row.name}>
-                    <td style={tdStyle}>{row.name}</td>
-                    <td style={{ ...tdStyle, textAlign: "right" }}>
-                      {row.oe.toFixed(2)}
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: "right" }}>
-                      {row.ring.toFixed(2)}
-                    </td>
-                    <td
-                      style={{
-                        ...tdStyle,
-                        textAlign: "right",
-                        fontWeight: "bold",
-                      }}
-                    >
-                      {row.total.toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-                {rawMaterialRows.length > 0 && (
-                  <tr
-                    style={{ backgroundColor: "#e0e0e0", fontWeight: "bold" }}
-                  >
-                    <td style={tdStyle}>Grand Total</td>
-                    <td style={{ ...tdStyle, textAlign: "right" }}>
-                      {rmGrandTotal.oe.toFixed(2)}
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: "right" }}>
-                      {rmGrandTotal.ring.toFixed(2)}
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: "right" }}>
-                      {rmGrandTotal.total.toFixed(2)}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Section 2 Print */}
+          {/* ===== PAGE 1: Raw Material + OE Spinning + Ring Spinning ===== */}
           <div>
-            <div
-              style={{
-                fontSize: "12px",
-                fontWeight: "bold",
-                marginBottom: "6px",
-                borderBottom: "1px solid #000",
-                paddingBottom: "3px",
-              }}
-            >
-              Section 2: Total Yarn Stock – Unit Wise &amp; Lot Number Wise
-            </div>
-            {yarnByUnit.map(({ unit, rows: unitRows }) => {
-              const unitTotal = unitRows.reduce((s, r) => s + r.availableKg, 0);
-              return (
-                <div key={unit} style={{ marginBottom: "12px" }}>
-                  <div
-                    style={{
-                      fontWeight: "bold",
-                      fontSize: "11px",
-                      margin: "6px 0 3px",
-                      padding: "2px 4px",
-                      backgroundColor: "#f5f5f5",
-                      border: "1px solid #ccc",
-                    }}
-                  >
-                    {unit}
-                  </div>
-                  <table
-                    style={{
-                      width: "100%",
-                      borderCollapse: "collapse",
-                      fontSize: "10px",
-                    }}
-                  >
-                    <thead>
-                      <tr style={{ backgroundColor: "#f0f0f0" }}>
-                        <th style={thStyle}>Lot No.</th>
-                        <th style={thStyle}>Count (Ne)</th>
-                        <th style={thStyle}>Product Type</th>
-                        <th style={thStyle}>End Use</th>
-                        <th style={{ ...thStyle, textAlign: "right" }}>
-                          Available (kg)
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {unitRows.map((row) => (
-                        <tr key={row.lotNumber}>
-                          <td style={tdStyle}>{row.lotNumber}</td>
-                          <td style={tdStyle}>{row.yarnCountNe}</td>
-                          <td style={tdStyle}>{row.productType}</td>
-                          <td style={tdStyle}>{row.endUse}</td>
-                          <td style={{ ...tdStyle, textAlign: "right" }}>
-                            {row.availableKg.toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
-                      <tr
-                        style={{
-                          backgroundColor: "#e8e8e8",
-                          fontWeight: "bold",
-                        }}
-                      >
-                        <td style={tdStyle} colSpan={4}>
-                          {unit} – Sub Total
-                        </td>
-                        <td style={{ ...tdStyle, textAlign: "right" }}>
-                          {unitTotal.toFixed(2)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              );
-            })}
-            {yarnByUnit.length > 0 && (
+            <PrintHeader />
+
+            {/* Section 1: Raw Material Stock */}
+            <div style={{ marginBottom: "24px" }}>
+              <div
+                style={{
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  marginBottom: "6px",
+                  borderBottom: "1px solid #000",
+                  paddingBottom: "3px",
+                }}
+              >
+                Section 1: Raw Material Stock – Grade Wise &amp; Warehouse Wise
+              </div>
               <table
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
                   fontSize: "10px",
-                  marginTop: "4px",
+                }}
+              >
+                <thead>
+                  <tr style={{ backgroundColor: "#f0f0f0" }}>
+                    <th style={thStyle}>Grade / Material</th>
+                    <th style={{ ...thStyle, textAlign: "right" }}>
+                      OE Raw Material (kg)
+                    </th>
+                    <th style={{ ...thStyle, textAlign: "right" }}>
+                      Ring Raw Material (kg)
+                    </th>
+                    <th style={{ ...thStyle, textAlign: "right" }}>
+                      Total (kg)
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rawMaterialRows.map((row) => (
+                    <tr key={row.name}>
+                      <td style={tdStyle}>{row.name}</td>
+                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                        {row.oe.toFixed(2)}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                        {row.ring.toFixed(2)}
+                      </td>
+                      <td
+                        style={{
+                          ...tdStyle,
+                          textAlign: "right",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {row.total.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                  {rawMaterialRows.length > 0 && (
+                    <tr
+                      style={{
+                        backgroundColor: "#e0e0e0",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      <td style={tdStyle}>Grand Total</td>
+                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                        {rmGrandTotal.oe.toFixed(2)}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                        {rmGrandTotal.ring.toFixed(2)}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                        {rmGrandTotal.total.toFixed(2)}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Section 2 Page 1: OE Spinning + Ring Spinning */}
+            <div>
+              <div
+                style={{
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  marginBottom: "6px",
+                  borderBottom: "1px solid #000",
+                  paddingBottom: "3px",
+                }}
+              >
+                Section 2: Yarn Stock – OE Spinning &amp; Ring Spinning
+              </div>
+              {PAGE1_UNITS.map((unit) => (
+                <PrintYarnSection key={unit} unit={unit} />
+              ))}
+              {PAGE1_UNITS.every((u) => !yarnByUnitMap.has(u)) && (
+                <div
+                  style={{
+                    padding: "8px",
+                    color: "#888",
+                    textAlign: "center",
+                    fontSize: "10px",
+                  }}
+                >
+                  No OE Spinning or Ring Spinning yarn stock found
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ===== PAGE 2: TFO + Outside Yarn ===== */}
+          <div className="print-page-break">
+            <PrintHeader />
+
+            {/* Section 2 Page 2: TFO + Outside Yarn */}
+            <div>
+              <div
+                style={{
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  marginBottom: "6px",
+                  borderBottom: "1px solid #000",
+                  paddingBottom: "3px",
+                }}
+              >
+                Section 2: Yarn Stock – TFO &amp; Outside Yarn
+              </div>
+              {PAGE2_UNITS.map((unit) => (
+                <PrintYarnSection key={unit} unit={unit} />
+              ))}
+              {PAGE2_UNITS.every((u) => !yarnByUnitMap.has(u)) && (
+                <div
+                  style={{
+                    padding: "8px",
+                    color: "#888",
+                    textAlign: "center",
+                    fontSize: "10px",
+                  }}
+                >
+                  No TFO or Outside Yarn stock found
+                </div>
+              )}
+            </div>
+
+            {/* Grand Total – all yarn units */}
+            {yarnRows.length > 0 && (
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontSize: "10px",
+                  marginTop: "8px",
                 }}
               >
                 <tbody>
@@ -585,7 +675,7 @@ export default function CombinedStockReport() {
                     style={{ backgroundColor: "#d0d0d0", fontWeight: "bold" }}
                   >
                     <td style={tdStyle} colSpan={4}>
-                      Grand Total
+                      Grand Total – All Yarn Stock
                     </td>
                     <td style={{ ...tdStyle, textAlign: "right" }}>
                       {yarnGrandTotal.toFixed(2)}
@@ -594,21 +684,21 @@ export default function CombinedStockReport() {
                 </tbody>
               </table>
             )}
-          </div>
 
-          {/* Print Footer */}
-          <div
-            style={{
-              marginTop: "24px",
-              borderTop: "1px solid #000",
-              paddingTop: "6px",
-              fontSize: "9px",
-              display: "flex",
-              justifyContent: "space-between",
-            }}
-          >
-            <span>SpinMill Pro – Confidential</span>
-            <span>Printed: {printedAt}</span>
+            {/* Print Footer */}
+            <div
+              style={{
+                marginTop: "24px",
+                borderTop: "1px solid #000",
+                paddingTop: "6px",
+                fontSize: "9px",
+                display: "flex",
+                justifyContent: "space-between",
+              }}
+            >
+              <span>Sudarshan Jeans (P)Ltd Spinning – Confidential</span>
+              <span>Printed: {printedAt}</span>
+            </div>
           </div>
         </div>
       </div>

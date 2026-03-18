@@ -506,6 +506,12 @@ export interface _SERVICE {
     [bigint, string, string, string, bigint, RawMaterialStatus, Warehouse],
     undefined
   >,
+  'updateRawMaterialOpeningStock' : ActorMethod<[bigint, string, string, string, bigint, Warehouse, Time], undefined>,
+  'updateYarnOpeningStock' : ActorMethod<[bigint, string, bigint, SpinningUnit, ProductType, EndUse, bigint], undefined>,
+  'updateMaterialIssue' : ActorMethod<[bigint, string, Warehouse, string, string, bigint, string, bigint], undefined>,
+  'updatePackingEntry' : ActorMethod<[bigint, Time, bigint, string], undefined>,
+  'updateInwardEntry' : ActorMethod<[bigint, Time, string, string, bigint], undefined>,
+  'updateDispatchEntry' : ActorMethod<[bigint, Time, DispatchDestination, bigint, string], undefined>,
   'getAllWasteEntries' : ActorMethod<[], Array<WasteEntry>>,
   'createWasteEntry' : ActorMethod<[bigint, SpinningUnit, string, bigint, string], bigint>,
   'updateWasteEntry' : ActorMethod<[bigint, bigint, SpinningUnit, string, bigint, string], undefined>,
