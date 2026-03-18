@@ -12,6 +12,7 @@ import {
   useDispatchEntries,
   usePackingEntries,
   useWarehouseStock,
+  useYarnCountLabels,
   useYarnOpeningStock,
 } from "@/hooks/useQueries";
 import { Loader2, Printer } from "lucide-react";
@@ -30,15 +31,6 @@ const UNIT_ORDER = ["OE Spinning", "Ring Spinning", "TFO", "Outside Yarn"];
 const PAGE1_UNITS = ["OE Spinning", "Ring Spinning"];
 const PAGE2_UNITS = ["TFO", "Outside Yarn"];
 
-/** Returns true if a yarn count string looks like a bad/numeric-only value */
-function isCountBad(count: string): boolean {
-  if (!count || count === "NaN" || count === "undefined" || count === "")
-    return true;
-  // A plain number with no "/" or "@" is likely a truncated TFO count (e.g. "30" instead of "30/1")
-  const asNum = Number(count);
-  return !Number.isNaN(asNum) && !count.includes("/") && !count.includes("@");
-}
-
 export default function CombinedStockReport() {
   const { data: warehouseStock = [], isLoading: loadingWS } =
     useWarehouseStock();
@@ -48,6 +40,7 @@ export default function CombinedStockReport() {
     useDispatchEntries();
   const { data: openingStockEntries = [], isLoading: loadingOS } =
     useYarnOpeningStock();
+  const { data: countLabels } = useYarnCountLabels();
 
   const isLoading = loadingWS || loadingPE || loadingDE || loadingOS;
 
@@ -87,6 +80,8 @@ export default function CombinedStockReport() {
   );
 
   // ---- Yarn Stock ----
+  // Use countLabels (the dedicated yarn count label store) as the primary source
+  // for Count (Ne) strings so that TFO values like "30/1" or "40@" are preserved.
   const yarnRows = useMemo(() => {
     const packMap = new Map<
       string,
@@ -99,45 +94,53 @@ export default function CombinedStockReport() {
       }
     >();
 
+    // Helper: resolve count for a lot, preferring countLabels (text store) over
+    // the raw bigint field which strips special chars like "/" and "@".
+    const resolveCount = (lotNumber: string, rawCount: unknown): string => {
+      const label = countLabels?.get(lotNumber);
+      if (label && label.trim() !== "") return label;
+      return String(rawCount ?? "");
+    };
+
     // Step 1: seed from packing entries
     for (const p of packingEntries) {
       const key = p.lotNumber;
       if (!packMap.has(key)) {
         packMap.set(key, {
           totalPackedKg: 0,
-          // Use empty string fallback to avoid "undefined" string
-          yarnCountNe: String(p.yarnCountNe ?? ""),
+          yarnCountNe: resolveCount(key, p.yarnCountNe),
           spinningUnit: p.spinningUnit as string,
           productType: p.productType as string,
           endUse: p.endUse as string,
         });
+      } else {
+        // Update count if we now have a better label
+        const label = countLabels?.get(key);
+        if (label && label.trim() !== "") {
+          packMap.get(key)!.yarnCountNe = label;
+        }
       }
       packMap.get(key)!.totalPackedKg += Number(p.quantityKg);
     }
 
     // Step 2: merge opening stock entries
-    // Opening stock stores yarnCountNe as Text (reliable for TFO / Outside Yarn)
-    // so if the existing count looks wrong (numeric-only, NaN, empty), overwrite it
     for (const os of openingStockEntries) {
       const key = os.lotNumber;
-      const osCount = String(os.yarnCountNe ?? "");
+      const count = resolveCount(key, os.yarnCountNe);
       if (!packMap.has(key)) {
         packMap.set(key, {
           totalPackedKg: 0,
-          yarnCountNe: osCount,
+          yarnCountNe: count,
           spinningUnit: os.spinningUnit as string,
           productType: os.productType as string,
           endUse: os.endUse as string,
         });
       } else {
-        // Update yarnCountNe when opening stock has a better (text) value
+        // If count label gives better info, update
         const existing = packMap.get(key)!;
-        if (
-          isCountBad(existing.yarnCountNe) &&
-          osCount &&
-          !isCountBad(osCount)
-        ) {
-          existing.yarnCountNe = osCount;
+        const label = countLabels?.get(key);
+        if (label && label.trim() !== "") {
+          existing.yarnCountNe = label;
         }
       }
       packMap.get(key)!.totalPackedKg += Number(os.weightKg);
@@ -174,7 +177,7 @@ export default function CombinedStockReport() {
       });
     }
     return result.sort((a, b) => a.lotNumber.localeCompare(b.lotNumber));
-  }, [packingEntries, dispatchEntries, openingStockEntries]);
+  }, [packingEntries, dispatchEntries, openingStockEntries, countLabels]);
 
   const yarnByUnit = useMemo(() => {
     const map = new Map<string, typeof yarnRows>();
