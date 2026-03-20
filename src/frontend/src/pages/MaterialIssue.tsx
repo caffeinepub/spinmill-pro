@@ -289,12 +289,25 @@ export default function MaterialIssue() {
     Map<string, { qty: string; grade: string }>
   >(new Map());
   const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   const LATEST_COUNT_MI = 25;
-  const displayedIssues = [...issues]
+  const hasDateFilters = !!fromDate || !!toDate;
+  const filteredIssues = [...issues]
     .sort((a, b) => (a.id > b.id ? -1 : 1))
-    .slice(0, LATEST_COUNT_MI);
-  const isShowingLimitedMI = issues.length > LATEST_COUNT_MI;
+    .filter((entry) => {
+      if (!hasDateFilters) return true;
+      const ms = Number(BigInt(entry.issueDate) / 1_000_000n);
+      const entryDate = new Date(ms).toISOString().split("T")[0];
+      if (fromDate && entryDate < fromDate) return false;
+      if (toDate && entryDate > toDate) return false;
+      return true;
+    });
+  const displayedIssues = hasDateFilters
+    ? filteredIssues
+    : filteredIssues.slice(0, LATEST_COUNT_MI);
+  const isShowingLimitedMI = !hasDateFilters && issues.length > LATEST_COUNT_MI;
 
   async function handleBulkSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -437,6 +450,50 @@ export default function MaterialIssue() {
       </div>
 
       {/* Issues Table */}
+      <div className="flex flex-wrap items-center gap-3 mb-3">
+        <div className="flex items-center gap-2">
+          <label
+            htmlFor="filter-from-date"
+            className="text-sm font-medium text-muted-foreground whitespace-nowrap"
+          >
+            From Date
+          </label>
+          <input
+            id="filter-from-date"
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="border border-border rounded-md px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label
+            htmlFor="filter-to-date"
+            className="text-sm font-medium text-muted-foreground whitespace-nowrap"
+          >
+            To Date
+          </label>
+          <input
+            id="filter-to-date"
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="border border-border rounded-md px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        {hasDateFilters && (
+          <button
+            type="button"
+            onClick={() => {
+              setFromDate("");
+              setToDate("");
+            }}
+            className="px-3 py-1.5 text-sm border border-border rounded-md bg-background hover:bg-muted transition-colors"
+          >
+            Clear Filters
+          </button>
+        )}
+      </div>
       <div className="rounded-lg border border-border/60 bg-card shadow-sm overflow-hidden">
         {isLoading ? (
           <div
@@ -784,7 +841,7 @@ export default function MaterialIssue() {
 
       {isShowingLimitedMI && (
         <p className="text-xs text-muted-foreground mt-2 text-center">
-          Showing 25 most recent. Search above to find older entries.
+          Showing 25 most recent. Use date filters above to find older entries.
         </p>
       )}
 

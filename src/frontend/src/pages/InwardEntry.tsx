@@ -247,11 +247,26 @@ export default function InwardEntry() {
   const [form, setForm] = useState(defaultForm);
 
   const isLoading = entriesLoading || poLoading;
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
   const LATEST_COUNT_IW = 25;
-  const displayedEntries = [...entries]
+  const hasDateFilters = !!fromDate || !!toDate;
+  const filteredEntries = [...entries]
     .sort((a, b) => (a.id > b.id ? -1 : 1))
-    .slice(0, LATEST_COUNT_IW);
-  const isShowingLimitedIW = entries.length > LATEST_COUNT_IW;
+    .filter((entry) => {
+      if (!hasDateFilters) return true;
+      const ms = Number(BigInt(entry.inwardDate) / 1_000_000n);
+      const entryDate = new Date(ms).toISOString().split("T")[0];
+      if (fromDate && entryDate < fromDate) return false;
+      if (toDate && entryDate > toDate) return false;
+      return true;
+    });
+  const displayedEntries = hasDateFilters
+    ? filteredEntries
+    : filteredEntries.slice(0, LATEST_COUNT_IW);
+  const isShowingLimitedIW =
+    !hasDateFilters && entries.length > LATEST_COUNT_IW;
 
   // Build a map from PO id -> PO for quick lookups
   const poMap = new Map(purchaseOrders.map((po) => [String(po.id), po]));
@@ -415,6 +430,50 @@ export default function InwardEntry() {
         }
       />
 
+      <div className="flex flex-wrap items-center gap-3 mb-3">
+        <div className="flex items-center gap-2">
+          <label
+            htmlFor="filter-from-date"
+            className="text-sm font-medium text-muted-foreground whitespace-nowrap"
+          >
+            From Date
+          </label>
+          <input
+            id="filter-from-date"
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="border border-border rounded-md px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label
+            htmlFor="filter-to-date"
+            className="text-sm font-medium text-muted-foreground whitespace-nowrap"
+          >
+            To Date
+          </label>
+          <input
+            id="filter-to-date"
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="border border-border rounded-md px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        {hasDateFilters && (
+          <button
+            type="button"
+            onClick={() => {
+              setFromDate("");
+              setToDate("");
+            }}
+            className="px-3 py-1.5 text-sm border border-border rounded-md bg-background hover:bg-muted transition-colors"
+          >
+            Clear Filters
+          </button>
+        )}
+      </div>
       <div className="rounded-lg border border-border/60 bg-card shadow-card overflow-hidden">
         {isLoading ? (
           <div className="p-4 space-y-3">
@@ -733,7 +792,7 @@ export default function InwardEntry() {
 
       {isShowingLimitedIW && (
         <p className="text-xs text-muted-foreground mt-2 text-center">
-          Showing 25 most recent. Search to find older entries.
+          Showing 25 most recent. Use date filters above to find older entries.
         </p>
       )}
 

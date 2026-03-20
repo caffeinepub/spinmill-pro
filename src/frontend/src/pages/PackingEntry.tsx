@@ -877,7 +877,10 @@ export default function PackingEntryPage() {
           setDialogOpen(o);
         }}
       >
-        <DialogContent data-ocid="packing.dialog" className="sm:max-w-lg">
+        <DialogContent
+          data-ocid="packing.dialog"
+          className="!w-screen !h-screen !max-w-none sm:!max-w-none !max-h-none !rounded-none !top-0 !left-0 !translate-x-0 !translate-y-0"
+        >
           <DialogHeader>
             <DialogTitle>
               {editItem ? "Edit Packing Entry" : "New Packing Entry"}
@@ -1052,8 +1055,7 @@ export default function PackingEntryPage() {
       <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
         <DialogContent
           data-ocid="packing.bulk.dialog"
-          className="max-w-[95vw] w-[95vw] !flex !flex-col overflow-hidden"
-          style={{ maxHeight: "90vh" }}
+          className="!w-screen !h-screen !max-w-none sm:!max-w-none !max-h-none !rounded-none !top-0 !left-0 !translate-x-0 !translate-y-0 !flex !flex-col overflow-hidden"
         >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">

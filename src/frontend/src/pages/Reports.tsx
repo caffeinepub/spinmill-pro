@@ -21,6 +21,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   BarChart2,
+  BarChart3,
   Box,
   CalendarRange,
   Download,
@@ -2322,6 +2323,384 @@ function OutsideYarnInwardReport({
   );
 }
 
+// ─── Issue vs Packing Summary Report ──────────────────────────────────────────
+
+function IssueVsPackingSummaryReport({
+  issues,
+  packingEntries,
+  isLoading,
+}: {
+  issues: MaterialIssue[];
+  packingEntries: PackingEntry[];
+  isLoading: boolean;
+}) {
+  const [fromDate, setFromDate] = useState(defaultFromDate);
+  const [toDate, setToDate] = useState(defaultToDate);
+
+  // Filter issues by date
+  const filteredIssues = useMemo(() => {
+    const from = new Date(`${fromDate}T00:00:00`).getTime();
+    const to = new Date(`${toDate}T23:59:59`).getTime();
+    return issues.filter((i) => {
+      const ts = Number(i.issueDate / 1_000_000n);
+      return ts >= from && ts <= to;
+    });
+  }, [issues, fromDate, toDate]);
+
+  // Filter packing entries by date
+  const filteredPacking = useMemo(() => {
+    const from = new Date(`${fromDate}T00:00:00`).getTime();
+    const to = new Date(`${toDate}T23:59:59`).getTime();
+    return packingEntries.filter((p) => {
+      const ts = Number(p.packingDate / 1_000_000n);
+      return ts >= from && ts <= to;
+    });
+  }, [packingEntries, fromDate, toDate]);
+
+  // Grade-wise issue aggregation
+  const gradeRows = useMemo(() => {
+    const map: Record<string, { oe: number; ring: number }> = {};
+    for (const issue of filteredIssues) {
+      const grade = (issue.grade || "").trim() || "Unknown";
+      if (!map[grade]) map[grade] = { oe: 0, ring: 0 };
+      const qty = Number(issue.issuedQty);
+      if ((issue.warehouse as string) === "oeRawMaterial") map[grade].oe += qty;
+      else if ((issue.warehouse as string) === "ringRawMaterial")
+        map[grade].ring += qty;
+    }
+    return Object.entries(map)
+      .map(([grade, v]) => ({
+        grade,
+        oe: v.oe,
+        ring: v.ring,
+        total: v.oe + v.ring,
+      }))
+      .sort((a, b) => a.grade.localeCompare(b.grade));
+  }, [filteredIssues]);
+
+  // Totals for issues
+  const totalOeIssued = gradeRows.reduce((s, r) => s + r.oe, 0);
+  const totalRingIssued = gradeRows.reduce((s, r) => s + r.ring, 0);
+  const totalIssued = totalOeIssued + totalRingIssued;
+
+  // Yarn packed aggregation
+  const totalOePacked = useMemo(
+    () =>
+      filteredPacking
+        .filter((p) => (p.spinningUnit as string).toLowerCase() === "openend")
+        .reduce((s, p) => s + Number(p.quantityKg), 0),
+    [filteredPacking],
+  );
+  const totalRingPacked = useMemo(
+    () =>
+      filteredPacking
+        .filter(
+          (p) => (p.spinningUnit as string).toLowerCase() === "ringspinning",
+        )
+        .reduce((s, p) => s + Number(p.quantityKg), 0),
+    [filteredPacking],
+  );
+  const totalPacked = totalOePacked + totalRingPacked;
+
+  // Balance
+  const oeBalance = totalOeIssued - totalOePacked;
+  const ringBalance = totalRingIssued - totalRingPacked;
+  const overallBalance = totalIssued - totalPacked;
+
+  function fmt(n: number) {
+    return n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  }
+
+  function balanceClass(n: number) {
+    if (n > 0) return "text-green-600 font-semibold";
+    if (n < 0) return "text-red-600 font-semibold";
+    return "text-gray-700 font-semibold";
+  }
+
+  function handleExport() {
+    const headers1 = [
+      "Grade",
+      "OE Warehouse (Kg)",
+      "Ring Warehouse (Kg)",
+      "Total Issued (Kg)",
+    ];
+    const rows1 = gradeRows.map((r) => [r.grade, r.oe, r.ring, r.total]);
+    rows1.push(["TOTAL", totalOeIssued, totalRingIssued, totalIssued]);
+
+    const headers2 = [
+      "Unit",
+      "Total Issued (Kg)",
+      "Total Packed (Kg)",
+      "Balance (Kg)",
+    ];
+    const rows2 = [
+      ["OE Spinning", totalOeIssued, totalOePacked, oeBalance],
+      ["Ring Spinning", totalRingIssued, totalRingPacked, ringBalance],
+      ["Overall", totalIssued, totalPacked, overallBalance],
+    ];
+
+    const sep = [[""], [""]];
+    exportCsvRows(
+      `issue-vs-packing-summary-${fromDate}-to-${toDate}.csv`,
+      headers1,
+      [...rows1, ...sep, headers2 as (string | number)[], ...rows2],
+    );
+  }
+
+  function handlePrint() {
+    window.print();
+  }
+
+  if (isLoading) return <LoadingReport />;
+
+  return (
+    <div className="space-y-6" data-ocid="issue_packing_summary.section">
+      {/* Filter Bar */}
+      <div className="flex flex-wrap items-end gap-4 bg-white border rounded-xl px-4 py-3 shadow-sm">
+        <CalendarRange className="w-4 h-4 text-muted-foreground mt-auto mb-1" />
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs text-muted-foreground">From Date</Label>
+          <Input
+            type="date"
+            className="h-8 text-xs w-36"
+            value={fromDate}
+            max={toDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            data-ocid="issue_packing_summary.input"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs text-muted-foreground">To Date</Label>
+          <Input
+            type="date"
+            className="h-8 text-xs w-36"
+            value={toDate}
+            min={fromDate}
+            onChange={(e) => setToDate(e.target.value)}
+            data-ocid="issue_packing_summary.input"
+          />
+        </div>
+        <div className="ml-auto flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs h-8"
+            onClick={handleExport}
+            data-ocid="issue_packing_summary.secondary_button"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Export CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs h-8"
+            onClick={handlePrint}
+            data-ocid="issue_packing_summary.primary_button"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            Print
+          </Button>
+        </div>
+      </div>
+
+      {/* Section 1: Grade-wise Issue Summary */}
+      <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b bg-slate-50/60 flex items-center gap-2">
+          <Warehouse className="w-4 h-4 text-blue-600" />
+          <h3 className="font-semibold text-sm text-slate-800">
+            Grade-wise Raw Material Issue Summary
+          </h3>
+          <Badge variant="secondary" className="ml-auto text-xs">
+            {gradeRows.length} grades
+          </Badge>
+        </div>
+        {gradeRows.length === 0 ? (
+          <EmptyReport message="No issue records found for the selected date range." />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-slate-50/40">
+                <TableHead className="text-xs font-semibold text-slate-600">
+                  Grade
+                </TableHead>
+                <TableHead className="text-xs font-semibold text-slate-600 text-right">
+                  OE Warehouse (Kg)
+                </TableHead>
+                <TableHead className="text-xs font-semibold text-slate-600 text-right">
+                  Ring Warehouse (Kg)
+                </TableHead>
+                <TableHead className="text-xs font-semibold text-slate-600 text-right">
+                  Total Issued (Kg)
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {gradeRows.map((row, i) => (
+                <TableRow
+                  key={row.grade}
+                  className="hover:bg-slate-50/40"
+                  data-ocid={`issue_packing_summary.row.item.${i + 1}`}
+                >
+                  <TableCell className="text-xs font-medium">
+                    {row.grade}
+                  </TableCell>
+                  <TableCell className="text-xs text-right tabular-nums">
+                    {row.oe > 0 ? fmt(row.oe) : "—"}
+                  </TableCell>
+                  <TableCell className="text-xs text-right tabular-nums">
+                    {row.ring > 0 ? fmt(row.ring) : "—"}
+                  </TableCell>
+                  <TableCell className="text-xs text-right tabular-nums font-semibold">
+                    {fmt(row.total)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+            <tfoot>
+              <tr className="border-t-2 border-slate-300 bg-slate-100/70">
+                <td className="px-4 py-2 text-xs font-bold text-slate-700">
+                  TOTAL
+                </td>
+                <td className="px-4 py-2 text-xs font-bold text-right tabular-nums text-slate-700">
+                  {fmt(totalOeIssued)}
+                </td>
+                <td className="px-4 py-2 text-xs font-bold text-right tabular-nums text-slate-700">
+                  {fmt(totalRingIssued)}
+                </td>
+                <td className="px-4 py-2 text-xs font-bold text-right tabular-nums text-slate-800">
+                  {fmt(totalIssued)}
+                </td>
+              </tr>
+            </tfoot>
+          </Table>
+        )}
+      </div>
+
+      {/* Section 2: Yarn Packed Summary */}
+      <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b bg-slate-50/60 flex items-center gap-2">
+          <Package className="w-4 h-4 text-violet-600" />
+          <h3 className="font-semibold text-sm text-slate-800">
+            Yarn Packed Summary
+          </h3>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-5">
+          <div className="rounded-lg border bg-blue-50/60 px-5 py-4 flex flex-col gap-1">
+            <p className="text-xs text-blue-700 font-medium">
+              OE Spinning Packed
+            </p>
+            <p className="text-2xl font-bold text-blue-800 tabular-nums">
+              {fmt(totalOePacked)}{" "}
+              <span className="text-sm font-normal">Kg</span>
+            </p>
+          </div>
+          <div className="rounded-lg border bg-violet-50/60 px-5 py-4 flex flex-col gap-1">
+            <p className="text-xs text-violet-700 font-medium">
+              Ring Spinning Packed
+            </p>
+            <p className="text-2xl font-bold text-violet-800 tabular-nums">
+              {fmt(totalRingPacked)}{" "}
+              <span className="text-sm font-normal">Kg</span>
+            </p>
+          </div>
+          <div className="rounded-lg border bg-slate-50/80 px-5 py-4 flex flex-col gap-1">
+            <p className="text-xs text-slate-600 font-medium">
+              Total Yarn Packed
+            </p>
+            <p className="text-2xl font-bold text-slate-800 tabular-nums">
+              {fmt(totalPacked)} <span className="text-sm font-normal">Kg</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Section 3: Balance Summary */}
+      <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b bg-slate-50/60 flex items-center gap-2">
+          <BarChart3 className="w-4 h-4 text-emerald-600" />
+          <h3 className="font-semibold text-sm text-slate-800">
+            Balance Summary (Issued vs Packed)
+          </h3>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-slate-50/40">
+              <TableHead className="text-xs font-semibold text-slate-600">
+                Unit
+              </TableHead>
+              <TableHead className="text-xs font-semibold text-slate-600 text-right">
+                Total Issued (Kg)
+              </TableHead>
+              <TableHead className="text-xs font-semibold text-slate-600 text-right">
+                Total Packed (Kg)
+              </TableHead>
+              <TableHead className="text-xs font-semibold text-slate-600 text-right">
+                Balance (Kg)
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow
+              className="hover:bg-slate-50/40"
+              data-ocid="issue_packing_summary.table"
+            >
+              <TableCell className="text-xs font-medium">
+                OE Spinning (OE Warehouse)
+              </TableCell>
+              <TableCell className="text-xs text-right tabular-nums">
+                {fmt(totalOeIssued)}
+              </TableCell>
+              <TableCell className="text-xs text-right tabular-nums">
+                {fmt(totalOePacked)}
+              </TableCell>
+              <TableCell
+                className={`text-xs text-right tabular-nums ${balanceClass(oeBalance)}`}
+              >
+                {fmt(oeBalance)}
+              </TableCell>
+            </TableRow>
+            <TableRow className="hover:bg-slate-50/40">
+              <TableCell className="text-xs font-medium">
+                Ring Spinning (Ring Warehouse)
+              </TableCell>
+              <TableCell className="text-xs text-right tabular-nums">
+                {fmt(totalRingIssued)}
+              </TableCell>
+              <TableCell className="text-xs text-right tabular-nums">
+                {fmt(totalRingPacked)}
+              </TableCell>
+              <TableCell
+                className={`text-xs text-right tabular-nums ${balanceClass(ringBalance)}`}
+              >
+                {fmt(ringBalance)}
+              </TableCell>
+            </TableRow>
+          </TableBody>
+          <tfoot>
+            <tr className="border-t-2 border-slate-300 bg-slate-100/70">
+              <td className="px-4 py-2 text-xs font-bold text-slate-700">
+                Overall
+              </td>
+              <td className="px-4 py-2 text-xs font-bold text-right tabular-nums text-slate-700">
+                {fmt(totalIssued)}
+              </td>
+              <td className="px-4 py-2 text-xs font-bold text-right tabular-nums text-slate-700">
+                {fmt(totalPacked)}
+              </td>
+              <td
+                className={`px-4 py-2 text-xs text-right tabular-nums ${balanceClass(overallBalance)}`}
+              >
+                {fmt(overallBalance)}
+              </td>
+            </tr>
+          </tfoot>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
 export default function Reports() {
   const { data: logs = [], isLoading: logsLoading } = useProductionLogs();
   const { data: machines = [], isLoading: machinesLoading } = useMachines();
@@ -2419,6 +2798,14 @@ export default function Reports() {
               <Package className="w-3.5 h-3.5" />
               Outside Yarn Inward
             </TabsTrigger>
+            <TabsTrigger
+              value="issuepackingsummary"
+              data-ocid="reports.issuepackingsummary.tab"
+              className="gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm whitespace-nowrap"
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              Issue vs Packing Summary
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -2473,6 +2860,14 @@ export default function Reports() {
             openingStockEntries={yarnOpeningStock}
             isLoading={yarnStockLoading}
             countLabels={countLabels}
+          />
+        </TabsContent>
+
+        <TabsContent value="issuepackingsummary" className="mt-0">
+          <IssueVsPackingSummaryReport
+            issues={materialIssues}
+            packingEntries={packingEntries}
+            isLoading={issuesLoading || packingLoading}
           />
         </TabsContent>
       </Tabs>

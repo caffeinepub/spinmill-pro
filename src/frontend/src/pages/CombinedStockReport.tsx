@@ -27,6 +27,27 @@ function spinningUnitLabel(u: string): string {
   return u;
 }
 
+function spinningUnitType(u: string): string {
+  const s = u.toLowerCase().replace(/\s/g, "");
+  if (s === "openend" || s === "oespinning") return "OE";
+  if (s === "ringspinning") return "RS";
+  if (s === "tfo") return "TFO";
+  if (s === "outsideyarn") return "OY";
+  return u;
+}
+
+function formatProductType(pt: string): string {
+  if (!pt) return "";
+  if (pt.toLowerCase() === "lt") return "LT";
+  return pt.charAt(0).toUpperCase() + pt.slice(1);
+}
+
+function formatEndUse(eu: string): string {
+  if (!eu) return "";
+  if (eu.toLowerCase() === "tfo") return "TFO";
+  return eu.charAt(0).toUpperCase() + eu.slice(1);
+}
+
 const UNIT_ORDER = ["OE Spinning", "Ring Spinning", "TFO", "Outside Yarn"];
 const PAGE1_UNITS = ["OE Spinning", "Ring Spinning"];
 const PAGE2_UNITS = ["TFO", "Outside Yarn"];
@@ -80,8 +101,6 @@ export default function CombinedStockReport() {
   );
 
   // ---- Yarn Stock ----
-  // Use countLabels (the dedicated yarn count label store) as the primary source
-  // for Count (Ne) strings so that TFO values like "30/1" or "40@" are preserved.
   const yarnRows = useMemo(() => {
     const packMap = new Map<
       string,
@@ -94,15 +113,12 @@ export default function CombinedStockReport() {
       }
     >();
 
-    // Helper: resolve count for a lot, preferring countLabels (text store) over
-    // the raw bigint field which strips special chars like "/" and "@".
     const resolveCount = (lotNumber: string, rawCount: unknown): string => {
       const label = countLabels?.get(lotNumber);
       if (label && label.trim() !== "") return label;
       return String(rawCount ?? "");
     };
 
-    // Step 1: seed from packing entries
     for (const p of packingEntries) {
       const key = p.lotNumber;
       if (!packMap.has(key)) {
@@ -114,7 +130,6 @@ export default function CombinedStockReport() {
           endUse: p.endUse as string,
         });
       } else {
-        // Update count if we now have a better label
         const label = countLabels?.get(key);
         if (label && label.trim() !== "") {
           packMap.get(key)!.yarnCountNe = label;
@@ -123,7 +138,6 @@ export default function CombinedStockReport() {
       packMap.get(key)!.totalPackedKg += Number(p.quantityKg);
     }
 
-    // Step 2: merge opening stock entries
     for (const os of openingStockEntries) {
       const key = os.lotNumber;
       const count = resolveCount(key, os.yarnCountNe);
@@ -136,7 +150,6 @@ export default function CombinedStockReport() {
           endUse: os.endUse as string,
         });
       } else {
-        // If count label gives better info, update
         const existing = packMap.get(key)!;
         const label = countLabels?.get(key);
         if (label && label.trim() !== "") {
@@ -290,6 +303,7 @@ ${printRegion.innerHTML}
             <tr style={{ backgroundColor: "#f0f0f0" }}>
               <th style={thStyle}>Lot No.</th>
               <th style={thStyle}>Count (Ne)</th>
+              <th style={thStyle}>Type</th>
               <th style={thStyle}>Product Type</th>
               <th style={thStyle}>End Use</th>
               <th style={{ ...thStyle, textAlign: "right" }}>Available (kg)</th>
@@ -300,15 +314,16 @@ ${printRegion.innerHTML}
               <tr key={row.lotNumber}>
                 <td style={tdStyle}>{row.lotNumber}</td>
                 <td style={tdStyle}>{row.yarnCountNe}</td>
-                <td style={tdStyle}>{row.productType}</td>
-                <td style={tdStyle}>{row.endUse}</td>
+                <td style={tdStyle}>{spinningUnitType(row.spinningUnit)}</td>
+                <td style={tdStyle}>{formatProductType(row.productType)}</td>
+                <td style={tdStyle}>{formatEndUse(row.endUse)}</td>
                 <td style={{ ...tdStyle, textAlign: "right" }}>
                   {row.availableKg.toFixed(2)}
                 </td>
               </tr>
             ))}
             <tr style={{ backgroundColor: "#e8e8e8", fontWeight: "bold" }}>
-              <td style={tdStyle} colSpan={4}>
+              <td style={tdStyle} colSpan={5}>
                 {unit} – Sub Total
               </td>
               <td style={{ ...tdStyle, textAlign: "right" }}>
@@ -447,6 +462,7 @@ ${printRegion.innerHTML}
                       <TableHead>Lot No.</TableHead>
                       <TableHead>Unit</TableHead>
                       <TableHead>Count (Ne)</TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead>Product Type</TableHead>
                       <TableHead>End Use</TableHead>
                       <TableHead className="text-right">
@@ -470,8 +486,13 @@ ${printRegion.innerHTML}
                               <TableCell>{row.lotNumber}</TableCell>
                               <TableCell>{row.unitLabel}</TableCell>
                               <TableCell>{row.yarnCountNe}</TableCell>
-                              <TableCell>{row.productType}</TableCell>
-                              <TableCell>{row.endUse}</TableCell>
+                              <TableCell>
+                                {spinningUnitType(row.spinningUnit)}
+                              </TableCell>
+                              <TableCell>
+                                {formatProductType(row.productType)}
+                              </TableCell>
+                              <TableCell>{formatEndUse(row.endUse)}</TableCell>
                               <TableCell className="text-right">
                                 {row.availableKg.toFixed(2)}
                               </TableCell>
@@ -481,7 +502,7 @@ ${printRegion.innerHTML}
                             className="bg-blue-50 font-semibold"
                             key={`subtotal-${unit}`}
                           >
-                            <TableCell colSpan={5}>
+                            <TableCell colSpan={6}>
                               {unit} – Sub Total
                             </TableCell>
                             <TableCell className="text-right">
@@ -492,7 +513,7 @@ ${printRegion.innerHTML}
                       );
                     })}
                     <TableRow className="bg-gray-100 font-bold">
-                      <TableCell colSpan={5}>Grand Total</TableCell>
+                      <TableCell colSpan={6}>Grand Total</TableCell>
                       <TableCell className="text-right">
                         {yarnGrandTotal.toFixed(2)}
                       </TableCell>
@@ -677,7 +698,7 @@ ${printRegion.innerHTML}
                   <tr
                     style={{ backgroundColor: "#d0d0d0", fontWeight: "bold" }}
                   >
-                    <td style={tdStyle} colSpan={4}>
+                    <td style={tdStyle} colSpan={5}>
                       Grand Total – All Yarn Stock
                     </td>
                     <td style={{ ...tdStyle, textAlign: "right" }}>
