@@ -2342,7 +2342,7 @@ function IssueVsPackingSummaryReport({
     const from = new Date(`${fromDate}T00:00:00`).getTime();
     const to = new Date(`${toDate}T23:59:59`).getTime();
     return issues.filter((i) => {
-      const ts = Number(i.issueDate / 1_000_000n);
+      const ts = Number(i.issueDate) / 1_000_000;
       return ts >= from && ts <= to;
     });
   }, [issues, fromDate, toDate]);
@@ -2352,21 +2352,24 @@ function IssueVsPackingSummaryReport({
     const from = new Date(`${fromDate}T00:00:00`).getTime();
     const to = new Date(`${toDate}T23:59:59`).getTime();
     return packingEntries.filter((p) => {
-      const ts = Number(p.packingDate / 1_000_000n);
+      const ts = Number(p.packingDate) / 1_000_000;
       return ts >= from && ts <= to;
     });
   }, [packingEntries, fromDate, toDate]);
 
-  // Grade-wise issue aggregation
+  // Grade-wise issue aggregation (group by materialName, which is the grade identifier in this app)
   const gradeRows = useMemo(() => {
     const map: Record<string, { oe: number; ring: number }> = {};
     for (const issue of filteredIssues) {
-      const grade = (issue.grade || "").trim() || "Unknown";
+      const grade =
+        (issue.materialName || "").trim() ||
+        (issue.grade || "").trim() ||
+        "Unknown";
       if (!map[grade]) map[grade] = { oe: 0, ring: 0 };
       const qty = Number(issue.issuedQty);
-      if ((issue.warehouse as string) === "oeRawMaterial") map[grade].oe += qty;
-      else if ((issue.warehouse as string) === "ringRawMaterial")
-        map[grade].ring += qty;
+      const wh = (issue.warehouse as string).toLowerCase();
+      if (wh === "oerawmaterial") map[grade].oe += qty;
+      else if (wh === "ringrawmaterial") map[grade].ring += qty;
     }
     return Object.entries(map)
       .map(([grade, v]) => ({
