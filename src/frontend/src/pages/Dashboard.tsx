@@ -151,7 +151,7 @@ export default function Dashboard() {
         />
         <KpiCard
           data-ocid="dashboard.card.4"
-          title="OE Production Today"
+          title="OE Production Yesterday"
           value={stats ? Number(stats.oeProductionTodayKg) : 0}
           suffix="kg"
           icon={<Layers className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
@@ -160,7 +160,7 @@ export default function Dashboard() {
         />
         <KpiCard
           data-ocid="dashboard.card.5"
-          title="TFO Production Today"
+          title="TFO Production Yesterday"
           value={stats ? Number(stats.tfoProductionTodayKg) : 0}
           suffix="kg"
           icon={
@@ -171,7 +171,7 @@ export default function Dashboard() {
         />
         <KpiCard
           data-ocid="dashboard.card.6"
-          title="Ring Spinning Today"
+          title="Ring Spinning Yesterday"
           value={stats ? Number(stats.ringProductionTodayKg) : 0}
           suffix="kg"
           icon={
@@ -204,7 +204,7 @@ export default function Dashboard() {
         />
         <KpiCard
           data-ocid="dashboard.card.9"
-          title="Dispatched Today"
+          title="Dispatched Yesterday"
           value={stats ? Number(stats.totalDispatchedTodayKg) : 0}
           suffix="kg"
           icon={<Truck className="w-4 h-4 text-rose-600 dark:text-rose-400" />}

@@ -214,10 +214,18 @@ export default function Machines() {
       : machines.filter((m) => m.machineType === unitFilter);
   const LATEST_COUNT_MACHINES = 25;
   const hasActiveMachineFilters = unitFilter !== "all";
+  const sortByMachineNo = (
+    a: { machineNumber: string },
+    b: { machineNumber: string },
+  ) =>
+    a.machineNumber.localeCompare(b.machineNumber, undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
   const displayedMachines = hasActiveMachineFilters
-    ? filteredMachines
+    ? [...filteredMachines].sort(sortByMachineNo)
     : [...filteredMachines]
-        .sort((a, b) => (a.id > b.id ? -1 : 1))
+        .sort(sortByMachineNo)
         .slice(0, LATEST_COUNT_MACHINES);
   const isShowingLimitedMachines =
     !hasActiveMachineFilters && filteredMachines.length > LATEST_COUNT_MACHINES;

@@ -29,6 +29,7 @@ import {
   PackageOpen,
   PackageSearch,
   PrinterIcon,
+  Recycle,
   RefreshCw,
   Settings2,
   ShieldCheck,
@@ -58,7 +59,6 @@ import RawMaterials from "./pages/RawMaterials";
 import Reports from "./pages/Reports";
 import WarehouseTransferPage from "./pages/WarehouseTransfer";
 import WasteProduction from "./pages/WasteProduction";
-import WasteSale from "./pages/WasteSale";
 import YarnDispatch from "./pages/YarnDispatch";
 import YarnInventory from "./pages/YarnInventory";
 import YarnOpeningStock from "./pages/YarnOpeningStock";
@@ -74,6 +74,7 @@ type PageId =
   | "yarn-opening-stock"
   | "production-orders"
   | "machines"
+  | "waste-production"
   | "packing-entry"
   | "production-logs"
   | "yarn-inventory"
@@ -81,9 +82,17 @@ type PageId =
   | "reports"
   | "combined-stock-report"
   | "dropdown-options"
-  | "warehouse-transfer"
-  | "waste-production"
-  | "waste-sale";
+  | "warehouse-transfer";
+
+// Pages that require admin PIN to access
+const ADMIN_REQUIRED_PAGES: PageId[] = [
+  "yarn-opening-stock",
+  "rm-opening-stock",
+  "purchase-orders",
+  "warehouse-transfer",
+  "production-orders",
+  "yarn-inventory",
+];
 
 interface NavItem {
   id: PageId;
@@ -135,18 +144,6 @@ const navItems: NavItem[] = [
     group: "Procurement",
   },
   {
-    id: "waste-production",
-    label: "Waste Production",
-    icon: <Package className="w-4 h-4" />,
-    group: "Waste",
-  },
-  {
-    id: "waste-sale",
-    label: "Waste Sale",
-    icon: <Truck className="w-4 h-4" />,
-    group: "Waste",
-  },
-  {
     id: "rm-opening-stock",
     label: "RM Opening Stock",
     icon: <PackageSearch className="w-4 h-4" />,
@@ -169,6 +166,12 @@ const navItems: NavItem[] = [
     label: "Machines",
     icon: <Settings2 className="w-4 h-4" />,
     group: "Production",
+  },
+  {
+    id: "waste-production",
+    label: "Waste Production",
+    icon: <Recycle className="w-4 h-4" />,
+    group: "Waste",
   },
   {
     id: "packing-entry",
@@ -225,6 +228,7 @@ const pageComponents: Record<PageId, React.ReactNode> = {
   "yarn-opening-stock": <YarnOpeningStock />,
   "production-orders": <ProductionOrders />,
   machines: <Machines />,
+  "waste-production": <WasteProduction />,
   "packing-entry": <PackingEntry />,
   "production-logs": <ProductionLogs />,
   "yarn-inventory": <YarnInventory />,
@@ -233,42 +237,75 @@ const pageComponents: Record<PageId, React.ReactNode> = {
   "combined-stock-report": <CombinedStockReport />,
   "dropdown-options": <DropdownOptionsPage />,
   "warehouse-transfer": <WarehouseTransferPage />,
-  "waste-production": <WasteProduction />,
-  "waste-sale": <WasteSale />,
 };
 
 const groups = [
   "Procurement",
-  "Waste",
   "Opening Stock",
   "Production",
+  "Waste",
   "Packing",
   "Reports",
   "Admin",
 ];
 
 export default function App() {
+  return (
+    <AdminPinProvider>
+      <DropdownOptionsProvider>
+        <UserRoleProvider>
+          <AppContent />
+        </UserRoleProvider>
+      </DropdownOptionsProvider>
+    </AdminPinProvider>
+  );
+}
+
+function AppContent() {
   const [activePage, setActivePage] = useState<PageId>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pendingPage, setPendingPage] = useState<PageId | null>(null);
+  const [showPinForNav, setShowPinForNav] = useState(false);
+
+  const { isAdminUnlocked } = useAdminPin();
+  const { identity, login, clear, isLoggingIn, isInitializing } =
+    useInternetIdentity();
+  const isLoggedIn = !!identity;
 
   function handleRefresh() {
     setIsRefreshing(true);
     setRefreshKey((k) => k + 1);
     setTimeout(() => setIsRefreshing(false), 800);
   }
-  const { identity, login, clear, isLoggingIn, isInitializing } =
-    useInternetIdentity();
-  const isLoggedIn = !!identity;
 
   const ungrouped = navItems.filter((i) => !i.group);
   const activeLabel =
     navItems.find((n) => n.id === activePage)?.label ?? "Dashboard";
 
   function navigate(id: PageId) {
+    if (ADMIN_REQUIRED_PAGES.includes(id) && !isAdminUnlocked) {
+      setPendingPage(id);
+      setShowPinForNav(true);
+      return;
+    }
     setActivePage(id);
     setSidebarOpen(false);
+  }
+
+  function handleNavPinSuccess() {
+    if (pendingPage) {
+      setActivePage(pendingPage);
+      setSidebarOpen(false);
+    }
+    setPendingPage(null);
+    setShowPinForNav(false);
+  }
+
+  function handleNavPinCancel() {
+    setPendingPage(null);
+    setShowPinForNav(false);
   }
 
   const sidebarContent = (
@@ -308,6 +345,8 @@ export default function App() {
               key={item.id}
               item={item}
               active={activePage === item.id}
+              requiresAdmin={ADMIN_REQUIRED_PAGES.includes(item.id)}
+              isAdminUnlocked={isAdminUnlocked}
               onClick={() => navigate(item.id)}
             />
           ))}
@@ -327,6 +366,8 @@ export default function App() {
                   key={item.id}
                   item={item}
                   active={activePage === item.id}
+                  requiresAdmin={ADMIN_REQUIRED_PAGES.includes(item.id)}
+                  isAdminUnlocked={isAdminUnlocked}
                   onClick={() => navigate(item.id)}
                 />
               ))}
@@ -381,111 +422,201 @@ export default function App() {
   );
 
   return (
-    <AdminPinProvider>
-      <DropdownOptionsProvider>
-        <UserRoleProvider>
-          <div className="flex h-screen overflow-hidden bg-background font-body">
-            {/* Desktop Sidebar */}
-            <aside className="hidden md:flex flex-col w-56 bg-sidebar flex-shrink-0 border-r border-sidebar-border">
-              {sidebarContent}
-            </aside>
+    <div className="flex h-screen overflow-hidden bg-background font-body">
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex flex-col w-56 bg-sidebar flex-shrink-0 border-r border-sidebar-border">
+        {sidebarContent}
+      </aside>
 
-            {/* Mobile Sidebar Overlay */}
-            {sidebarOpen && (
-              <div className="md:hidden fixed inset-0 z-50 flex">
-                <div
-                  className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                  onClick={() => setSidebarOpen(false)}
-                  onKeyDown={(e) => e.key === "Escape" && setSidebarOpen(false)}
-                  role="button"
-                  tabIndex={0}
-                  aria-label="Close sidebar overlay"
-                />
-                <aside className="relative w-64 bg-sidebar flex flex-col shadow-xl">
-                  <button
-                    type="button"
-                    className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-md text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
-                    onClick={() => setSidebarOpen(false)}
-                    aria-label="Close sidebar"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                  {sidebarContent}
-                </aside>
-              </div>
-            )}
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setSidebarOpen(false)}
+            onKeyDown={(e) => e.key === "Escape" && setSidebarOpen(false)}
+            role="button"
+            tabIndex={0}
+            aria-label="Close sidebar overlay"
+          />
+          <aside className="relative w-64 bg-sidebar flex flex-col shadow-xl">
+            <button
+              type="button"
+              className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-md text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Close sidebar"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
 
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-              {/* Top Bar (mobile + breadcrumb) */}
-              <header className="flex items-center h-12 px-4 border-b border-border/60 bg-card/50 backdrop-blur-sm flex-shrink-0 gap-2">
-                <button
-                  type="button"
-                  className="md:hidden mr-1 w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  onClick={() => setSidebarOpen(true)}
-                  aria-label="Open navigation"
-                  data-ocid="nav.toggle"
-                >
-                  <Menu className="w-4 h-4" />
-                </button>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-1">
-                  <span>SpinMill Pro</span>
-                  <ChevronRight className="w-3 h-3" />
-                  <span className="text-foreground font-medium">
-                    {activeLabel}
-                  </span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  data-ocid="nav.refresh_button"
-                  className="h-7 px-2.5 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                  aria-label="Refresh"
-                >
-                  <RefreshCw
-                    className={cn(
-                      "w-3.5 h-3.5",
-                      isRefreshing && "animate-spin",
-                    )}
-                  />
-                  <span className="hidden sm:inline">Refresh</span>
-                </Button>
-              </header>
-
-              {/* Login Banner */}
-              {!isLoggedIn && !isInitializing && (
-                <div className="flex items-center justify-between px-4 py-2 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800/60">
-                  <p className="text-xs text-amber-700 dark:text-amber-400">
-                    You are not signed in. Sign in to save, edit, or delete
-                    data.
-                  </p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    data-ocid="nav.banner_login_button"
-                    className="h-7 text-xs gap-1.5 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 bg-transparent"
-                    onClick={login}
-                    disabled={isLoggingIn}
-                  >
-                    <LogIn className="w-3 h-3" />
-                    Sign In
-                  </Button>
-                </div>
-              )}
-
-              {/* Page Content */}
-              <main className="flex-1 overflow-y-auto" key={refreshKey}>
-                {pageComponents[activePage]}
-              </main>
-            </div>
-
-            <Toaster position="bottom-right" richColors />
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Bar (mobile + breadcrumb) */}
+        <header className="flex items-center h-12 px-4 border-b border-border/60 bg-card/50 backdrop-blur-sm flex-shrink-0 gap-2">
+          <button
+            type="button"
+            className="md:hidden mr-1 w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open navigation"
+            data-ocid="nav.toggle"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-1">
+            <span>SpinMill Pro</span>
+            <ChevronRight className="w-3 h-3" />
+            <span className="text-foreground font-medium">{activeLabel}</span>
           </div>
-        </UserRoleProvider>
-      </DropdownOptionsProvider>
-    </AdminPinProvider>
+          <Button
+            variant="outline"
+            size="sm"
+            data-ocid="nav.refresh_button"
+            className="h-7 px-2.5 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            aria-label="Refresh"
+          >
+            <RefreshCw
+              className={cn("w-3.5 h-3.5", isRefreshing && "animate-spin")}
+            />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
+        </header>
+
+        {/* Login Banner */}
+        {!isLoggedIn && !isInitializing && (
+          <div className="flex items-center justify-between px-4 py-2 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800/60">
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              You are not signed in. Sign in to save, edit, or delete data.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              data-ocid="nav.banner_login_button"
+              className="h-7 text-xs gap-1.5 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 bg-transparent"
+              onClick={login}
+              disabled={isLoggingIn}
+            >
+              <LogIn className="w-3 h-3" />
+              Sign In
+            </Button>
+          </div>
+        )}
+
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto" key={refreshKey}>
+          {pageComponents[activePage]}
+        </main>
+      </div>
+
+      {/* Admin PIN dialog for navigation gating */}
+      <AdminPinNavDialog
+        open={showPinForNav}
+        onSuccess={handleNavPinSuccess}
+        onCancel={handleNavPinCancel}
+      />
+
+      <Toaster position="bottom-right" richColors />
+    </div>
+  );
+}
+
+// PIN dialog shown when navigating to an admin-gated page
+function AdminPinNavDialog({
+  open,
+  onSuccess,
+  onCancel,
+}: {
+  open: boolean;
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
+  const { unlockAdmin } = useAdminPin();
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState("");
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const success = unlockAdmin(pin);
+    if (success) {
+      setPin("");
+      setError("");
+      onSuccess();
+    } else {
+      setError("Incorrect PIN. Please try again.");
+      setPin("");
+    }
+  }
+
+  function handleCancel() {
+    setPin("");
+    setError("");
+    onCancel();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && handleCancel()}>
+      <DialogContent className="max-w-sm" data-ocid="admin.nav_dialog">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Lock className="w-4 h-4" />
+            Admin Access Required
+          </DialogTitle>
+          <DialogDescription>
+            This section requires admin access. Enter your PIN to continue.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="nav-admin-pin">PIN</Label>
+            <Input
+              id="nav-admin-pin"
+              type="password"
+              placeholder="Enter admin PIN"
+              value={pin}
+              onChange={(e) => {
+                setPin(e.target.value);
+                setError("");
+              }}
+              autoFocus
+              maxLength={20}
+              data-ocid="admin.nav_input"
+            />
+            {error && (
+              <p
+                className="text-xs text-red-500"
+                data-ocid="admin.nav_error_state"
+              >
+                {error}
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCancel}
+              data-ocid="admin.nav_cancel_button"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={!pin}
+              data-ocid="admin.nav_submit_button"
+            >
+              Unlock &amp; Open
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -620,8 +751,18 @@ function AdminAccessButton() {
 function NavButton({
   item,
   active,
+  requiresAdmin,
+  isAdminUnlocked,
   onClick,
-}: { item: NavItem; active: boolean; onClick: () => void }) {
+}: {
+  item: NavItem;
+  active: boolean;
+  requiresAdmin: boolean;
+  isAdminUnlocked: boolean;
+  onClick: () => void;
+}) {
+  const showLock = requiresAdmin && !isAdminUnlocked && !active;
+
   return (
     <button
       type="button"
@@ -645,6 +786,9 @@ function NavButton({
       <span className="truncate">{item.label}</span>
       {active && (
         <ChevronRight className="w-3 h-3 ml-auto text-sidebar-primary/60 flex-shrink-0" />
+      )}
+      {showLock && (
+        <Lock className="w-3 h-3 ml-auto opacity-40 flex-shrink-0" />
       )}
     </button>
   );

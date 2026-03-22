@@ -1465,18 +1465,19 @@ actor {
     for ((_, yr) in yarnOpeningStock.entries()) { totalYarnWeight += yr.weightKg };
     var dispatchedToday : Nat = 0;
     var inwardToday : Nat = 0;
+    let yesterdayStart = Time.now() - 2 * 86_400_000_000_000;
     let todayStart = Time.now() - 86_400_000_000_000;
     for ((_, de) in dispatchEntries.entries()) {
-      if (de.dispatchDate >= todayStart) { dispatchedToday += de.quantityKg };
+      if (de.dispatchDate >= yesterdayStart and de.dispatchDate < todayStart) { dispatchedToday += de.quantityKg };
     };
     for ((_, ie) in inwardEntries.entries()) {
-      if (ie.inwardDate >= todayStart) { inwardToday += ie.receivedQty };
+      if (ie.inwardDate >= yesterdayStart and ie.inwardDate < todayStart) { inwardToday += ie.receivedQty };
     };
     var oeProductionToday : Nat = 0;
     var tfoProductionToday : Nat = 0;
     var ringProductionToday : Nat = 0;
     for ((_, pl) in productionLogs.entries()) {
-      if (pl.date >= todayStart) {
+      if (pl.date >= yesterdayStart and pl.date < todayStart) {
         switch (machines.get(pl.machineId)) {
           case (?m) {
             switch (m.currentOrderId) {

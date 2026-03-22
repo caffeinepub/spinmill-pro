@@ -1,6 +1,6 @@
 import { createContext, useContext, useState } from "react";
 
-const ADMIN_PIN = "1234"; // Change this to set your secret PIN
+const ADMIN_PIN = "1750"; // Change this to set your secret PIN
 const SESSION_KEY = "spinmill_admin_unlocked";
 
 interface AdminPinContextValue {
