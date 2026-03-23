@@ -148,6 +148,17 @@ actor {
     totalMaintenanceDurationMins : Nat;
   };
 
+  // Legacy type (7 fields) — kept for stable heap compatibility during migration
+  type ProductionLogV1 = {
+    id : Nat;
+    shift : Shift;
+    date : Time.Time;
+    machineId : Nat;
+    quantityKg : Nat;
+    efficiencyPercent : Nat;
+    operatorName : Text;
+  };
+
   type ProductionLog = {
     id : Nat;
     shift : Shift;
@@ -156,6 +167,20 @@ actor {
     quantityKg : Nat;
     efficiencyPercent : Nat;
     operatorName : Text;
+    // OE Spinning waste fields
+    lickerinDropping : ?Nat;
+    flatStrips : ?Nat;
+    microdust : ?Nat;
+    routerFan : ?Nat;
+    // Ring Spinning waste fields
+    brd : ?Nat;
+    lrd : ?Nat;
+    flatStripsRing : ?Nat;
+    usableWaste : ?Nat;
+    microdustRing : ?Nat;
+    metalWaste : ?Nat;
+    hardWaste : ?Nat;
+    sweepingWaste : ?Nat;
   };
 
   type BatchStage = {
@@ -324,7 +349,10 @@ actor {
   let warehouseTransfers = Map.empty<Nat, WarehouseTransfer>();
   let productionOrders = Map.empty<Nat, ProductionOrder>();
   let machines = Map.empty<Nat, Machine>();
-  let productionLogs = Map.empty<Nat, ProductionLog>();
+  // Legacy map — keeps old variable name so Motoko preserves existing heap data across upgrade
+  let productionLogs = Map.empty<Nat, ProductionLogV1>();
+  // New map — receives migrated data (in postupgrade) and all new entries
+  let productionLogsNew = Map.empty<Nat, ProductionLog>();
   let batches = Map.empty<Nat, BatchStage>();
   let qualityTests = Map.empty<Nat, QualityTest>();
   let yarnInventory = Map.empty<Nat, YarnInventory>();
@@ -412,6 +440,32 @@ actor {
     for ((p, status) in _stableApprovalStatus.entries()) {
       approvalState.approvalStatus.remove(p);
       approvalState.approvalStatus.add(p, status);
+    };
+    // Migrate legacy production logs (no waste fields) to new map on first upgrade
+    if (productionLogsNew.size() == 0 and productionLogs.size() > 0) {
+      for ((k, v) in productionLogs.entries()) {
+        productionLogsNew.add(k, {
+          id = v.id;
+          shift = v.shift;
+          date = v.date;
+          machineId = v.machineId;
+          quantityKg = v.quantityKg;
+          efficiencyPercent = v.efficiencyPercent;
+          operatorName = v.operatorName;
+          lickerinDropping = null;
+          flatStrips = null;
+          microdust = null;
+          routerFan = null;
+          brd = null;
+          lrd = null;
+          flatStripsRing = null;
+          usableWaste = null;
+          microdustRing = null;
+          metalWaste = null;
+          hardWaste = null;
+          sweepingWaste = null;
+        });
+      };
     };
   };
 
@@ -977,7 +1031,7 @@ actor {
         };
         // Sum production logs for all machines running this lot
         var produced : Nat = 0;
-        for ((_, log) in productionLogs.entries()) {
+        for ((_, log) in productionLogsNew.entries()) {
           if (matchingMachineIds.contains(log.machineId)) {
             produced += log.quantityKg;
           };
@@ -1053,31 +1107,31 @@ actor {
 
   public query ({ caller }) func getAllProductionLogs() : async [ProductionLog] {
     let out = List.empty<ProductionLog>();
-    for ((_, pl) in productionLogs.entries()) { out.add(pl) };
+    for ((_, pl) in productionLogsNew.entries()) { out.add(pl) };
     out.toArray().sort(func(a : ProductionLog, b : ProductionLog) : Order.Order { Nat.compare(a.id, b.id) });
   };
 
-  public shared ({ caller }) func addProductionLog(shift : Shift, date : Time.Time, machineId : Nat, quantityKg : Nat, efficiencyPercent : Nat, operatorName : Text) : async Nat {
+  public shared ({ caller }) func addProductionLog(shift : Shift, date : Time.Time, machineId : Nat, quantityKg : Nat, efficiencyPercent : Nat, operatorName : Text, lickerinDropping : ?Nat, flatStrips : ?Nat, microdust : ?Nat, routerFan : ?Nat, brd : ?Nat, lrd : ?Nat, flatStripsRing : ?Nat, usableWaste : ?Nat, microdustRing : ?Nat, metalWaste : ?Nat, hardWaste : ?Nat, sweepingWaste : ?Nat) : async Nat {
     requireUser(caller);
     let id = productionLogIdCounter;
-    productionLogs.add(id, { id; shift; date; machineId; quantityKg; efficiencyPercent; operatorName });
+    productionLogsNew.add(id, { id; shift; date; machineId; quantityKg; efficiencyPercent; operatorName; lickerinDropping; flatStrips; microdust; routerFan; brd; lrd; flatStripsRing; usableWaste; microdustRing; metalWaste; hardWaste; sweepingWaste });
     productionLogIdCounter += 1;
     id;
   };
 
-  public shared ({ caller }) func updateProductionLog(id : Nat, shift : Shift, date : Time.Time, machineId : Nat, quantityKg : Nat, efficiencyPercent : Nat, operatorName : Text) : async () {
+  public shared ({ caller }) func updateProductionLog(id : Nat, shift : Shift, date : Time.Time, machineId : Nat, quantityKg : Nat, efficiencyPercent : Nat, operatorName : Text, lickerinDropping : ?Nat, flatStrips : ?Nat, microdust : ?Nat, routerFan : ?Nat, brd : ?Nat, lrd : ?Nat, flatStripsRing : ?Nat, usableWaste : ?Nat, microdustRing : ?Nat, metalWaste : ?Nat, hardWaste : ?Nat, sweepingWaste : ?Nat) : async () {
     requireUser(caller);
-    switch (productionLogs.get(id)) {
+    switch (productionLogsNew.get(id)) {
       case (null) { Runtime.trap("Production log not found") };
       case (?pl) {
-        productionLogs.add(id, { pl with shift; date; machineId; quantityKg; efficiencyPercent; operatorName });
+        productionLogsNew.add(id, { pl with shift; date; machineId; quantityKg; efficiencyPercent; operatorName; lickerinDropping; flatStrips; microdust; routerFan; brd; lrd; flatStripsRing; usableWaste; microdustRing; metalWaste; hardWaste; sweepingWaste });
       };
     };
   };
 
   public shared ({ caller }) func deleteProductionLog(id : Nat) : async () {
     requireUser(caller);
-    productionLogs.remove(id);
+    productionLogsNew.remove(id);
   };
 
   // ─── Batch Stages ─────────────────────────────────────────────────────────
@@ -1248,7 +1302,7 @@ actor {
           switch (m.runningLotNumber) {
             case (?rln) {
               if (rln == lotNumber) {
-                for ((_, pl) in productionLogs.entries()) {
+                for ((_, pl) in productionLogsNew.entries()) {
                   if (pl.machineId == m.id) { produced += pl.quantityKg };
                 };
               };
@@ -1287,7 +1341,7 @@ actor {
       switch (m.runningLotNumber) {
         case (?rln) {
           if (rln == lotNumber) {
-            for ((_, pl) in productionLogs.entries()) {
+            for ((_, pl) in productionLogsNew.entries()) {
               if (pl.machineId == m.id) { produced += pl.quantityKg };
             };
           };
@@ -1476,7 +1530,7 @@ actor {
     var oeProductionToday : Nat = 0;
     var tfoProductionToday : Nat = 0;
     var ringProductionToday : Nat = 0;
-    for ((_, pl) in productionLogs.entries()) {
+    for ((_, pl) in productionLogsNew.entries()) {
       if (pl.date >= yesterdayStart and pl.date < todayStart) {
         switch (machines.get(pl.machineId)) {
           case (?m) {

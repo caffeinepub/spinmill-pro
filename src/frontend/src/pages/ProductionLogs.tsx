@@ -77,6 +77,116 @@ const unitOptions = [
   { value: "outsideYarn" as MachineType, label: "Outside Yarn" },
 ];
 
+// ─── Waste field definitions ──────────────────────────────────────────────────
+const OE_WASTE_FIELDS = [
+  {
+    key: "lickerinDropping" as const,
+    label: "Lickerin Dropping",
+    short: "LK Drop",
+  },
+  { key: "flatStrips" as const, label: "Flat Strips", short: "Flat" },
+  { key: "microdust" as const, label: "Microdust", short: "Dust" },
+  { key: "routerFan" as const, label: "Router Fan", short: "R.Fan" },
+];
+
+const RING_WASTE_FIELDS = [
+  { key: "brd" as const, label: "BRD", short: "BRD" },
+  { key: "lrd" as const, label: "LRD", short: "LRD" },
+  { key: "flatStripsRing" as const, label: "Flat Strips", short: "Flat" },
+  { key: "usableWaste" as const, label: "Usable Waste", short: "Usbl" },
+  { key: "microdustRing" as const, label: "Microdust", short: "Dust" },
+  { key: "metalWaste" as const, label: "Metal Waste", short: "Metal" },
+  { key: "hardWaste" as const, label: "Hard Waste", short: "Hard" },
+  { key: "sweepingWaste" as const, label: "Sweeping Waste", short: "Sweep" },
+];
+
+type WasteKey =
+  | "lickerinDropping"
+  | "flatStrips"
+  | "microdust"
+  | "routerFan"
+  | "brd"
+  | "lrd"
+  | "flatStripsRing"
+  | "usableWaste"
+  | "microdustRing"
+  | "metalWaste"
+  | "hardWaste"
+  | "sweepingWaste";
+
+const ALL_WASTE_KEYS: WasteKey[] = [
+  "lickerinDropping",
+  "flatStrips",
+  "microdust",
+  "routerFan",
+  "brd",
+  "lrd",
+  "flatStripsRing",
+  "usableWaste",
+  "microdustRing",
+  "metalWaste",
+  "hardWaste",
+  "sweepingWaste",
+];
+
+function emptyWaste(): Record<WasteKey, string> {
+  const r: Partial<Record<WasteKey, string>> = {};
+  for (const k of ALL_WASTE_KEYS) r[k] = "";
+  return r as Record<WasteKey, string>;
+}
+
+function wasteVal(v: string): bigint | undefined {
+  const n = Number.parseFloat(v);
+  if (!v || Number.isNaN(n) || n <= 0) return undefined;
+  return BigInt(Math.round(n));
+}
+
+// Extended type for logs that include waste fields (backend supports these but d.ts is stale)
+type ProductionLogFull = ProductionLog & {
+  lickerinDropping?: bigint;
+  flatStrips?: bigint;
+  microdust?: bigint;
+  routerFan?: bigint;
+  brd?: bigint;
+  lrd?: bigint;
+  flatStripsRing?: bigint;
+  usableWaste?: bigint;
+  microdustRing?: bigint;
+  metalWaste?: bigint;
+  hardWaste?: bigint;
+  sweepingWaste?: bigint;
+};
+
+function totalWasteKg(log: ProductionLogFull): number {
+  const fields: (bigint | undefined)[] = [
+    log.lickerinDropping,
+    log.flatStrips,
+    log.microdust,
+    log.routerFan,
+    log.brd,
+    log.lrd,
+    log.flatStripsRing,
+    log.usableWaste,
+    log.microdustRing,
+    log.metalWaste,
+    log.hardWaste,
+    log.sweepingWaste,
+  ];
+  return fields.reduce((sum, v) => sum + (v ? Number(v) : 0), 0);
+}
+
+function getWasteFieldsForMachineType(machineType: string) {
+  if (machineType === MachineType.autocoro) return OE_WASTE_FIELDS;
+  if (machineType === MachineType.ringFrame) return RING_WASTE_FIELDS;
+  return [];
+}
+
+type RowData = { qty: string; eff: string } & Record<WasteKey, string>;
+
+function emptyRow(): RowData {
+  return { qty: "", eff: "", ...emptyWaste() };
+}
+
 const defaultForm = {
   shift: "morning" as Shift,
   date: new Date().toISOString().substring(0, 10),
@@ -85,6 +195,7 @@ const defaultForm = {
   quantityKg: "",
   efficiencyPercent: "",
   shiftOfficerName: "",
+  ...emptyWaste(),
 };
 
 // ─── MachineRow sub-component ─────────────────────────────────────────────────
@@ -94,7 +205,10 @@ interface MachineRowProps {
   rowIndex: number;
   qty: string;
   eff: string;
+  wasteData: Record<WasteKey, string>;
+  unit: string;
   onRowChange: (machineId: string, qty: string, eff: string) => void;
+  onWasteChange: (machineId: string, key: WasteKey, value: string) => void;
 }
 
 function MachineRow({
@@ -103,7 +217,10 @@ function MachineRow({
   rowIndex,
   qty,
   eff,
+  wasteData,
+  unit,
   onRowChange,
+  onWasteChange,
 }: MachineRowProps) {
   const orders = productionOrders ?? [];
   const runningLot =
@@ -134,6 +251,7 @@ function MachineRow({
   const isDisabled = !runningLot || !hasInProgressOrder || isOrderFulfilled;
 
   const machineKey = String(Number(machine.id));
+  const wasteFields = getWasteFieldsForMachineType(unit);
 
   return (
     <TableRow
@@ -248,6 +366,22 @@ function MachineRow({
         />
       </TableCell>
 
+      {/* Waste inputs */}
+      {wasteFields.map((wf) => (
+        <TableCell key={wf.key}>
+          <Input
+            type="number"
+            min="0"
+            step="0.1"
+            value={wasteData[wf.key]}
+            disabled={isDisabled}
+            onChange={(e) => onWasteChange(machineKey, wf.key, e.target.value)}
+            placeholder={isDisabled ? "—" : "0"}
+            className="w-16 h-8 text-sm"
+          />
+        </TableCell>
+      ))}
+
       {/* Status icon */}
       <TableCell className="text-center">
         {!runningLot || !hasInProgressOrder ? (
@@ -291,9 +425,7 @@ export default function ProductionLogs() {
     selectedUnit: "",
     shiftOfficerName: "",
   });
-  const [rowData, setRowData] = useState<
-    Map<string, { qty: string; eff: string }>
-  >(new Map());
+  const [rowData, setRowData] = useState<Map<string, RowData>>(new Map());
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
 
   // Filter state
@@ -363,6 +495,11 @@ export default function ProductionLogs() {
     ? machines.filter((m) => m.machineType === bulkForm.selectedUnit)
     : [];
 
+  // Waste fields for current form unit
+  const formWasteFields = getWasteFieldsForMachineType(form.selectedUnit);
+  // Waste fields for current bulk unit
+  const bulkWasteFields = getWasteFieldsForMachineType(bulkForm.selectedUnit);
+
   // Derive selected machine and its running count/lot
   const selectedMachine = form.machineId
     ? machines.find((m) => String(Number(m.id)) === form.machineId)
@@ -418,6 +555,12 @@ export default function ProductionLogs() {
     setEditItem(item);
     const d = new Date(Number(item.date) / 1_000_000);
     const machine = machines.find((m) => m.id === item.machineId);
+    const fullItem = item as ProductionLogFull;
+    const waste = emptyWaste();
+    for (const k of ALL_WASTE_KEYS) {
+      const v = fullItem[k as keyof ProductionLogFull] as bigint | undefined;
+      if (v !== undefined) waste[k] = String(Number(v));
+    }
     setForm({
       shift: item.shift,
       date: d.toISOString().substring(0, 10),
@@ -426,6 +569,7 @@ export default function ProductionLogs() {
       quantityKg: String(Number(item.quantityKg)),
       efficiencyPercent: String(Number(item.efficiencyPercent)),
       shiftOfficerName: item.operatorName,
+      ...waste,
     });
     setDialogOpen(true);
   }
@@ -444,7 +588,17 @@ export default function ProductionLogs() {
   function handleRowChange(machineId: string, qty: string, eff: string) {
     setRowData((prev) => {
       const next = new Map(prev);
-      next.set(machineId, { qty, eff });
+      const existing = next.get(machineId) ?? emptyRow();
+      next.set(machineId, { ...existing, qty, eff });
+      return next;
+    });
+  }
+
+  function handleWasteChange(machineId: string, key: WasteKey, value: string) {
+    setRowData((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(machineId) ?? emptyRow();
+      next.set(machineId, { ...existing, [key]: value });
       return next;
     });
   }
@@ -463,6 +617,20 @@ export default function ProductionLogs() {
     if (isSubmitBlocked) return;
     const dateTs = BigInt(new Date(form.date).getTime() * 1_000_000);
     try {
+      const wasteArgs = {
+        lickerinDropping: wasteVal(form.lickerinDropping),
+        flatStrips: wasteVal(form.flatStrips),
+        microdust: wasteVal(form.microdust),
+        routerFan: wasteVal(form.routerFan),
+        brd: wasteVal(form.brd),
+        lrd: wasteVal(form.lrd),
+        flatStripsRing: wasteVal(form.flatStripsRing),
+        usableWaste: wasteVal(form.usableWaste),
+        microdustRing: wasteVal(form.microdustRing),
+        metalWaste: wasteVal(form.metalWaste),
+        hardWaste: wasteVal(form.hardWaste),
+        sweepingWaste: wasteVal(form.sweepingWaste),
+      };
       const args = {
         shift: form.shift,
         date: dateTs,
@@ -470,6 +638,7 @@ export default function ProductionLogs() {
         quantityKg: BigInt(Math.round(Number(form.quantityKg))),
         efficiencyPercent: BigInt(Math.round(Number(form.efficiencyPercent))),
         operatorName: form.shiftOfficerName,
+        ...wasteArgs,
       };
       if (editItem) {
         await withRetry(() =>
@@ -518,6 +687,18 @@ export default function ProductionLogs() {
             quantityKg: BigInt(Math.round(Number(row.qty))),
             efficiencyPercent: BigInt(Math.round(Number(row.eff || "0"))),
             operatorName: bulkForm.shiftOfficerName,
+            lickerinDropping: wasteVal(row.lickerinDropping),
+            flatStrips: wasteVal(row.flatStrips),
+            microdust: wasteVal(row.microdust),
+            routerFan: wasteVal(row.routerFan),
+            brd: wasteVal(row.brd),
+            lrd: wasteVal(row.lrd),
+            flatStripsRing: wasteVal(row.flatStripsRing),
+            usableWaste: wasteVal(row.usableWaste),
+            microdustRing: wasteVal(row.microdustRing),
+            metalWaste: wasteVal(row.metalWaste),
+            hardWaste: wasteVal(row.hardWaste),
+            sweepingWaste: wasteVal(row.sweepingWaste),
           }),
         );
         saved++;
@@ -725,6 +906,9 @@ export default function ProductionLogs() {
                 <TableHead className="font-semibold text-xs uppercase tracking-wider">
                   Efficiency
                 </TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                  Waste (kg)
+                </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider text-right">
                   Actions
                 </TableHead>
@@ -734,7 +918,7 @@ export default function ProductionLogs() {
               {filteredLogs.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={8}
                     className="text-center py-10 text-muted-foreground text-sm"
                   >
                     No logs match the selected filters.
@@ -744,6 +928,7 @@ export default function ProductionLogs() {
               {displayedLogs.map((log, idx) => {
                 const machine = machines.find((m) => m.id === log.machineId);
                 const efficiency = Number(log.efficiencyPercent);
+                const waste = totalWasteKg(log as ProductionLogFull);
                 return (
                   <TableRow
                     key={String(log.id)}
@@ -779,6 +964,15 @@ export default function ProductionLogs() {
                         </span>
                       </div>
                     </TableCell>
+                    <TableCell className="text-sm font-mono-nums">
+                      {waste > 0 ? (
+                        <span className="text-amber-700 dark:text-amber-400 font-medium">
+                          {waste}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         {isAdmin && (
@@ -813,17 +1007,17 @@ export default function ProductionLogs() {
         )}
       </div>
 
-      {/* ── Single-entry dialog (unchanged) ── */}
       {isShowingLimitedLogs && (
         <p className="text-xs text-muted-foreground mt-2 text-center">
           Showing 25 most recent. Use filters above to find older entries.
         </p>
       )}
 
+      {/* ── Single-entry dialog ── */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent
           data-ocid="logs.dialog"
-          className="!w-screen !h-screen !max-w-none sm:!max-w-none !max-h-none !rounded-none !top-0 !left-0 !translate-x-0 !translate-y-0"
+          className="!w-screen !h-screen !max-w-none sm:!max-w-none !max-h-none !rounded-none !top-0 !left-0 !translate-x-0 !translate-y-0 overflow-y-auto"
         >
           <DialogHeader>
             <DialogTitle>
@@ -877,6 +1071,7 @@ export default function ProductionLogs() {
                     selectedUnit: v === "none" ? "" : v,
                     machineId: "",
                     quantityKg: "",
+                    ...emptyWaste(),
                   }))
                 }
               >
@@ -1008,6 +1203,42 @@ export default function ProductionLogs() {
                 />
               </div>
             </div>
+
+            {/* Waste Quantities section — only for OE or Ring Spinning */}
+            {formWasteFields.length > 0 && (
+              <div className="space-y-3 rounded-md border border-border/60 bg-muted/20 p-4">
+                <p className="text-sm font-semibold text-foreground">
+                  Waste Quantities (kg)
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">
+                    — optional, leave blank if none
+                  </span>
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {formWasteFields.map((wf) => (
+                    <div key={wf.key} className="space-y-1.5">
+                      <Label htmlFor={`lg-waste-${wf.key}`} className="text-xs">
+                        {wf.label}
+                      </Label>
+                      <Input
+                        id={`lg-waste-${wf.key}`}
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={form[wf.key as keyof typeof form] as string}
+                        onChange={(e) =>
+                          setForm((p) => ({
+                            ...p,
+                            [wf.key]: e.target.value,
+                          }))
+                        }
+                        placeholder="0"
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Production Order Balance Panel */}
             {hasMachineCountLot && (
@@ -1253,6 +1484,13 @@ export default function ProductionLogs() {
                   </SelectContent>
                 </Select>
               </div>
+              {(bulkForm.selectedUnit === MachineType.autocoro ||
+                bulkForm.selectedUnit === MachineType.ringFrame) && (
+                <p className="text-xs text-amber-700 flex items-center gap-1 col-span-full">
+                  <span>ℹ</span> Waste quantity columns appear to the right of
+                  Efficiency — scroll the table right to enter them.
+                </p>
+              )}
               <div className="space-y-1.5">
                 <Label htmlFor="bulk-officer">Shift Officer Name</Label>
                 <Input
@@ -1277,7 +1515,7 @@ export default function ProductionLogs() {
                   No machines found in the selected unit.
                 </div>
               ) : (
-                <div className="rounded-lg border border-border/60 overflow-auto max-h-[400px]">
+                <div className="rounded-lg border border-border/60 overflow-auto max-h-[calc(100vh-280px)]">
                   <Table>
                     <TableHeader>
                       <TableRow className="border-border/60 hover:bg-transparent sticky top-0 bg-card z-10">
@@ -1298,15 +1536,36 @@ export default function ProductionLogs() {
                         <TableHead className="font-semibold text-xs uppercase tracking-wider">
                           Eff %
                         </TableHead>
+                        {/* Waste column headers */}
+                        {bulkWasteFields.map((wf) => (
+                          <TableHead
+                            key={wf.key}
+                            className="font-semibold text-xs uppercase tracking-wider text-amber-700 dark:text-amber-400"
+                          >
+                            {wf.short}
+                          </TableHead>
+                        ))}
                         <TableHead className="font-semibold text-xs uppercase tracking-wider text-center">
                           Status
                         </TableHead>
                       </TableRow>
+                      {bulkWasteFields.length > 0 && (
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead colSpan={5} className="bg-card border-b" />
+                          <TableHead
+                            colSpan={bulkWasteFields.length}
+                            className="text-amber-700 text-xs font-semibold bg-amber-50 border-b text-center"
+                          >
+                            Waste Quantities (kg)
+                          </TableHead>
+                          <TableHead className="bg-card border-b" />
+                        </TableRow>
+                      )}
                     </TableHeader>
                     <TableBody>
                       {bulkMachines.map((machine, idx) => {
                         const key = String(Number(machine.id));
-                        const row = rowData.get(key) ?? { qty: "", eff: "" };
+                        const row = rowData.get(key) ?? emptyRow();
                         return (
                           <MachineRow
                             key={String(machine.id)}
@@ -1315,7 +1574,10 @@ export default function ProductionLogs() {
                             rowIndex={idx + 1}
                             qty={row.qty}
                             eff={row.eff}
+                            wasteData={row}
+                            unit={bulkForm.selectedUnit}
                             onRowChange={handleRowChange}
+                            onWasteChange={handleWasteChange}
                           />
                         );
                       })}

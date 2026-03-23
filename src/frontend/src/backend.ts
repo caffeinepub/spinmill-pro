@@ -225,6 +225,18 @@ export interface ProductionLog {
     efficiencyPercent: bigint;
     machineId: bigint;
     quantityKg: bigint;
+    lickerinDropping?: bigint;
+    flatStrips?: bigint;
+    microdust?: bigint;
+    routerFan?: bigint;
+    brd?: bigint;
+    lrd?: bigint;
+    flatStripsRing?: bigint;
+    usableWaste?: bigint;
+    microdustRing?: bigint;
+    metalWaste?: bigint;
+    hardWaste?: bigint;
+    sweepingWaste?: bigint;
 }
 export interface Machine {
     id: bigint;
@@ -503,17 +515,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async addProductionLog(arg0: Shift, arg1: Time, arg2: bigint, arg3: bigint, arg4: bigint, arg5: string): Promise<bigint> {
+    async addProductionLog(arg0: Shift, arg1: Time, arg2: bigint, arg3: bigint, arg4: bigint, arg5: string, arg6?: bigint, arg7?: bigint, arg8?: bigint, arg9?: bigint, arg10?: bigint, arg11?: bigint, arg12?: bigint, arg13?: bigint, arg14?: bigint, arg15?: bigint, arg16?: bigint, arg17?: bigint): Promise<bigint> {
         if (this.processError) {
             try {
-                const result = await this.actor.addProductionLog(to_candid_Shift_n5(this._uploadFile, this._downloadFile, arg0), arg1, arg2, arg3, arg4, arg5);
+                const result = await this.actor.addProductionLog(to_candid_Shift_n5(this._uploadFile, this._downloadFile, arg0), arg1, arg2, arg3, arg4, arg5, arg6 !== undefined ? [arg6] : [], arg7 !== undefined ? [arg7] : [], arg8 !== undefined ? [arg8] : [], arg9 !== undefined ? [arg9] : [], arg10 !== undefined ? [arg10] : [], arg11 !== undefined ? [arg11] : [], arg12 !== undefined ? [arg12] : [], arg13 !== undefined ? [arg13] : [], arg14 !== undefined ? [arg14] : [], arg15 !== undefined ? [arg15] : [], arg16 !== undefined ? [arg16] : [], arg17 !== undefined ? [arg17] : []);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.addProductionLog(to_candid_Shift_n5(this._uploadFile, this._downloadFile, arg0), arg1, arg2, arg3, arg4, arg5);
+            const result = await this.actor.addProductionLog(to_candid_Shift_n5(this._uploadFile, this._downloadFile, arg0), arg1, arg2, arg3, arg4, arg5, arg6 !== undefined ? [arg6] : [], arg7 !== undefined ? [arg7] : [], arg8 !== undefined ? [arg8] : [], arg9 !== undefined ? [arg9] : [], arg10 !== undefined ? [arg10] : [], arg11 !== undefined ? [arg11] : [], arg12 !== undefined ? [arg12] : [], arg13 !== undefined ? [arg13] : [], arg14 !== undefined ? [arg14] : [], arg15 !== undefined ? [arg15] : [], arg16 !== undefined ? [arg16] : [], arg17 !== undefined ? [arg17] : []);
             return result;
         }
     }
@@ -1453,17 +1465,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async updateProductionLog(arg0: bigint, arg1: Shift, arg2: Time, arg3: bigint, arg4: bigint, arg5: bigint, arg6: string): Promise<void> {
+    async updateProductionLog(arg0: bigint, arg1: Shift, arg2: Time, arg3: bigint, arg4: bigint, arg5: bigint, arg6: string, arg7?: bigint, arg8?: bigint, arg9?: bigint, arg10?: bigint, arg11?: bigint, arg12?: bigint, arg13?: bigint, arg14?: bigint, arg15?: bigint, arg16?: bigint, arg17?: bigint, arg18?: bigint): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateProductionLog(arg0, to_candid_Shift_n5(this._uploadFile, this._downloadFile, arg1), arg2, arg3, arg4, arg5, arg6);
+                const result = await this.actor.updateProductionLog(arg0, to_candid_Shift_n5(this._uploadFile, this._downloadFile, arg1), arg2, arg3, arg4, arg5, arg6, arg7 !== undefined ? [arg7] : [], arg8 !== undefined ? [arg8] : [], arg9 !== undefined ? [arg9] : [], arg10 !== undefined ? [arg10] : [], arg11 !== undefined ? [arg11] : [], arg12 !== undefined ? [arg12] : [], arg13 !== undefined ? [arg13] : [], arg14 !== undefined ? [arg14] : [], arg15 !== undefined ? [arg15] : [], arg16 !== undefined ? [arg16] : [], arg17 !== undefined ? [arg17] : [], arg18 !== undefined ? [arg18] : []);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateProductionLog(arg0, to_candid_Shift_n5(this._uploadFile, this._downloadFile, arg1), arg2, arg3, arg4, arg5, arg6);
+            const result = await this.actor.updateProductionLog(arg0, to_candid_Shift_n5(this._uploadFile, this._downloadFile, arg1), arg2, arg3, arg4, arg5, arg6, arg7 !== undefined ? [arg7] : [], arg8 !== undefined ? [arg8] : [], arg9 !== undefined ? [arg9] : [], arg10 !== undefined ? [arg10] : [], arg11 !== undefined ? [arg11] : [], arg12 !== undefined ? [arg12] : [], arg13 !== undefined ? [arg13] : [], arg14 !== undefined ? [arg14] : [], arg15 !== undefined ? [arg15] : [], arg16 !== undefined ? [arg16] : [], arg17 !== undefined ? [arg17] : [], arg18 !== undefined ? [arg18] : []);
             return result;
         }
     }
@@ -2134,6 +2146,18 @@ function from_candid_record_n64(_uploadFile: (file: ExternalBlob) => Promise<Uin
     efficiencyPercent: bigint;
     machineId: bigint;
     quantityKg: bigint;
+    lickerinDropping: [] | [bigint];
+    flatStrips: [] | [bigint];
+    microdust: [] | [bigint];
+    routerFan: [] | [bigint];
+    brd: [] | [bigint];
+    lrd: [] | [bigint];
+    flatStripsRing: [] | [bigint];
+    usableWaste: [] | [bigint];
+    microdustRing: [] | [bigint];
+    metalWaste: [] | [bigint];
+    hardWaste: [] | [bigint];
+    sweepingWaste: [] | [bigint];
 }): {
     id: bigint;
     date: Time;
@@ -2142,6 +2166,18 @@ function from_candid_record_n64(_uploadFile: (file: ExternalBlob) => Promise<Uin
     efficiencyPercent: bigint;
     machineId: bigint;
     quantityKg: bigint;
+    lickerinDropping?: bigint;
+    flatStrips?: bigint;
+    microdust?: bigint;
+    routerFan?: bigint;
+    brd?: bigint;
+    lrd?: bigint;
+    flatStripsRing?: bigint;
+    usableWaste?: bigint;
+    microdustRing?: bigint;
+    metalWaste?: bigint;
+    hardWaste?: bigint;
+    sweepingWaste?: bigint;
 } {
     return {
         id: value.id,
@@ -2150,7 +2186,19 @@ function from_candid_record_n64(_uploadFile: (file: ExternalBlob) => Promise<Uin
         shift: from_candid_Shift_n65(_uploadFile, _downloadFile, value.shift),
         efficiencyPercent: value.efficiencyPercent,
         machineId: value.machineId,
-        quantityKg: value.quantityKg
+        quantityKg: value.quantityKg,
+        lickerinDropping: value.lickerinDropping.length > 0 ? value.lickerinDropping[0] : undefined,
+        flatStrips: value.flatStrips.length > 0 ? value.flatStrips[0] : undefined,
+        microdust: value.microdust.length > 0 ? value.microdust[0] : undefined,
+        routerFan: value.routerFan.length > 0 ? value.routerFan[0] : undefined,
+        brd: value.brd.length > 0 ? value.brd[0] : undefined,
+        lrd: value.lrd.length > 0 ? value.lrd[0] : undefined,
+        flatStripsRing: value.flatStripsRing.length > 0 ? value.flatStripsRing[0] : undefined,
+        usableWaste: value.usableWaste.length > 0 ? value.usableWaste[0] : undefined,
+        microdustRing: value.microdustRing.length > 0 ? value.microdustRing[0] : undefined,
+        metalWaste: value.metalWaste.length > 0 ? value.metalWaste[0] : undefined,
+        hardWaste: value.hardWaste.length > 0 ? value.hardWaste[0] : undefined,
+        sweepingWaste: value.sweepingWaste.length > 0 ? value.sweepingWaste[0] : undefined,
     };
 }
 function from_candid_record_n69(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
