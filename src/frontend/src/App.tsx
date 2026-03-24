@@ -33,6 +33,7 @@ import {
   Settings2,
   ShieldCheck,
   ShoppingCart,
+  TrendingUp,
   Truck,
   Unlock,
   X,
@@ -55,6 +56,7 @@ import ProductionOrders from "./pages/ProductionOrders";
 import PurchaseOrders from "./pages/PurchaseOrders";
 import RawMaterialOpeningStock from "./pages/RawMaterialOpeningStock";
 import RawMaterials from "./pages/RawMaterials";
+import RealisationReport from "./pages/RealisationReport";
 import Reports from "./pages/Reports";
 import WarehouseTransferPage from "./pages/WarehouseTransfer";
 import YarnDispatch from "./pages/YarnDispatch";
@@ -78,6 +80,7 @@ type PageId =
   | "yarn-dispatch"
   | "reports"
   | "combined-stock-report"
+  | "realisation-report"
   | "dropdown-options"
   | "warehouse-transfer";
 
@@ -189,6 +192,12 @@ const navItems: NavItem[] = [
     group: "Reports",
   },
   {
+    id: "realisation-report",
+    label: "Realisation Report",
+    icon: <TrendingUp className="w-4 h-4" />,
+    group: "Reports",
+  },
+  {
     id: "yarn-inventory",
     label: "Yarn Inventory",
     icon: <Package2 className="w-4 h-4" />,
@@ -225,6 +234,7 @@ const pageComponents: Record<PageId, React.ReactNode> = {
   "yarn-dispatch": <YarnDispatch />,
   reports: <Reports />,
   "combined-stock-report": <CombinedStockReport />,
+  "realisation-report": <RealisationReport />,
   "dropdown-options": <DropdownOptionsPage />,
   "warehouse-transfer": <WarehouseTransferPage />,
 };

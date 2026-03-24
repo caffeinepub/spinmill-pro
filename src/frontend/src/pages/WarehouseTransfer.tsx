@@ -102,6 +102,12 @@ export default function WarehouseTransfer() {
       toast.error("Quantity must be a positive number.");
       return;
     }
+    if (qtyNum > availableStock) {
+      toast.error(
+        `Not enough stock available. Available: ${availableStock.toLocaleString()} kg, Requested: ${qtyNum.toLocaleString()} kg`,
+      );
+      return;
+    }
     const dateMs = new Date(transferDate).getTime();
     try {
       await transferMutation.mutateAsync({

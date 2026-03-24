@@ -518,6 +518,18 @@ export default function YarnDispatch() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!editItem && isZeroBalance) {
+      toast.error(
+        `Not enough stock available. Available: 0 kg, Requested: ${enteredQty} kg`,
+      );
+      return;
+    }
+    if (!editItem && isExceeding && availableKg !== null) {
+      toast.error(
+        `Not enough stock available. Available: ${availableKg} kg, Requested: ${enteredQty} kg`,
+      );
+      return;
+    }
     if (!editItem && isSubmitBlocked) return;
     const dispatchDateTs = BigInt(new Date(form.date).getTime() * 1_000_000);
     try {

@@ -360,7 +360,13 @@ export default function ProductionLogs() {
 
   // Machines for bulk dialog
   const bulkMachines = bulkForm.selectedUnit
-    ? machines.filter((m) => m.machineType === bulkForm.selectedUnit)
+    ? machines
+        .filter((m) => m.machineType === bulkForm.selectedUnit)
+        .sort(
+          (a, b) =>
+            Number(a.machineNumber) - Number(b.machineNumber) ||
+            String(a.machineNumber).localeCompare(String(b.machineNumber)),
+        )
     : [];
 
   // Derive selected machine and its running count/lot
