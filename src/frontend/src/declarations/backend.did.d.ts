@@ -173,18 +173,6 @@ export interface ProductionLog {
   'efficiencyPercent' : bigint,
   'machineId' : bigint,
   'quantityKg' : bigint,
-  'lickerinDropping' : [] | [bigint],
-  'flatStrips' : [] | [bigint],
-  'microdust' : [] | [bigint],
-  'routerFan' : [] | [bigint],
-  'brd' : [] | [bigint],
-  'lrd' : [] | [bigint],
-  'flatStripsRing' : [] | [bigint],
-  'usableWaste' : [] | [bigint],
-  'microdustRing' : [] | [bigint],
-  'metalWaste' : [] | [bigint],
-  'hardWaste' : [] | [bigint],
-  'sweepingWaste' : [] | [bigint],
 }
 export interface ProductionOrder {
   'id' : bigint,
@@ -336,7 +324,7 @@ export interface _SERVICE {
     bigint
   >,
   'addProductionLog' : ActorMethod<
-    [Shift, Time, bigint, bigint, bigint, string, [] | [bigint], [] | [bigint], [] | [bigint], [] | [bigint], [] | [bigint], [] | [bigint], [] | [bigint], [] | [bigint], [] | [bigint], [] | [bigint], [] | [bigint], [] | [bigint]],
+    [Shift, Time, bigint, bigint, bigint, string],
     bigint
   >,
   'addQualityTest' : ActorMethod<
@@ -475,7 +463,7 @@ export interface _SERVICE {
     undefined
   >,
   'updateProductionLog' : ActorMethod<
-    [bigint, Shift, Time, bigint, bigint, bigint, string, [] | [bigint], [] | [bigint], [] | [bigint], [] | [bigint], [] | [bigint], [] | [bigint], [] | [bigint], [] | [bigint], [] | [bigint], [] | [bigint], [] | [bigint], [] | [bigint]],
+    [bigint, Shift, Time, bigint, bigint, bigint, string],
     undefined
   >,
   'updateProductionOrder' : ActorMethod<

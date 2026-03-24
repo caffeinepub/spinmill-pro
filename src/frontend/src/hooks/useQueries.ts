@@ -574,42 +574,15 @@ export function useAddProductionLog() {
       quantityKg: bigint;
       efficiencyPercent: bigint;
       operatorName: string;
-      // OE Spinning waste fields (args 6-9)
-      lickerinDropping?: bigint;
-      flatStrips?: bigint;
-      microdust?: bigint;
-      routerFan?: bigint;
-      // Ring Spinning waste fields (args 10-17)
-      brd?: bigint;
-      lrd?: bigint;
-      flatStripsRing?: bigint;
-      usableWaste?: bigint;
-      microdustRing?: bigint;
-      metalWaste?: bigint;
-      hardWaste?: bigint;
-      sweepingWaste?: bigint;
     }) => {
       if (!actor) throw new Error("No actor");
-      // biome-ignore lint/suspicious/noExplicitAny: backend accepts optional waste args not in type declaration
-      return (fullActor(actor) as any).addProductionLog(
+      return fullActor(actor).addProductionLog(
         args.shift,
         args.date,
         args.machineId,
         args.quantityKg,
         args.efficiencyPercent,
         args.operatorName,
-        args.lickerinDropping,
-        args.flatStrips,
-        args.microdust,
-        args.routerFan,
-        args.brd,
-        args.lrd,
-        args.flatStripsRing,
-        args.usableWaste,
-        args.microdustRing,
-        args.metalWaste,
-        args.hardWaste,
-        args.sweepingWaste,
       );
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["productionLogs"] }),
@@ -628,24 +601,9 @@ export function useUpdateProductionLog() {
       quantityKg: bigint;
       efficiencyPercent: bigint;
       operatorName: string;
-      // OE Spinning waste fields
-      lickerinDropping?: bigint;
-      flatStrips?: bigint;
-      microdust?: bigint;
-      routerFan?: bigint;
-      // Ring Spinning waste fields
-      brd?: bigint;
-      lrd?: bigint;
-      flatStripsRing?: bigint;
-      usableWaste?: bigint;
-      microdustRing?: bigint;
-      metalWaste?: bigint;
-      hardWaste?: bigint;
-      sweepingWaste?: bigint;
     }) => {
       if (!actor) throw new Error("No actor");
-      // biome-ignore lint/suspicious/noExplicitAny: backend accepts optional waste args not in type declaration
-      return (fullActor(actor) as any).updateProductionLog(
+      return fullActor(actor).updateProductionLog(
         args.id,
         args.shift,
         args.date,
@@ -653,18 +611,6 @@ export function useUpdateProductionLog() {
         args.quantityKg,
         args.efficiencyPercent,
         args.operatorName,
-        args.lickerinDropping,
-        args.flatStrips,
-        args.microdust,
-        args.routerFan,
-        args.brd,
-        args.lrd,
-        args.flatStripsRing,
-        args.usableWaste,
-        args.microdustRing,
-        args.metalWaste,
-        args.hardWaste,
-        args.sweepingWaste,
       );
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["productionLogs"] }),

@@ -29,7 +29,6 @@ import {
   PackageOpen,
   PackageSearch,
   PrinterIcon,
-  Recycle,
   RefreshCw,
   Settings2,
   ShieldCheck,
@@ -58,7 +57,6 @@ import RawMaterialOpeningStock from "./pages/RawMaterialOpeningStock";
 import RawMaterials from "./pages/RawMaterials";
 import Reports from "./pages/Reports";
 import WarehouseTransferPage from "./pages/WarehouseTransfer";
-import WasteProduction from "./pages/WasteProduction";
 import YarnDispatch from "./pages/YarnDispatch";
 import YarnInventory from "./pages/YarnInventory";
 import YarnOpeningStock from "./pages/YarnOpeningStock";
@@ -74,7 +72,6 @@ type PageId =
   | "yarn-opening-stock"
   | "production-orders"
   | "machines"
-  | "waste-production"
   | "packing-entry"
   | "production-logs"
   | "yarn-inventory"
@@ -168,12 +165,6 @@ const navItems: NavItem[] = [
     group: "Production",
   },
   {
-    id: "waste-production",
-    label: "Waste Production",
-    icon: <Recycle className="w-4 h-4" />,
-    group: "Waste",
-  },
-  {
     id: "packing-entry",
     label: "Packing Entry",
     icon: <Box className="w-4 h-4" />,
@@ -228,7 +219,6 @@ const pageComponents: Record<PageId, React.ReactNode> = {
   "yarn-opening-stock": <YarnOpeningStock />,
   "production-orders": <ProductionOrders />,
   machines: <Machines />,
-  "waste-production": <WasteProduction />,
   "packing-entry": <PackingEntry />,
   "production-logs": <ProductionLogs />,
   "yarn-inventory": <YarnInventory />,
@@ -243,7 +233,6 @@ const groups = [
   "Procurement",
   "Opening Stock",
   "Production",
-  "Waste",
   "Packing",
   "Reports",
   "Admin",

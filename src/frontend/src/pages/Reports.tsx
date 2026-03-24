@@ -29,6 +29,7 @@ import {
   Layers,
   Package,
   PackageOpen,
+  Recycle,
   Send,
   TrendingDown,
   TrendingUp,
@@ -2704,6 +2705,285 @@ function IssueVsPackingSummaryReport({
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Waste Summary Report
+// ─────────────────────────────────────────────────────────────────────────────
+function WasteSummaryReport({
+  issues,
+  isLoading,
+}: {
+  issues: MaterialIssue[];
+  isLoading: boolean;
+}) {
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [search, setSearch] = useState("");
+
+  const wasteIssues = useMemo(() => {
+    return issues.filter(
+      (i) => (i.department || "").toLowerCase() === "waste production",
+    );
+  }, [issues]);
+
+  const filtered = useMemo(() => {
+    let result = wasteIssues;
+    if (fromDate) {
+      result = result.filter((i) => {
+        const d =
+          typeof i.issueDate === "bigint"
+            ? new Date(Number(i.issueDate / 1_000_000n))
+            : new Date(i.issueDate as string);
+        return d >= new Date(fromDate);
+      });
+    }
+    if (toDate) {
+      result = result.filter((i) => {
+        const d =
+          typeof i.issueDate === "bigint"
+            ? new Date(Number(i.issueDate / 1_000_000n))
+            : new Date(i.issueDate as string);
+        return d <= new Date(`${toDate}T23:59:59`);
+      });
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (i) =>
+          (i.materialName || "").toLowerCase().includes(q) ||
+          (i.warehouse || "").toLowerCase().includes(q),
+      );
+    }
+    return result;
+  }, [wasteIssues, fromDate, toDate, search]);
+
+  const totalOE = useMemo(
+    () =>
+      filtered
+        .filter((i) => (i.warehouse || "").toLowerCase().includes("oe"))
+        .reduce((s, i) => s + Number(i.issuedQty), 0),
+    [filtered],
+  );
+  const totalRing = useMemo(
+    () =>
+      filtered
+        .filter((i) => (i.warehouse || "").toLowerCase().includes("ring"))
+        .reduce((s, i) => s + Number(i.issuedQty), 0),
+    [filtered],
+  );
+  const totalAll = useMemo(
+    () => filtered.reduce((s, i) => s + Number(i.issuedQty), 0),
+    [filtered],
+  );
+
+  function formatDate(val: unknown): string {
+    if (!val) return "—";
+    try {
+      const d =
+        typeof val === "bigint"
+          ? new Date(Number((val as bigint) / 1_000_000n))
+          : new Date(val as string);
+      return d.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return String(val);
+    }
+  }
+
+  function exportCSV() {
+    const rows = [
+      ["Date", "Waste Type", "Warehouse", "Quantity (kg)", "Remarks"],
+      ...filtered.map((i) => [
+        formatDate(i.issueDate),
+        i.materialName || "",
+        i.warehouse || "",
+        String(Number(i.issuedQty)),
+        i.remarks || "",
+      ]),
+    ];
+    const csv = rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = "waste_summary.csv";
+    a.click();
+  }
+
+  function handlePrint() {
+    window.print();
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-10 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="rounded-lg border border-border/60 bg-card shadow-sm p-4 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-green-50 border border-green-200 flex items-center justify-center flex-shrink-0">
+            <Recycle className="w-4 h-4 text-green-600" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+              Total Waste OE
+            </p>
+            <p className="text-xl font-bold text-foreground font-mono">
+              {totalOE.toFixed(2)} kg
+            </p>
+          </div>
+        </div>
+        <div className="rounded-lg border border-border/60 bg-card shadow-sm p-4 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center flex-shrink-0">
+            <Recycle className="w-4 h-4 text-purple-600" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+              Total Waste Ring
+            </p>
+            <p className="text-xl font-bold text-foreground font-mono">
+              {totalRing.toFixed(2)} kg
+            </p>
+          </div>
+        </div>
+        <div className="rounded-lg border border-border/60 bg-card shadow-sm p-4 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center flex-shrink-0">
+            <Recycle className="w-4 h-4 text-orange-600" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+              Total Waste Overall
+            </p>
+            <p className="text-xl font-bold text-foreground font-mono">
+              {totalAll.toFixed(2)} kg
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters & Actions */}
+      <div className="rounded-lg border border-border/60 bg-card shadow-sm p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs whitespace-nowrap">From Date</Label>
+            <Input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="h-8 text-xs w-36"
+              data-ocid="waste.input"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs whitespace-nowrap">To Date</Label>
+            <Input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="h-8 text-xs w-36"
+            />
+          </div>
+          <Input
+            placeholder="Search waste type or warehouse..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-8 text-xs w-52"
+            data-ocid="waste.search_input"
+          />
+          <div className="ml-auto flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={exportCSV}
+              className="gap-1.5 text-xs h-8"
+              data-ocid="waste.secondary_button"
+            >
+              <Download className="w-3.5 h-3.5" /> Export CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePrint}
+              className="gap-1.5 text-xs h-8"
+            >
+              <FileText className="w-3.5 h-3.5" /> Print
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-lg border border-border/60 bg-card shadow-sm overflow-hidden">
+        {filtered.length === 0 ? (
+          <div
+            className="p-8 text-center space-y-2"
+            data-ocid="waste.empty_state"
+          >
+            <Recycle className="w-10 h-10 text-muted-foreground/40 mx-auto" />
+            <p className="text-sm font-medium text-muted-foreground">
+              No waste entries found.
+            </p>
+            <p className="text-xs text-muted-foreground/70 max-w-md mx-auto">
+              To record waste, go to{" "}
+              <span className="font-semibold">Material Issue</span>, select
+              department{" "}
+              <span className="font-semibold">"Waste Production"</span>, and
+              choose the waste type as the Material Name.
+            </p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30">
+                <TableHead className="text-xs font-semibold">Date</TableHead>
+                <TableHead className="text-xs font-semibold">
+                  Waste Type
+                </TableHead>
+                <TableHead className="text-xs font-semibold">
+                  Warehouse
+                </TableHead>
+                <TableHead className="text-xs font-semibold text-right">
+                  Quantity (kg)
+                </TableHead>
+                <TableHead className="text-xs font-semibold">Remarks</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((issue, idx) => (
+                <TableRow
+                  key={issue.id || idx}
+                  className="text-xs"
+                  data-ocid={`waste.item.${idx + 1}`}
+                >
+                  <TableCell>{formatDate(issue.issueDate)}</TableCell>
+                  <TableCell className="font-medium">
+                    {issue.materialName || "—"}
+                  </TableCell>
+                  <TableCell>{issue.warehouse || "—"}</TableCell>
+                  <TableCell className="text-right font-mono">
+                    {Number(issue.issuedQty).toFixed(2)}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {issue.remarks || "—"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Reports() {
   const { data: logs = [], isLoading: logsLoading } = useProductionLogs();
   const { data: machines = [], isLoading: machinesLoading } = useMachines();
@@ -2809,6 +3089,14 @@ export default function Reports() {
               <BarChart3 className="w-3.5 h-3.5" />
               Issue vs Packing Summary
             </TabsTrigger>
+            <TabsTrigger
+              value="waste"
+              data-ocid="reports.waste.tab"
+              className="gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm whitespace-nowrap"
+            >
+              <Recycle className="w-3.5 h-3.5" />
+              Waste Summary
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -2871,6 +3159,13 @@ export default function Reports() {
             issues={materialIssues}
             packingEntries={packingEntries}
             isLoading={issuesLoading || packingLoading}
+          />
+        </TabsContent>
+
+        <TabsContent value="waste" className="mt-0">
+          <WasteSummaryReport
+            issues={materialIssues}
+            isLoading={issuesLoading}
           />
         </TabsContent>
       </Tabs>

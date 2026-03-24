@@ -33,21 +33,22 @@ import {
 import type { SpinningUnit } from "../types";
 
 const RING_WASTE_TYPES = [
-  "BRD (Blow Room Droppings)",
-  "LRD (Licker In Droppings)",
+  "Blow Room Droppings",
+  "Licker In Droppings",
   "Flat Strips",
-  "Usable Waste",
   "Microdust",
-  "Metal Waste",
+  "Usable Waste",
   "Hard Waste",
   "Sweeping Waste",
+  "Ring Fan",
+  "Metal Waste",
 ];
 
 const OE_WASTE_TYPES = [
   "Lickerin Dropping",
   "Flat Strips",
-  "Microdust",
   "Router Fan",
+  "Microdust",
 ];
 
 function todayStr() {
@@ -120,7 +121,7 @@ export default function WasteProduction() {
       toast.error("Please select a waste type");
       return;
     }
-    const qty = Number.parseFloat(form.quantityKg);
+    const qty = Number.parseInt(form.quantityKg);
     if (Number.isNaN(qty) || qty <= 0) {
       toast.error("Enter a valid quantity");
       return;
@@ -136,7 +137,7 @@ export default function WasteProduction() {
           entryDate,
           spinningUnit: unit,
           wasteType: form.wasteType,
-          quantityKg: BigInt(Math.round(qty)),
+          quantityKg: BigInt(qty),
           remarks: form.remarks,
         });
         toast.success("Waste entry updated");
@@ -146,7 +147,7 @@ export default function WasteProduction() {
           entryDate,
           spinningUnit: unit,
           wasteType: form.wasteType,
-          quantityKg: BigInt(Math.round(qty)),
+          quantityKg: BigInt(qty),
           remarks: form.remarks,
         });
         toast.success("Waste entry saved");
@@ -199,7 +200,7 @@ export default function WasteProduction() {
 
       {/* Stock Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="border rounded-lg p-4 bg-white">
+        <div className="border rounded-lg p-4">
           <h3 className="font-semibold text-sm mb-3 text-muted-foreground uppercase tracking-wide">
             Ring Waste Warehouse
           </h3>
@@ -216,7 +217,7 @@ export default function WasteProduction() {
             </div>
           )}
         </div>
-        <div className="border rounded-lg p-4 bg-white">
+        <div className="border rounded-lg p-4">
           <h3 className="font-semibold text-sm mb-3 text-muted-foreground uppercase tracking-wide">
             OE Waste Warehouse
           </h3>
@@ -238,7 +239,7 @@ export default function WasteProduction() {
       {/* Entry Form */}
       <form
         onSubmit={handleSubmit}
-        className="border rounded-lg p-4 space-y-4 bg-white"
+        className="border rounded-lg p-4 space-y-4"
         data-ocid="waste-production.form"
       >
         <h3 className="font-semibold">
@@ -290,8 +291,7 @@ export default function WasteProduction() {
             <Label>Quantity (kg)</Label>
             <Input
               type="number"
-              min="0.1"
-              step="0.1"
+              min="1"
               placeholder="Enter kg"
               value={form.quantityKg}
               onChange={(e) =>
@@ -334,7 +334,7 @@ export default function WasteProduction() {
       </form>
 
       {/* Entries Table */}
-      <div className="border rounded-lg overflow-hidden bg-white">
+      <div className="border rounded-lg overflow-hidden">
         {isLoading ? (
           <div className="p-4 space-y-2">
             {[1, 2, 3, 4, 5].map((n) => (
