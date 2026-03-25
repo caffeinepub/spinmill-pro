@@ -456,12 +456,12 @@ export default function RealisationReport() {
           /* Section A — full width */
           .print-section-a { width: 100%; margin-bottom: 6px; }
 
-          /* Section B + C — 50/50 grid */
+          /* Section B + C — stacked vertically */
           .print-bc-row {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
+            display: flex !important;
+            flex-direction: column !important;
             gap: 8px !important;
-            flex-direction: unset !important;
+            
             margin-bottom: 0 !important;
           }
           .print-bc-col { min-width: 0; }
