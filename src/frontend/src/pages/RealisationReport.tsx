@@ -34,7 +34,7 @@ const RING_WASTE_TYPES = [
   "Flat Strips",
   "Usable Waste",
   "Microdust",
-  "Metal Waste",
+  "Seed Waste",
   "Hard Waste",
   "Sweeping Waste",
 ];

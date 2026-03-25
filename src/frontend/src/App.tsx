@@ -92,6 +92,7 @@ const ADMIN_REQUIRED_PAGES: PageId[] = [
   "warehouse-transfer",
   "production-orders",
   "yarn-inventory",
+  "realisation-report",
 ];
 
 interface NavItem {
