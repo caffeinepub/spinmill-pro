@@ -105,7 +105,6 @@ export default function RealisationReport() {
   const unitLabel = unit === "oe" ? "OE Spinning" : "Ring Spinning";
   const wasteTypes = unit === "oe" ? OE_WASTE_TYPES : RING_WASTE_TYPES;
 
-  // Load from localStorage when unit/dates change
   useEffect(() => {
     const wipKey = `spinmill_wip_${unit}_${fromDate}_${toDate}`;
     const saved = lsGet<{ opening: number; closing: number } | null>(
@@ -127,14 +126,12 @@ export default function RealisationReport() {
     setNewWasteQty("");
   }, [unit, fromDate, toDate]);
 
-  // Persist WIP
   useEffect(() => {
     const wipKey = `spinmill_wip_${unit}_${fromDate}_${toDate}`;
     lsSet(wipKey, { opening: openingWIP, closing: closingWIP });
     lsSet(`spinmill_last_closing_wip_${unit}`, closingWIP);
   }, [openingWIP, closingWIP, unit, fromDate, toDate]);
 
-  // Persist waste
   useEffect(() => {
     const wasteKey = `spinmill_waste_${unit}_${fromDate}_${toDate}`;
     lsSet(wasteKey, wasteRows);
@@ -183,14 +180,11 @@ export default function RealisationReport() {
     [productionOrdersRaw],
   );
 
-  // Section A
   const sectionAData = useMemo(() => {
     const startNs = dateToStartNs(fromDate);
     const endNs = dateToEndNs(toDate);
-
     const wh = warehouse.toLowerCase();
 
-    // opening stock entries (all dates) for this warehouse
     const openingMap: Record<string, number> = {};
     for (const r of rawOpeningStock) {
       if (String(r.warehouse || "").toLowerCase() === wh) {
@@ -200,8 +194,6 @@ export default function RealisationReport() {
         openingMap[mat] = (openingMap[mat] || 0) + Number(r.weightKg || 0);
       }
     }
-
-    // inward before period
     for (const r of inwardEntries) {
       if (String(r.warehouse || "").toLowerCase() === wh) {
         const ts = getNs(r.inwardDate);
@@ -211,8 +203,6 @@ export default function RealisationReport() {
         }
       }
     }
-
-    // issues before period
     for (const r of materialIssues) {
       if (String(r.warehouse || "").toLowerCase() === wh) {
         const ts = getNs(r.issueDate);
@@ -223,7 +213,6 @@ export default function RealisationReport() {
       }
     }
 
-    // inward during period
     const inwardMap: Record<string, number> = {};
     for (const r of inwardEntries) {
       if (String(r.warehouse || "").toLowerCase() === wh) {
@@ -235,7 +224,6 @@ export default function RealisationReport() {
       }
     }
 
-    // issues during period
     const issuedMap: Record<string, number> = {};
     for (const r of materialIssues) {
       if (String(r.warehouse || "").toLowerCase() === wh) {
@@ -288,7 +276,6 @@ export default function RealisationReport() {
     toDate,
   ]);
 
-  // Section D
   const sectionDData = useMemo(() => {
     const startNs = dateToStartNs(fromDate);
     const endNs = dateToEndNs(toDate);
@@ -334,7 +321,6 @@ export default function RealisationReport() {
 
   const totalWaste = wasteRows.reduce((s, r) => s + r.qty, 0);
 
-  // Section E
   const summary = useMemo(() => {
     const totalIssued = sectionAData.totals.issued;
     const openWIP = openingWIP;
@@ -426,16 +412,117 @@ export default function RealisationReport() {
   return (
     <div className="p-4 space-y-4">
       <style>{`
+        /* ── Screen: hide print-only elements ── */
+        .print-show { display: none; }
+        .print-bc-row { display: flex; flex-direction: column; gap: 16px; }
+
         @media print {
-          body > * { display: none !important; }
-          #realisation-print-area { display: block !important; position: static !important; }
+          @page { size: A4 portrait; margin: 8mm; }
+
+          /* Hide everything on the page, then reveal only the print area */
+          body * { visibility: hidden; }
+          #realisation-print-area,
+          #realisation-print-area * { visibility: visible; }
+
+          #realisation-print-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            font-size: 7.5pt;
+            line-height: 1.3;
+            color: #111;
+          }
+
+          /* Show / hide toggles */
           .print-hide { display: none !important; }
-          table { border-collapse: collapse; width: 100%; }
-          th, td { border: 1px solid #ccc; padding: 4px 8px; }
+          .print-show { display: block !important; }
+
+          /* Force page 2 */
+          .print-page-break { page-break-before: always !important; break-before: page !important; }
+
+          /* Typography */
+          h2.rpt-title { font-size: 11pt; font-weight: 700; margin: 0 0 2px; }
+          h3.rpt-subtitle { font-size: 9pt; font-weight: 600; margin: 0 0 1px; color: #444; }
+          p.rpt-period { font-size: 7pt; color: #666; margin: 0 0 6px; }
+          .sec-heading {
+            font-size: 8pt;
+            font-weight: 700;
+            margin: 0 0 3px;
+            padding-bottom: 2px;
+            border-bottom: 1px solid #ccc;
+          }
+
+          /* Section A — full width */
+          .print-section-a { width: 100%; margin-bottom: 6px; }
+
+          /* Section B + C — 50/50 grid */
+          .print-bc-row {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 8px !important;
+            flex-direction: unset !important;
+            margin-bottom: 0 !important;
+          }
+          .print-bc-col { min-width: 0; }
+
+          /* Tables */
+          table { border-collapse: collapse; width: 100%; margin-bottom: 0; }
+          th, td {
+            border: 1px solid #bbb;
+            padding: 1.5px 3px;
+            font-size: 7pt;
+            vertical-align: top;
+          }
+          thead th {
+            background: #f0f0f0 !important;
+            font-weight: 700;
+            font-size: 6.5pt;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          tbody tr:last-child td { font-weight: 700; background: #f5f5f5 !important; }
+          .text-right { text-align: right; }
+          .text-center { text-align: center; }
+          .font-bold { font-weight: 700; }
+          .font-semibold { font-weight: 600; }
+
+          /* WIP boxes */
+          .wip-box {
+            border: 1px solid #d0c0e8;
+            border-radius: 3px;
+            padding: 4px 6px;
+            margin-bottom: 5px;
+            background: #f9f5ff !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .wip-label { font-size: 6.5pt; font-weight: 600; color: #6b21a8; margin-bottom: 2px; }
+          .wip-value { font-size: 9pt; font-weight: 700; color: #111; }
+
+          /* Section E highlight rows */
+          .row-highlight-green td { background: #dcfce7 !important; }
+          .row-highlight-amber td { background: #fef3c7 !important; }
+          .row-highlight-red td { background: #fee2e2 !important; }
+          .row-subtotal td { background: #f3f4f6 !important; font-weight: 600; }
+
+          /* Footer */
+          .rpt-footer {
+            font-size: 6.5pt;
+            color: #888;
+            text-align: center;
+            padding-top: 3px;
+            border-top: 1px solid #ddd;
+            margin-top: 4px;
+          }
+
+          /* Reset spacing utilities */
+          .mb-6, .mb-4, .mb-3, .mb-2 { margin-bottom: 0 !important; }
+          .space-y-4 > * + * { margin-top: 0 !important; }
         }
       `}</style>
 
-      {/* Controls */}
+      {/* ── Screen controls (hidden during print) ── */}
       <div className="print-hide space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h1 className="text-2xl font-bold text-gray-800">
@@ -490,36 +577,40 @@ export default function RealisationReport() {
         <Separator />
       </div>
 
-      {/* Printable Report */}
+      {/* ─────────────────────────────────────────────────────────
+          PRINTABLE REPORT AREA
+          Page 1: Header → Section A → Section B + C (50/50)
+          Page 2: Section D → Section E → Footer
+      ───────────────────────────────────────────────────────── */}
       <div id="realisation-print-area">
-        {/* Report Header */}
-        <div className="text-center mb-6">
-          <h2 className="text-xl font-bold">
+        {/* ── PAGE 1 ── */}
+
+        {/* Header */}
+        <div className="text-center mb-3">
+          <h2 className="rpt-title text-xl font-bold">
             Sudarshan Jeans (P) Ltd Spinning
           </h2>
-          <h3 className="text-lg font-semibold text-gray-700">
+          <h3 className="rpt-subtitle text-lg font-semibold text-gray-700">
             Realisation Report — {unitLabel}
           </h3>
-          <p className="text-sm text-gray-500">
+          <p className="rpt-period text-sm text-gray-500">
             Period: {fromDate} to {toDate}
           </p>
         </div>
 
-        {/* Section A */}
-        <div className="mb-6">
-          <h4 className="text-base font-bold text-blue-700 border-b border-blue-200 pb-1 mb-2">
+        {/* Section A — full width */}
+        <div className="print-section-a mb-4">
+          <h4 className="sec-heading text-base font-bold text-blue-700 border-b border-blue-200 pb-1 mb-2">
             Section A: Raw Material Warehouse
           </h4>
           <Table>
             <TableHeader>
               <TableRow className="bg-blue-50">
                 <TableHead>Grade / Material</TableHead>
-                <TableHead className="text-right">Opening Stock (kg)</TableHead>
+                <TableHead className="text-right">Opening (kg)</TableHead>
                 <TableHead className="text-right">Inward (kg)</TableHead>
                 <TableHead className="text-right">Issued (kg)</TableHead>
-                <TableHead className="text-right">
-                  Closing Balance (kg)
-                </TableHead>
+                <TableHead className="text-right">Closing (kg)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -567,37 +658,42 @@ export default function RealisationReport() {
           </Table>
         </div>
 
-        {/* Section B */}
-        <div className="mb-6">
-          <h4 className="text-base font-bold text-purple-700 border-b border-purple-200 pb-1 mb-2">
-            Section B: WIP (Work In Progress)
-          </h4>
-          <div className="flex gap-6 flex-wrap">
-            <div className="flex-1 min-w-48 bg-purple-50 rounded-lg p-4">
-              <Label className="text-sm font-semibold text-purple-800">
+        {/* Section B + C — side by side on screen (column) and in print (50/50 grid) */}
+        <div className="print-bc-row gap-4 mb-4">
+          {/* Section B — WIP */}
+          <div className="print-bc-col">
+            <h4 className="sec-heading text-base font-bold text-purple-700 border-b border-purple-200 pb-1 mb-2">
+              Section B: WIP (Work In Progress)
+            </h4>
+
+            {/* Opening WIP */}
+            <div className="wip-box bg-purple-50 rounded-lg p-3 mb-3">
+              <div className="wip-label text-sm font-semibold text-purple-800 mb-1">
                 Opening WIP (kg)
-              </Label>
+              </div>
+              {/* Screen: input */}
               <Input
                 type="number"
                 value={openingWIP}
                 onChange={(e) =>
                   setOpeningWIP(Number.parseFloat(e.target.value) || 0)
                 }
-                className="mt-1 print-hide"
+                className="print-hide mt-1"
                 data-ocid="realisation.opening_wip_input"
               />
-              <p className="font-bold text-lg mt-1 hidden print:block">
-                {fmt(openingWIP)}
-              </p>
-              <p className="text-xs text-purple-500 mt-1">
-                Manually entered (auto-fills from previous period)
+              {/* Print: plain value */}
+              <p className="print-show wip-value font-bold text-lg mt-1">
+                {fmt(openingWIP)} kg
               </p>
             </div>
-            <div className="flex-1 min-w-48 bg-purple-50 rounded-lg p-4">
-              <Label className="text-sm font-semibold text-purple-800">
+
+            {/* Closing WIP */}
+            <div className="wip-box bg-purple-50 rounded-lg p-3">
+              <div className="wip-label text-sm font-semibold text-purple-800 mb-1">
                 Closing WIP (kg)
-              </Label>
-              <div className="flex gap-2 mt-1 print-hide">
+              </div>
+              {/* Screen: input + auto-calc button */}
+              <div className="print-hide flex gap-2 mt-1">
                 <Input
                   type="number"
                   value={closingWIP}
@@ -617,135 +713,136 @@ export default function RealisationReport() {
                   <Calculator className="w-4 h-4" />
                 </Button>
               </div>
-              <p className="font-bold text-lg mt-1 hidden print:block">
-                {fmt(closingWIP)}
-              </p>
-              <p className="text-xs text-purple-500 mt-1">
-                Auto = Opening WIP + RM Issued − Yarn Packed − Total Waste
+              {/* Print: plain value */}
+              <p className="print-show wip-value font-bold text-lg mt-1">
+                {fmt(closingWIP)} kg
               </p>
             </div>
           </div>
-        </div>
 
-        {/* Section C */}
-        <div className="mb-6">
-          <h4 className="text-base font-bold text-orange-600 border-b border-orange-200 pb-1 mb-2">
-            Section C: Waste Production
-          </h4>
+          {/* Section C — Waste Production */}
+          <div className="print-bc-col">
+            <h4 className="sec-heading text-base font-bold text-orange-600 border-b border-orange-200 pb-1 mb-2">
+              Section C: Waste Production
+            </h4>
 
-          {/* Add form */}
-          <div className="flex flex-wrap gap-2 mb-3 print-hide bg-orange-50 p-3 rounded-lg">
-            <div>
-              <Label className="text-xs">Waste Type</Label>
-              <select
-                value={newWasteType}
-                onChange={(e) => setNewWasteType(e.target.value)}
-                className="block mt-1 border rounded px-2 py-1 text-sm bg-white"
-                data-ocid="realisation.waste_type_select"
-              >
-                <option value="">Select type</option>
-                {wasteTypes.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+            {/* Add form — screen only */}
+            <div className="print-hide flex flex-wrap gap-2 mb-3 bg-orange-50 p-3 rounded-lg">
+              <div>
+                <Label className="text-xs">Waste Type</Label>
+                <select
+                  value={newWasteType}
+                  onChange={(e) => setNewWasteType(e.target.value)}
+                  className="block mt-1 border rounded px-2 py-1 text-sm bg-white"
+                  data-ocid="realisation.waste_type_select"
+                >
+                  <option value="">Select type</option>
+                  {wasteTypes.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs">Grade</Label>
+                <Input
+                  value={newWasteGrade}
+                  onChange={(e) => setNewWasteGrade(e.target.value)}
+                  placeholder="Grade (optional)"
+                  className="mt-1 w-32 text-sm"
+                  data-ocid="realisation.waste_grade_input"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Qty (kg)</Label>
+                <Input
+                  type="number"
+                  value={newWasteQty}
+                  onChange={(e) => setNewWasteQty(e.target.value)}
+                  placeholder="0"
+                  className="mt-1 w-24 text-sm"
+                  data-ocid="realisation.waste_qty_input"
+                />
+              </div>
+              <div className="flex items-end">
+                <Button
+                  size="sm"
+                  onClick={addWasteRow}
+                  className="gap-1 mt-1"
+                  data-ocid="realisation.waste_add_button"
+                >
+                  <Plus className="w-3 h-3" /> Add
+                </Button>
+              </div>
             </div>
-            <div>
-              <Label className="text-xs">Grade</Label>
-              <Input
-                value={newWasteGrade}
-                onChange={(e) => setNewWasteGrade(e.target.value)}
-                placeholder="Grade (optional)"
-                className="mt-1 w-32 text-sm"
-                data-ocid="realisation.waste_grade_input"
-              />
-            </div>
-            <div>
-              <Label className="text-xs">Qty (kg)</Label>
-              <Input
-                type="number"
-                value={newWasteQty}
-                onChange={(e) => setNewWasteQty(e.target.value)}
-                placeholder="0"
-                className="mt-1 w-24 text-sm"
-                data-ocid="realisation.waste_qty_input"
-              />
-            </div>
-            <div className="flex items-end">
-              <Button
-                size="sm"
-                onClick={addWasteRow}
-                className="gap-1 mt-1"
-                data-ocid="realisation.waste_add_button"
-              >
-                <Plus className="w-3 h-3" /> Add
-              </Button>
-            </div>
-          </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-orange-50">
-                <TableHead>Waste Type</TableHead>
-                <TableHead>Grade</TableHead>
-                <TableHead className="text-right">Qty (kg)</TableHead>
-                <TableHead className="print-hide w-16">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {wasteRows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-gray-400">
-                    No waste entries for this period
-                  </TableCell>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-orange-50">
+                  <TableHead>Waste Type</TableHead>
+                  <TableHead>Grade</TableHead>
+                  <TableHead className="text-right">Qty (kg)</TableHead>
+                  <TableHead className="print-hide w-16">Action</TableHead>
                 </TableRow>
-              ) : (
-                wasteRows.map((r, idx) => (
-                  <TableRow
-                    key={r.id}
-                    data-ocid={`realisation.waste.item.${idx + 1}`}
-                  >
-                    <TableCell>{r.wasteType}</TableCell>
-                    <TableCell>{r.grade || "—"}</TableCell>
-                    <TableCell className="text-right">{fmt(r.qty)}</TableCell>
-                    <TableCell className="print-hide">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeWasteRow(r.id)}
-                        data-ocid={`realisation.waste.delete_button.${idx + 1}`}
-                      >
-                        <Trash2 className="w-3 h-3 text-red-500" />
-                      </Button>
+              </TableHeader>
+              <TableBody>
+                {wasteRows.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={4}
+                      className="text-center text-gray-400"
+                    >
+                      No waste entries for this period
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-              <TableRow className="bg-orange-50 font-bold">
-                <TableCell colSpan={2}>Total</TableCell>
-                <TableCell className="text-right">{fmt(totalWaste)}</TableCell>
-                <TableCell className="print-hide" />
-              </TableRow>
-            </TableBody>
-          </Table>
-          <p className="text-xs text-gray-400 mt-1 print-hide">
-            Entries saved in browser for this period
-          </p>
+                ) : (
+                  wasteRows.map((r, idx) => (
+                    <TableRow
+                      key={r.id}
+                      data-ocid={`realisation.waste.item.${idx + 1}`}
+                    >
+                      <TableCell>{r.wasteType}</TableCell>
+                      <TableCell>{r.grade || "—"}</TableCell>
+                      <TableCell className="text-right">{fmt(r.qty)}</TableCell>
+                      <TableCell className="print-hide">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeWasteRow(r.id)}
+                          data-ocid={`realisation.waste.delete_button.${idx + 1}`}
+                        >
+                          <Trash2 className="w-3 h-3 text-red-500" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+                <TableRow className="bg-orange-50 font-bold">
+                  <TableCell colSpan={2}>Total</TableCell>
+                  <TableCell className="text-right">
+                    {fmt(totalWaste)}
+                  </TableCell>
+                  <TableCell className="print-hide" />
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
         </div>
 
-        {/* Section D */}
-        <div className="mb-6">
-          <h4 className="text-base font-bold text-green-700 border-b border-green-200 pb-1 mb-2">
+        {/* ── PAGE 2 (forced page break) ── */}
+        <div className="print-page-break" />
+
+        {/* Section D — Yarn Production (full width) */}
+        <div className="mb-4">
+          <h4 className="sec-heading text-base font-bold text-green-700 border-b border-green-200 pb-1 mb-2">
             Section D: Yarn Production
           </h4>
           <Table>
             <TableHeader>
               <TableRow className="bg-green-50">
                 <TableHead>Count (Ne)</TableHead>
-                <TableHead className="text-right">
-                  Total Yarn Packed (kg)
-                </TableHead>
+                <TableHead className="text-right">Yarn Packed (kg)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -773,9 +870,9 @@ export default function RealisationReport() {
           </Table>
         </div>
 
-        {/* Section E */}
-        <div className="mb-6">
-          <h4 className="text-base font-bold text-gray-800 border-b border-gray-300 pb-1 mb-2">
+        {/* Section E — Summary (full width) */}
+        <div className="mb-4">
+          <h4 className="sec-heading text-base font-bold text-gray-800 border-b border-gray-300 pb-1 mb-2">
             Section E: Summary
           </h4>
           <Table>
@@ -801,7 +898,7 @@ export default function RealisationReport() {
                   {fmt(summary.openWIP)} kg
                 </TableCell>
               </TableRow>
-              <TableRow className="bg-gray-50 font-semibold">
+              <TableRow className="row-subtotal bg-gray-50 font-semibold">
                 <TableCell>3</TableCell>
                 <TableCell>Total Issue (1 + 2)</TableCell>
                 <TableCell className="text-right">
@@ -815,7 +912,7 @@ export default function RealisationReport() {
                   {fmt(summary.closeWIP)} kg
                 </TableCell>
               </TableRow>
-              <TableRow className="bg-gray-50 font-semibold">
+              <TableRow className="row-subtotal bg-gray-50 font-semibold">
                 <TableCell>5</TableCell>
                 <TableCell>Net Consumption (3 − 4)</TableCell>
                 <TableCell className="text-right">
@@ -870,10 +967,11 @@ export default function RealisationReport() {
           </Table>
         </div>
 
-        {/* Report Footer */}
-        <div className="text-xs text-gray-400 text-center pt-4 border-t">
-          Sudarshan Jeans (P) Ltd Spinning | Realisation Report — {unitLabel} |{" "}
-          {fromDate} to {toDate} | Generated: {generatedAt}
+        {/* Footer */}
+        <div className="rpt-footer text-xs text-gray-400 text-center pt-2 border-t">
+          Sudarshan Jeans (P) Ltd Spinning &nbsp;|&nbsp; Realisation Report —{" "}
+          {unitLabel} &nbsp;|&nbsp;
+          {fromDate} to {toDate} &nbsp;|&nbsp; Generated: {generatedAt}
         </div>
       </div>
     </div>

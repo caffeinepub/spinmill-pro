@@ -12,12 +12,18 @@ export function useActor() {
     queryKey: [ACTOR_QUERY_KEY, identity?.getPrincipal().toString()],
     queryFn: async () => {
       const isAuthenticated = !!identity;
+
       if (!isAuthenticated) {
         return await createActorWithConfig();
       }
-      const actorOptions = { agentOptions: { identity } };
-      const actor = await createActorWithConfig(actorOptions);
-      return actor;
+
+      const actorOptions = {
+        agentOptions: {
+          identity,
+        },
+      };
+
+      return await createActorWithConfig(actorOptions);
     },
     staleTime: Number.POSITIVE_INFINITY,
     enabled: true,
@@ -26,13 +32,20 @@ export function useActor() {
   useEffect(() => {
     if (actorQuery.data) {
       queryClient.invalidateQueries({
-        predicate: (q) => !q.queryKey.includes(ACTOR_QUERY_KEY),
+        predicate: (query) => {
+          return !query.queryKey.includes(ACTOR_QUERY_KEY);
+        },
       });
       queryClient.refetchQueries({
-        predicate: (q) => !q.queryKey.includes(ACTOR_QUERY_KEY),
+        predicate: (query) => {
+          return !query.queryKey.includes(ACTOR_QUERY_KEY);
+        },
       });
     }
   }, [actorQuery.data, queryClient]);
 
-  return { actor: actorQuery.data || null, isFetching: actorQuery.isFetching };
+  return {
+    actor: actorQuery.data || null,
+    isFetching: actorQuery.isFetching,
+  };
 }
