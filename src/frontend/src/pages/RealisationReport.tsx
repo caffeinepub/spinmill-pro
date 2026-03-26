@@ -332,7 +332,7 @@ export default function RealisationReport() {
     const yarnRealisation =
       netConsumption > 0 ? (yarnPacked / netConsumption) * 100 : 0;
     const totalWasteProd = totalWaste;
-    const invisibleLoss = netConsumption - yarnPacked - totalWasteProd;
+    const invisibleLoss = yarnPacked + totalWasteProd - netConsumption;
     const invisibleLossPct =
       netConsumption > 0 ? (invisibleLoss / netConsumption) * 100 : 0;
     return {
@@ -398,14 +398,14 @@ export default function RealisationReport() {
   const invisibleColor =
     Math.abs(summary.invisibleLoss) < 0.01
       ? "bg-green-50 text-green-700"
-      : summary.invisibleLoss > 0
+      : summary.invisibleLoss < 0
         ? "bg-red-50 text-red-700"
         : "bg-blue-50 text-blue-700";
 
   const invisibleSuffix =
     Math.abs(summary.invisibleLoss) < 0.01
       ? ""
-      : summary.invisibleLoss > 0
+      : summary.invisibleLoss < 0
         ? " (Loss)"
         : " (Gain)";
 
@@ -950,7 +950,7 @@ export default function RealisationReport() {
               <TableRow className={invisibleColor}>
                 <TableCell>10</TableCell>
                 <TableCell>
-                  Invisible Loss / Gain (5 − 6 − 9){invisibleSuffix}
+                  Invisible Loss / Gain (6 + 9 − 5){invisibleSuffix}
                 </TableCell>
                 <TableCell className="text-right">
                   {fmt(summary.invisibleLoss)} kg
