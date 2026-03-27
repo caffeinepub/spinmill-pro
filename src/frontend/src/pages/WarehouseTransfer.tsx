@@ -37,9 +37,15 @@ const WAREHOUSE_OPTIONS: { value: string; label: string }[] = [
   { value: "ringRawMaterial", label: "Ring Raw Material" },
 ];
 
+const TO_WAREHOUSE_OPTIONS: { value: string; label: string }[] = [
+  ...WAREHOUSE_OPTIONS,
+  { value: "outside", label: "Outside" },
+];
+
 function warehouseLabel(w: string): string {
   if (w === "oeRawMaterial") return "OE Raw Material";
   if (w === "ringRawMaterial") return "Ring Raw Material";
+  if (w === "outside") return "Outside";
   return String(w);
 }
 
@@ -102,7 +108,8 @@ export default function WarehouseTransfer() {
       toast.error("Quantity must be a positive number.");
       return;
     }
-    if (qtyNum > availableStock) {
+    // Only check stock availability for internal warehouse transfers, not for "outside"
+    if (toWarehouse !== "outside" && qtyNum > availableStock) {
       toast.error(
         `Not enough stock available. Available: ${availableStock.toLocaleString()} kg, Requested: ${qtyNum.toLocaleString()} kg`,
       );
@@ -214,7 +221,11 @@ export default function WarehouseTransfer() {
             <Label htmlFor="wt-from">From Warehouse *</Label>
             <Select
               value={fromWarehouse}
-              onValueChange={setFromWarehouse}
+              onValueChange={(v) => {
+                setFromWarehouse(v);
+                // Reset toWarehouse if it's the same as the new fromWarehouse
+                if (toWarehouse === v) setToWarehouse("");
+              }}
               data-ocid="warehouse_transfer.from_warehouse.select"
             >
               <SelectTrigger id="wt-from">
@@ -241,13 +252,13 @@ export default function WarehouseTransfer() {
                 <SelectValue placeholder="Select destination" />
               </SelectTrigger>
               <SelectContent>
-                {WAREHOUSE_OPTIONS.filter((w) => w.value !== fromWarehouse).map(
-                  (w) => (
-                    <SelectItem key={w.value} value={w.value}>
-                      {w.label}
-                    </SelectItem>
-                  ),
-                )}
+                {TO_WAREHOUSE_OPTIONS.filter(
+                  (w) => w.value !== fromWarehouse,
+                ).map((w) => (
+                  <SelectItem key={w.value} value={w.value}>
+                    {w.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -265,7 +276,11 @@ export default function WarehouseTransfer() {
               id="wt-qty"
               type="number"
               min={1}
-              max={availableStock || undefined}
+              max={
+                toWarehouse !== "outside"
+                  ? availableStock || undefined
+                  : undefined
+              }
               value={qty}
               onChange={(e) => setQty(e.target.value)}
               placeholder="Enter quantity"
@@ -370,7 +385,14 @@ export default function WarehouseTransfer() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="text-xs">
+                    <Badge
+                      variant={
+                        (t.toWarehouse as string) === "outside"
+                          ? "destructive"
+                          : "outline"
+                      }
+                      className="text-xs"
+                    >
                       {warehouseLabel(t.toWarehouse as string)}
                     </Badge>
                   </TableCell>
