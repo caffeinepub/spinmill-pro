@@ -28,6 +28,7 @@ import { PageHeader } from "../components/PageHeader";
 import { useDropdownOptionsContext } from "../hooks/DropdownOptionsContext";
 import {
   useTransferWarehouseStock,
+  useTransferWarehouseStockToOutside,
   useWarehouseStock,
   useWarehouseTransfers,
 } from "../hooks/useQueries";
@@ -67,6 +68,7 @@ export default function WarehouseTransfer() {
   const { data: transfers = [], isLoading: transfersLoading } =
     useWarehouseTransfers();
   const transferMutation = useTransferWarehouseStock();
+  const outsideTransferMutation = useTransferWarehouseStockToOutside();
 
   const [materialName, setMaterialName] = useState("");
   const [fromWarehouse, setFromWarehouse] = useState("");
@@ -117,14 +119,24 @@ export default function WarehouseTransfer() {
     }
     const dateMs = new Date(transferDate).getTime();
     try {
-      await transferMutation.mutateAsync({
-        materialName,
-        fromWarehouse: fromWarehouse as Warehouse,
-        toWarehouse: toWarehouse as Warehouse,
-        qty: BigInt(qtyNum),
-        transferDate: BigInt(dateMs) * 1_000_000n,
-        remarks,
-      });
+      if (toWarehouse === "outside") {
+        await outsideTransferMutation.mutateAsync({
+          materialName,
+          fromWarehouse: fromWarehouse as Warehouse,
+          qty: BigInt(qtyNum),
+          transferDate: BigInt(dateMs) * 1_000_000n,
+          remarks,
+        });
+      } else {
+        await transferMutation.mutateAsync({
+          materialName,
+          fromWarehouse: fromWarehouse as Warehouse,
+          toWarehouse: toWarehouse as Warehouse,
+          qty: BigInt(qtyNum),
+          transferDate: BigInt(dateMs) * 1_000_000n,
+          remarks,
+        });
+      }
       toast.success("Transfer recorded successfully.");
       resetForm();
     } catch (err: unknown) {
@@ -314,10 +326,13 @@ export default function WarehouseTransfer() {
           <div className="flex items-end md:col-span-2 lg:col-span-3">
             <Button
               type="submit"
-              disabled={transferMutation.isPending}
+              disabled={
+                transferMutation.isPending || outsideTransferMutation.isPending
+              }
               data-ocid="warehouse_transfer.submit_button"
             >
-              {transferMutation.isPending ? (
+              {transferMutation.isPending ||
+              outsideTransferMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Processing...

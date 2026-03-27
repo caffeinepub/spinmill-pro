@@ -185,6 +185,14 @@ export interface RawMaterial {
     dateReceived: Time;
     warehouse: Warehouse;
 }
+export interface OutsideTransfer {
+    id: bigint;
+    materialName: string;
+    fromWarehouse: Warehouse;
+    qty: bigint;
+    transferDate: bigint;
+    remarks: string;
+}
 export interface WarehouseStock {
     totalQty: bigint;
     warehouse: Warehouse;
@@ -472,7 +480,7 @@ export interface backendInterface {
     updateMaterialIssue(id: bigint, department: string, warehouse: Warehouse, materialName: string, grade: string, issuedQty: bigint, remarks: string, issueDate: bigint): Promise<void>;
     updatePackingEntry(id: bigint, packingDate: Time, quantityKg: bigint, remarks: string): Promise<void>;
 }
-import type { ApprovalStatus as _ApprovalStatus, BatchStage as _BatchStage, DispatchBalance as _DispatchBalance, DispatchDestination as _DispatchDestination, DispatchEntry as _DispatchEntry, EndUse as _EndUse, InventoryStatus as _InventoryStatus, InwardEntry as _InwardEntry, Machine as _Machine, MachineStatus as _MachineStatus, MachineType as _MachineType, MaterialIssue as _MaterialIssue, OrderStatus as _OrderStatus, POBalance as _POBalance, PackingBalance as _PackingBalance, PackingEntry as _PackingEntry, ProcessStage as _ProcessStage, ProductType as _ProductType, ProductionLog as _ProductionLog, ProductionOrder as _ProductionOrder, ProductionOrderBalance as _ProductionOrderBalance, PurchaseOrder as _PurchaseOrder, PurchaseOrderStatus as _PurchaseOrderStatus, RawMaterial as _RawMaterial, RawMaterialStatus as _RawMaterialStatus, Shift as _Shift, SpinningUnit as _SpinningUnit, Time as _Time, TwistDirection as _TwistDirection, UserApprovalInfo as _UserApprovalInfo, UserProfile as _UserProfile, UserRole as _UserRole, Warehouse as _Warehouse, WarehouseStock as _WarehouseStock, YarnInventory as _YarnInventory, YarnOpeningStockRecord as _YarnOpeningStockRecord } from "./declarations/backend.did.d.ts";
+import type { ApprovalStatus as _ApprovalStatus, BatchStage as _BatchStage, DispatchBalance as _DispatchBalance, DispatchDestination as _DispatchDestination, DispatchEntry as _DispatchEntry, EndUse as _EndUse, InventoryStatus as _InventoryStatus, InwardEntry as _InwardEntry, Machine as _Machine, MachineStatus as _MachineStatus, MachineType as _MachineType, MaterialIssue as _MaterialIssue, OrderStatus as _OrderStatus, POBalance as _POBalance, PackingBalance as _PackingBalance, PackingEntry as _PackingEntry, ProcessStage as _ProcessStage, ProductType as _ProductType, ProductionLog as _ProductionLog, ProductionOrder as _ProductionOrder, ProductionOrderBalance as _ProductionOrderBalance, PurchaseOrder as _PurchaseOrder, PurchaseOrderStatus as _PurchaseOrderStatus, RawMaterial as _RawMaterial, RawMaterialStatus as _RawMaterialStatus, Shift as _Shift, SpinningUnit as _SpinningUnit, Time as _Time, TwistDirection as _TwistDirection, UserApprovalInfo as _UserApprovalInfo, UserProfile as _UserProfile, UserRole as _UserRole, Warehouse as _Warehouse, OutsideTransfer as _OutsideTransfer, WarehouseStock as _WarehouseStock, YarnInventory as _YarnInventory, YarnOpeningStockRecord as _YarnOpeningStockRecord } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async addBatchStage(arg0: bigint, arg1: ProcessStage, arg2: bigint, arg3: bigint, arg4: bigint, arg5: Time, arg6: Time, arg7: string): Promise<bigint> {
@@ -1618,6 +1626,35 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getAllWarehouseTransfers();
+            return result;
+        }
+    }
+
+    async getAllOutsideTransfers() {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllOutsideTransfers();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllOutsideTransfers();
+            return result;
+        }
+    }
+    async transferWarehouseStockToOutside(arg0: string, arg1: Warehouse, arg2: bigint, arg3: bigint, arg4: string) {
+        if (this.processError) {
+            try {
+                const result = await this.actor.transferWarehouseStockToOutside(arg0, to_candid_Warehouse_n3(this._uploadFile, this._downloadFile, arg1), arg2, arg3, arg4);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.transferWarehouseStockToOutside(arg0, to_candid_Warehouse_n3(this._uploadFile, this._downloadFile, arg1), arg2, arg3, arg4);
             return result;
         }
     }
@@ -2879,9 +2916,9 @@ function to_candid_variant_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8
 } {
     return value == Warehouse.oeRawMaterial ? {
         oeRawMaterial: null
-    } : value == Warehouse.ringRawMaterial ? {
+    } : {
         ringRawMaterial: null
-    } : value;
+    };
 }
 function to_candid_variant_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Shift): {
     morning: null;

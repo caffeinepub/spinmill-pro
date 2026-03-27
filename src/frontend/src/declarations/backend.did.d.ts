@@ -258,6 +258,14 @@ export type UserRole = { 'admin' : null } |
   { 'guest' : null };
 export type Warehouse = { 'oeRawMaterial' : null } |
   { 'ringRawMaterial' : null };
+export interface OutsideTransfer {
+  'id' : bigint,
+  'materialName' : string,
+  'fromWarehouse' : Warehouse,
+  'qty' : bigint,
+  'transferDate' : bigint,
+  'remarks' : string,
+}
 export interface WarehouseStock {
   'totalQty' : bigint,
   'warehouse' : Warehouse,
@@ -405,6 +413,8 @@ export interface _SERVICE {
   'getAllRawMaterials' : ActorMethod<[], Array<RawMaterial>>,
   'getAllWarehouseStock' : ActorMethod<[], Array<WarehouseStock>>,
   'getAllWarehouseTransfers' : ActorMethod<[], Array<WarehouseTransfer>>,
+  'getAllOutsideTransfers' : ActorMethod<[], Array<OutsideTransfer>>,
+  'transferWarehouseStockToOutside' : ActorMethod<[string, Warehouse, bigint, bigint, string], bigint>,
   'transferWarehouseStock' : ActorMethod<[string, Warehouse, Warehouse, bigint, bigint, string], bigint>,
   'getAllYarnCountLabels' : ActorMethod<[], Array<[string, string]>>,
   'getAllYarnInventory' : ActorMethod<[], Array<YarnInventory>>,

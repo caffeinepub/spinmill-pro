@@ -103,6 +103,14 @@ export interface RawMaterial {
     dateReceived: Time;
     warehouse: Warehouse;
 }
+export interface OutsideTransfer {
+    id: bigint;
+    materialName: string;
+    fromWarehouse: Warehouse;
+    qty: bigint;
+    transferDate: bigint;
+    remarks: string;
+}
 export interface WarehouseStock {
     totalQty: bigint;
     warehouse: Warehouse;
@@ -389,6 +397,8 @@ export interface backendInterface {
     getAllWarehouseStock(): Promise<Array<WarehouseStock>>;
     transferWarehouseStock(materialName: string, fromWarehouse: Warehouse, toWarehouse: Warehouse, qty: bigint, transferDate: bigint, remarks: string): Promise<bigint>;
     getAllWarehouseTransfers(): Promise<Array<WarehouseTransfer>>;
+    getAllOutsideTransfers(): Promise<Array<OutsideTransfer>>;
+    transferWarehouseStockToOutside(materialName: string, fromWarehouse: Warehouse, qty: bigint, transferDate: bigint, remarks: string): Promise<bigint>;
     getAllYarnCountLabels(): Promise<Array<[string, string]>>;
     getAllYarnInventory(): Promise<Array<YarnInventory>>;
     getAllYarnOpeningStock(): Promise<Array<YarnOpeningStockRecord>>;

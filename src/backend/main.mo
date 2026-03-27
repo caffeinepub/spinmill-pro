@@ -120,6 +120,16 @@ actor {
     remarks : Text;
   };
 
+
+  type OutsideTransfer = {
+    id : Nat;
+    materialName : Text;
+    fromWarehouse : Warehouse;
+    qty : Nat;
+    transferDate : Time.Time;
+    remarks : Text;
+  };
+
   type ProductionOrder = {
     id : Nat;
     orderNumber : Text;
@@ -308,11 +318,13 @@ actor {
   var dispatchEntryIdCounter = 1;
   var yarnOpeningStockIdCounter = 1;
   var warehouseTransferIdCounter = 1;
+  var outsideTransferIdCounter = 1;
   var wasteEntryIdCounter = 1;
   var wasteSaleIdCounter = 1;
 
   let wasteEntries = Map.empty<Nat, WasteEntry>();
   let wasteSales = Map.empty<Nat, WasteSale>();
+  let outsideTransfers = Map.empty<Nat, OutsideTransfer>();
 
 
 
@@ -690,6 +702,29 @@ actor {
     let out = List.empty<WarehouseTransfer>();
     for ((_, t) in warehouseTransfers.entries()) { out.add(t) };
     out.toArray().sort(func(a : WarehouseTransfer, b : WarehouseTransfer) : Order.Order { Nat.compare(a.id, b.id) });
+  };
+
+
+  public shared ({ caller }) func transferWarehouseStockToOutside(materialName : Text, fromWarehouse : Warehouse, qty : Nat, transferDate : Time.Time, remarks : Text) : async Nat {
+    var available : Nat = 0;
+    for ((_, s) in warehouseStock.entries()) {
+      if (s.warehouse == fromWarehouse and s.materialName == materialName) {
+        available += s.totalQty;
+      };
+    };
+    if (qty == 0) { Runtime.trap("Transfer quantity must be greater than zero") };
+    if (available < qty) { Runtime.trap("Not enough stock in source warehouse. Available: " # (available : Nat).toText() # " kg") };
+    updateWarehouseStockSub(fromWarehouse, materialName, qty);
+    let id = outsideTransferIdCounter;
+    outsideTransferIdCounter += 1;
+    outsideTransfers.add(id, { id; materialName; fromWarehouse; qty; transferDate; remarks });
+    id;
+  };
+
+  public query ({ caller }) func getAllOutsideTransfers() : async [OutsideTransfer] {
+    let out = List.empty<OutsideTransfer>();
+    for ((_, t) in outsideTransfers.entries()) { out.add(t) };
+    out.toArray().sort(func(a : OutsideTransfer, b : OutsideTransfer) : Order.Order { Nat.compare(a.id, b.id) });
   };
 
   // ─── Purchase Orders ──────────────────────────────────────────────────────

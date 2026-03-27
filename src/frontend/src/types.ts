@@ -31,6 +31,7 @@ export type {
   UserApprovalInfo,
   UserProfile,
   UserRole,
+  OutsideTransfer,
   WarehouseStock,
   WarehouseTransfer,
   WasteEntry,
