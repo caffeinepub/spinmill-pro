@@ -241,6 +241,15 @@ export const WarehouseTransfer = IDL.Record({
   'remarks' : IDL.Text,
 });
 
+export const OutsideTransfer = IDL.Record({
+  'id' : IDL.Nat,
+  'materialName' : IDL.Text,
+  'fromWarehouse' : Warehouse,
+  'qty' : IDL.Nat,
+  'transferDate' : IDL.Int,
+  'remarks' : IDL.Text,
+});
+
 
 export const WasteWarehouse = IDL.Variant({
   'ringWaste' : IDL.Null,
@@ -489,6 +498,8 @@ export const idlService = IDL.Service({
   'deleteWasteSale' : IDL.Func([IDL.Nat], [], []),
   'getAllWarehouseTransfers' : IDL.Func([], [IDL.Vec(WarehouseTransfer)], ['query']),
   'transferWarehouseStock' : IDL.Func([IDL.Text, Warehouse, Warehouse, IDL.Nat, IDL.Int, IDL.Text], [IDL.Nat], []),
+  'getAllOutsideTransfers' : IDL.Func([], [IDL.Vec(OutsideTransfer)], ['query']),
+  'transferWarehouseStockToOutside' : IDL.Func([IDL.Text, Warehouse, IDL.Nat, IDL.Int, IDL.Text], [IDL.Nat], []),
   'getAllYarnCountLabels' : IDL.Func(
       [],
       [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))],
@@ -886,6 +897,14 @@ export const idlFactory = ({ IDL }) => {
     'transferDate' : IDL.Int,
     'remarks' : IDL.Text,
   });
+  const OutsideTransfer = IDL.Record({
+    'id' : IDL.Nat,
+    'materialName' : IDL.Text,
+    'fromWarehouse' : Warehouse,
+    'qty' : IDL.Nat,
+    'transferDate' : IDL.Int,
+    'remarks' : IDL.Text,
+  });
   const YarnInventory = IDL.Record({
     'id' : IDL.Nat,
     'status' : InventoryStatus,
@@ -1109,6 +1128,8 @@ export const idlFactory = ({ IDL }) => {
     'getAllWarehouseStock' : IDL.Func([], [IDL.Vec(WarehouseStock)], ['query']),
   'getAllWarehouseTransfers' : IDL.Func([], [IDL.Vec(WarehouseTransfer)], ['query']),
   'transferWarehouseStock' : IDL.Func([IDL.Text, Warehouse, Warehouse, IDL.Nat, IDL.Int, IDL.Text], [IDL.Nat], []),
+  'getAllOutsideTransfers' : IDL.Func([], [IDL.Vec(OutsideTransfer)], ['query']),
+  'transferWarehouseStockToOutside' : IDL.Func([IDL.Text, Warehouse, IDL.Nat, IDL.Int, IDL.Text], [IDL.Nat], []),
     'getAllYarnCountLabels' : IDL.Func(
         [],
         [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))],

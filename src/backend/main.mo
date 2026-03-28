@@ -662,10 +662,15 @@ actor {
       subQty(mi.warehouse, mi.materialName, mi.issuedQty);
     };
 
-    // 4. Warehouse transfers
+    // 4. Warehouse transfers (internal)
     for ((_, t) in warehouseTransfers.entries()) {
       subQty(t.fromWarehouse, t.materialName, t.qty);
       addQty(t.toWarehouse, t.materialName, t.qty);
+    };
+
+    // 5. Outside transfers (deduct from source warehouse)
+    for ((_, t) in outsideTransfers.entries()) {
+      subQty(t.fromWarehouse, t.materialName, t.qty);
     };
 
     let out = List.empty<WarehouseStock>();

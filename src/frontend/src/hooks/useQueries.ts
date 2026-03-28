@@ -1582,6 +1582,20 @@ export function useWarehouseTransfers() {
   });
 }
 
+export function useOutsideTransfers() {
+  const { actor } = useActor();
+  return useQuery<import("../types").OutsideTransfer[]>({
+    queryKey: ["outsideTransfers"],
+    queryFn: async () => {
+      if (!actor) return [];
+      const result = await fullActor(actor).getAllOutsideTransfers();
+      return normalizeRecord(result) as import("../types").OutsideTransfer[];
+    },
+    enabled: !!actor,
+    retry: 2,
+  });
+}
+
 export function useTransferWarehouseStockToOutside() {
   const { actor } = useActor();
   const qc = useQueryClient();
@@ -1605,6 +1619,7 @@ export function useTransferWarehouseStockToOutside() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["warehouseStock"] });
       qc.invalidateQueries({ queryKey: ["warehouseTransfers"] });
+      qc.invalidateQueries({ queryKey: ["outsideTransfers"] });
       qc.invalidateQueries({ queryKey: ["rawMaterials"] });
       qc.invalidateQueries({ queryKey: ["dashboardStats"] });
     },

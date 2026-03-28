@@ -27,6 +27,7 @@ import { EmptyState } from "../components/EmptyState";
 import { PageHeader } from "../components/PageHeader";
 import { useDropdownOptionsContext } from "../hooks/DropdownOptionsContext";
 import {
+  useOutsideTransfers,
   useTransferWarehouseStock,
   useTransferWarehouseStockToOutside,
   useWarehouseStock,
@@ -65,8 +66,31 @@ function formatDate(ns: bigint): string {
 export default function WarehouseTransfer() {
   const { materialNames } = useDropdownOptionsContext();
   const { data: stockList = [], isLoading: stockLoading } = useWarehouseStock();
-  const { data: transfers = [], isLoading: transfersLoading } =
+  const { data: regularTransfers = [], isLoading: transfersLoading } =
     useWarehouseTransfers();
+  const { data: outsideTransfers = [] } = useOutsideTransfers();
+
+  // Merge regular + outside transfers into a unified list for display
+  const transfers = [
+    ...regularTransfers.map((t) => ({
+      id: t.id,
+      materialName: t.materialName,
+      fromWarehouse: t.fromWarehouse,
+      toWarehouse: t.toWarehouse as string,
+      qty: t.qty,
+      transferDate: t.transferDate,
+      remarks: t.remarks,
+    })),
+    ...outsideTransfers.map((t) => ({
+      id: t.id + BigInt(1_000_000), // offset to avoid key collision
+      materialName: t.materialName,
+      fromWarehouse: t.fromWarehouse,
+      toWarehouse: "outside" as string,
+      qty: t.qty,
+      transferDate: t.transferDate,
+      remarks: t.remarks,
+    })),
+  ].sort((a, b) => Number(a.transferDate) - Number(b.transferDate));
   const transferMutation = useTransferWarehouseStock();
   const outsideTransferMutation = useTransferWarehouseStockToOutside();
 
