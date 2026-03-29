@@ -732,6 +732,31 @@ actor {
     out.toArray().sort(func(a : OutsideTransfer, b : OutsideTransfer) : Order.Order { Nat.compare(a.id, b.id) });
   };
 
+
+  public shared ({ caller }) func deleteWarehouseTransfer(id : Nat) : async () {
+    requireUser(caller);
+    switch (warehouseTransfers.get(id)) {
+      case null { Runtime.trap("Transfer not found") };
+      case (?t) {
+        // Reverse: add back to source, deduct from destination
+        updateWarehouseStockAdd(t.fromWarehouse, t.materialName, t.qty);
+        updateWarehouseStockSub(t.toWarehouse, t.materialName, t.qty);
+        warehouseTransfers.remove(id);
+      };
+    };
+  };
+
+  public shared ({ caller }) func deleteOutsideTransfer(id : Nat) : async () {
+    requireUser(caller);
+    switch (outsideTransfers.get(id)) {
+      case null { Runtime.trap("Transfer not found") };
+      case (?t) {
+        // Reverse: add back to source warehouse
+        updateWarehouseStockAdd(t.fromWarehouse, t.materialName, t.qty);
+        outsideTransfers.remove(id);
+      };
+    };
+  };
   // ─── Purchase Orders ──────────────────────────────────────────────────────
 
   public query ({ caller }) func getAllPurchaseOrders() : async [PurchaseOrder] {

@@ -1657,6 +1657,36 @@ export function useTransferWarehouseStock() {
   });
 }
 
+export function useDeleteWarehouseTransfer() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("No actor");
+      return fullActor(actor).deleteWarehouseTransfer(id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["warehouseTransfers"] });
+      qc.invalidateQueries({ queryKey: ["warehouseStock"] });
+    },
+  });
+}
+
+export function useDeleteOutsideTransfer() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("No actor");
+      return fullActor(actor).deleteOutsideTransfer(id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["outsideTransfers"] });
+      qc.invalidateQueries({ queryKey: ["warehouseStock"] });
+    },
+  });
+}
+
 // ─── Waste Production & Sales ─────────────────────────────────────────────────
 
 export function useWasteEntries() {

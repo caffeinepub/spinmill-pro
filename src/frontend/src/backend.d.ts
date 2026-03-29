@@ -399,6 +399,8 @@ export interface backendInterface {
     getAllWarehouseTransfers(): Promise<Array<WarehouseTransfer>>;
     getAllOutsideTransfers(): Promise<Array<OutsideTransfer>>;
     transferWarehouseStockToOutside(materialName: string, fromWarehouse: Warehouse, qty: bigint, transferDate: bigint, remarks: string): Promise<bigint>;
+    deleteWarehouseTransfer(id: bigint): Promise<void>;
+    deleteOutsideTransfer(id: bigint): Promise<void>;
     getAllYarnCountLabels(): Promise<Array<[string, string]>>;
     getAllYarnInventory(): Promise<Array<YarnInventory>>;
     getAllYarnOpeningStock(): Promise<Array<YarnOpeningStockRecord>>;

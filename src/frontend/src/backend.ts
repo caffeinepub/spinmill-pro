@@ -1658,6 +1658,28 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async deleteWarehouseTransfer(arg0: bigint) {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteWarehouseTransfer(arg0);
+                return result;
+            } catch (e) { this.processError(e); throw new Error("unreachable"); }
+        } else {
+            const result = await this.actor.deleteWarehouseTransfer(arg0);
+            return result;
+        }
+    }
+    async deleteOutsideTransfer(arg0: bigint) {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteOutsideTransfer(arg0);
+                return result;
+            } catch (e) { this.processError(e); throw new Error("unreachable"); }
+        } else {
+            const result = await this.actor.deleteOutsideTransfer(arg0);
+            return result;
+        }
+    }
     async getAllWasteEntries() {
         if (this.processError) {
             try {
