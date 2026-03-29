@@ -500,6 +500,8 @@ export const idlService = IDL.Service({
   'transferWarehouseStock' : IDL.Func([IDL.Text, Warehouse, Warehouse, IDL.Nat, IDL.Int, IDL.Text], [IDL.Nat], []),
   'getAllOutsideTransfers' : IDL.Func([], [IDL.Vec(OutsideTransfer)], ['query']),
   'transferWarehouseStockToOutside' : IDL.Func([IDL.Text, Warehouse, IDL.Nat, IDL.Int, IDL.Text], [IDL.Nat], []),
+  'deleteOutsideTransfer' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+  'deleteWarehouseTransfer' : IDL.Func([IDL.Nat], [IDL.Bool], []),
   'getAllYarnCountLabels' : IDL.Func(
       [],
       [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))],
@@ -1130,6 +1132,8 @@ export const idlFactory = ({ IDL }) => {
   'transferWarehouseStock' : IDL.Func([IDL.Text, Warehouse, Warehouse, IDL.Nat, IDL.Int, IDL.Text], [IDL.Nat], []),
   'getAllOutsideTransfers' : IDL.Func([], [IDL.Vec(OutsideTransfer)], ['query']),
   'transferWarehouseStockToOutside' : IDL.Func([IDL.Text, Warehouse, IDL.Nat, IDL.Int, IDL.Text], [IDL.Nat], []),
+  'deleteOutsideTransfer' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+  'deleteWarehouseTransfer' : IDL.Func([IDL.Nat], [IDL.Bool], []),
     'getAllYarnCountLabels' : IDL.Func(
         [],
         [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))],
