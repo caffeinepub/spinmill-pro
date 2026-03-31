@@ -356,7 +356,7 @@ export interface WasteSale {
 export interface backendInterface {
     addBatchStage(batchId: bigint, stage: ProcessStage, weightInKg: bigint, weightOutKg: bigint, machineId: bigint, startTime: Time, endTime: Time, operatorNotes: string): Promise<bigint>;
     addInwardEntry(inwardNumber: string, purchaseOrderId: bigint, inwardDate: Time, materialName: string, receivedQty: bigint, warehouse: Warehouse, vehicleNumber: string, remarks: string): Promise<bigint>;
-    addProductionLog(shift: Shift, date: Time, machineId: bigint, quantityKg: bigint, efficiencyPercent: bigint, operatorName: string): Promise<bigint>;
+    addProductionLog(shift: Shift, date: Time, machineId: bigint, lotNumber: string, quantityKg: bigint, efficiencyPercent: bigint, operatorName: string): Promise<bigint>;
     addQualityTest(batchId: bigint, csp: bigint, elongationPercent: bigint, evennessPercent: bigint, thinPlaces: bigint, thickPlaces: bigint, neps: bigint, hairinessIndex: bigint, pass: boolean): Promise<bigint>;
     addRawMaterial(lotNumber: string, supplier: string, grade: string, weightKg: bigint, warehouse: Warehouse, inwardEntryId: bigint | null): Promise<bigint>;
     addRawMaterialOpeningStock(materialName: string, supplier: string, grade: string, weightKg: bigint, warehouse: Warehouse, date: Time): Promise<bigint>;
@@ -432,7 +432,7 @@ export interface backendInterface {
     setYarnCountLabel(lotNumber: string, countLabel: string): Promise<void>;
     updateBatchStage(id: bigint, batchId: bigint, stage: ProcessStage, weightInKg: bigint, weightOutKg: bigint, machineId: bigint, startTime: Time, endTime: Time, operatorNotes: string): Promise<void>;
     updateMachine(id: bigint, name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: string | null, runningLotNumber: string | null): Promise<void>;
-    updateProductionLog(id: bigint, shift: Shift, date: Time, machineId: bigint, quantityKg: bigint, efficiencyPercent: bigint, operatorName: string): Promise<void>;
+    updateProductionLog(id: bigint, shift: Shift, date: Time, machineId: bigint, lotNumber: string, quantityKg: bigint, efficiencyPercent: bigint, operatorName: string): Promise<void>;
     updateProductionOrder(id: bigint, orderNumber: string, lotNumber: string, productType: ProductType, spinningUnit: SpinningUnit, endUse: EndUse, yarnCountNe: bigint, twistDirection: TwistDirection, quantityKg: bigint, targetDate: Time, status: OrderStatus, singleYarnLotNumber: string | null): Promise<void>;
     updatePurchaseOrder(id: bigint, poNumber: string, supplier: string, materialName: string, orderedQty: bigint, orderDate: Time, expectedDeliveryDate: Time): Promise<void>;
     updateQualityTest(id: bigint, batchId: bigint, csp: bigint, elongationPercent: bigint, evennessPercent: bigint, thinPlaces: bigint, thickPlaces: bigint, neps: bigint, hairinessIndex: bigint, pass: boolean): Promise<void>;

@@ -401,7 +401,7 @@ export enum Warehouse {
 export interface backendInterface {
     addBatchStage(batchId: bigint, stage: ProcessStage, weightInKg: bigint, weightOutKg: bigint, machineId: bigint, startTime: Time, endTime: Time, operatorNotes: string): Promise<bigint>;
     addInwardEntry(inwardNumber: string, purchaseOrderId: bigint, inwardDate: Time, materialName: string, receivedQty: bigint, warehouse: Warehouse, vehicleNumber: string, remarks: string): Promise<bigint>;
-    addProductionLog(shift: Shift, date: Time, machineId: bigint, quantityKg: bigint, efficiencyPercent: bigint, operatorName: string): Promise<bigint>;
+    addProductionLog(shift: Shift, date: Time, machineId: bigint, lotNumber: string, quantityKg: bigint, efficiencyPercent: bigint, operatorName: string): Promise<bigint>;
     addQualityTest(batchId: bigint, csp: bigint, elongationPercent: bigint, evennessPercent: bigint, thinPlaces: bigint, thickPlaces: bigint, neps: bigint, hairinessIndex: bigint, pass: boolean): Promise<bigint>;
     addRawMaterial(lotNumber: string, supplier: string, grade: string, weightKg: bigint, warehouse: Warehouse, inwardEntryId: bigint | null): Promise<bigint>;
     addRawMaterialOpeningStock(materialName: string, supplier: string, grade: string, weightKg: bigint, warehouse: Warehouse, date: Time): Promise<bigint>;
@@ -469,7 +469,7 @@ export interface backendInterface {
     setYarnCountLabel(lotNumber: string, countLabel: string): Promise<void>;
     updateBatchStage(id: bigint, batchId: bigint, stage: ProcessStage, weightInKg: bigint, weightOutKg: bigint, machineId: bigint, startTime: Time, endTime: Time, operatorNotes: string): Promise<void>;
     updateMachine(id: bigint, name: string, machineType: MachineType, machineNumber: string, status: MachineStatus, currentOrderId: bigint | null, runningCount: string | null, runningLotNumber: string | null): Promise<void>;
-    updateProductionLog(id: bigint, shift: Shift, date: Time, machineId: bigint, quantityKg: bigint, efficiencyPercent: bigint, operatorName: string): Promise<void>;
+    updateProductionLog(id: bigint, shift: Shift, date: Time, machineId: bigint, lotNumber: string, quantityKg: bigint, efficiencyPercent: bigint, operatorName: string): Promise<void>;
     updateProductionOrder(id: bigint, orderNumber: string, lotNumber: string, productType: ProductType, spinningUnit: SpinningUnit, endUse: EndUse, yarnCountNe: bigint, twistDirection: TwistDirection, quantityKg: bigint, targetDate: Time, status: OrderStatus, singleYarnLotNumber: string | null): Promise<void>;
     updatePurchaseOrder(id: bigint, poNumber: string, supplier: string, materialName: string, orderedQty: bigint, orderDate: Time, expectedDeliveryDate: Time): Promise<void>;
     updateQualityTest(id: bigint, batchId: bigint, csp: bigint, elongationPercent: bigint, evennessPercent: bigint, thinPlaces: bigint, thickPlaces: bigint, neps: bigint, hairinessIndex: bigint, pass: boolean): Promise<void>;
@@ -511,17 +511,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async addProductionLog(arg0: Shift, arg1: Time, arg2: bigint, arg3: bigint, arg4: bigint, arg5: string): Promise<bigint> {
+    async addProductionLog(arg0: Shift, arg1: Time, arg2: bigint, arg3: string, arg4: bigint, arg5: bigint, arg6: string): Promise<bigint> {
         if (this.processError) {
             try {
-                const result = await this.actor.addProductionLog(to_candid_Shift_n5(this._uploadFile, this._downloadFile, arg0), arg1, arg2, arg3, arg4, arg5);
+                const result = await this.actor.addProductionLog(to_candid_Shift_n5(this._uploadFile, this._downloadFile, arg0), arg1, arg2, arg3, arg4, arg5, arg6);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.addProductionLog(to_candid_Shift_n5(this._uploadFile, this._downloadFile, arg0), arg1, arg2, arg3, arg4, arg5);
+            const result = await this.actor.addProductionLog(to_candid_Shift_n5(this._uploadFile, this._downloadFile, arg0), arg1, arg2, arg3, arg4, arg5, arg6);
             return result;
         }
     }
@@ -1461,17 +1461,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async updateProductionLog(arg0: bigint, arg1: Shift, arg2: Time, arg3: bigint, arg4: bigint, arg5: bigint, arg6: string): Promise<void> {
+    async updateProductionLog(arg0: bigint, arg1: Shift, arg2: Time, arg3: bigint, arg4: string, arg5: bigint, arg6: bigint, arg7: string): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateProductionLog(arg0, to_candid_Shift_n5(this._uploadFile, this._downloadFile, arg1), arg2, arg3, arg4, arg5, arg6);
+                const result = await this.actor.updateProductionLog(arg0, to_candid_Shift_n5(this._uploadFile, this._downloadFile, arg1), arg2, arg3, arg4, arg5, arg6, arg7);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateProductionLog(arg0, to_candid_Shift_n5(this._uploadFile, this._downloadFile, arg1), arg2, arg3, arg4, arg5, arg6);
+            const result = await this.actor.updateProductionLog(arg0, to_candid_Shift_n5(this._uploadFile, this._downloadFile, arg1), arg2, arg3, arg4, arg5, arg6, arg7);
             return result;
         }
     }

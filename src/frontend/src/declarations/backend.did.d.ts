@@ -172,6 +172,7 @@ export interface ProductionLog {
   'shift' : Shift,
   'efficiencyPercent' : bigint,
   'machineId' : bigint,
+  'lotNumber' : string,
   'quantityKg' : bigint,
 }
 export interface ProductionOrder {
@@ -332,7 +333,7 @@ export interface _SERVICE {
     bigint
   >,
   'addProductionLog' : ActorMethod<
-    [Shift, Time, bigint, bigint, bigint, string],
+    [Shift, Time, bigint, string, bigint, bigint, string],
     bigint
   >,
   'addQualityTest' : ActorMethod<
@@ -473,7 +474,7 @@ export interface _SERVICE {
     undefined
   >,
   'updateProductionLog' : ActorMethod<
-    [bigint, Shift, Time, bigint, bigint, bigint, string],
+    [bigint, Shift, Time, bigint, string, bigint, bigint, string],
     undefined
   >,
   'updateProductionOrder' : ActorMethod<

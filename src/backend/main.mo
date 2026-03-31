@@ -158,11 +158,22 @@ actor {
     totalMaintenanceDurationMins : Nat;
   };
 
+  // Legacy type for migration (data on disk before lotNumber was added)
+  type ProductionLogV1 = {
+    id : Nat;
+    shift : Shift;
+    date : Time.Time;
+    machineId : Nat;
+    quantityKg : Nat;
+    efficiencyPercent : Nat;
+    operatorName : Text;
+  };
   type ProductionLog = {
     id : Nat;
     shift : Shift;
     date : Time.Time;
     machineId : Nat;
+    lotNumber : Text;
     quantityKg : Nat;
     efficiencyPercent : Nat;
     operatorName : Text;
@@ -336,7 +347,10 @@ actor {
   let warehouseTransfers = Map.empty<Nat, WarehouseTransfer>();
   let productionOrders = Map.empty<Nat, ProductionOrder>();
   let machines = Map.empty<Nat, Machine>();
-  let productionLogs = Map.empty<Nat, ProductionLog>();
+  // Legacy map receives old on-disk data (no lotNumber) during upgrade
+  let productionLogs = Map.empty<Nat, ProductionLogV1>();
+  // New map with lotNumber field; populated via migration in postupgrade
+  let productionLogsV2 = Map.empty<Nat, ProductionLog>();
   let batches = Map.empty<Nat, BatchStage>();
   let qualityTests = Map.empty<Nat, QualityTest>();
   let yarnInventory = Map.empty<Nat, YarnInventory>();
@@ -424,6 +438,21 @@ actor {
     for ((p, status) in _stableApprovalStatus.entries()) {
       approvalState.approvalStatus.remove(p);
       approvalState.approvalStatus.add(p, status);
+    };
+    // Migrate legacy production logs (no lotNumber) into productionLogsV2
+    for ((k, pl) in productionLogs.entries()) {
+      if (productionLogsV2.get(k) == null) {
+        productionLogsV2.add(k, {
+          id = pl.id;
+          shift = pl.shift;
+          date = pl.date;
+          machineId = pl.machineId;
+          lotNumber = "";
+          quantityKg = pl.quantityKg;
+          efficiencyPercent = pl.efficiencyPercent;
+          operatorName = pl.operatorName;
+        });
+      };
     };
   };
 
@@ -1028,22 +1057,10 @@ actor {
     switch (found) {
       case (null) { null };
       case (?order) {
-        // Collect all machine IDs whose runningLotNumber matches this lot
-        let matchingMachineIds = Set.empty<Nat>();
-        for ((_, m) in machines.entries()) {
-          switch (m.runningLotNumber) {
-            case (?rln) {
-              if (rln == lotNumber) {
-                matchingMachineIds.add(m.id);
-              };
-            };
-            case (null) {};
-          };
-        };
-        // Sum production logs for all machines running this lot
+        // Sum production logs whose lotNumber matches this order's lot
         var produced : Nat = 0;
-        for ((_, log) in productionLogs.entries()) {
-          if (matchingMachineIds.contains(log.machineId)) {
+        for ((_, log) in productionLogsV2.entries()) {
+          if (log.lotNumber == lotNumber) {
             produced += log.quantityKg;
           };
         };
@@ -1118,31 +1135,31 @@ actor {
 
   public query ({ caller }) func getAllProductionLogs() : async [ProductionLog] {
     let out = List.empty<ProductionLog>();
-    for ((_, pl) in productionLogs.entries()) { out.add(pl) };
+    for ((_, pl) in productionLogsV2.entries()) { out.add(pl) };
     out.toArray().sort(func(a : ProductionLog, b : ProductionLog) : Order.Order { Nat.compare(a.id, b.id) });
   };
 
-  public shared ({ caller }) func addProductionLog(shift : Shift, date : Time.Time, machineId : Nat, quantityKg : Nat, efficiencyPercent : Nat, operatorName : Text) : async Nat {
+  public shared ({ caller }) func addProductionLog(shift : Shift, date : Time.Time, machineId : Nat, lotNumber : Text, quantityKg : Nat, efficiencyPercent : Nat, operatorName : Text) : async Nat {
     requireUser(caller);
     let id = productionLogIdCounter;
-    productionLogs.add(id, { id; shift; date; machineId; quantityKg; efficiencyPercent; operatorName });
+    productionLogsV2.add(id, { id; shift; date; machineId; lotNumber; quantityKg; efficiencyPercent; operatorName });
     productionLogIdCounter += 1;
     id;
   };
 
-  public shared ({ caller }) func updateProductionLog(id : Nat, shift : Shift, date : Time.Time, machineId : Nat, quantityKg : Nat, efficiencyPercent : Nat, operatorName : Text) : async () {
+  public shared ({ caller }) func updateProductionLog(id : Nat, shift : Shift, date : Time.Time, machineId : Nat, lotNumber : Text, quantityKg : Nat, efficiencyPercent : Nat, operatorName : Text) : async () {
     requireUser(caller);
-    switch (productionLogs.get(id)) {
+    switch (productionLogsV2.get(id)) {
       case (null) { Runtime.trap("Production log not found") };
       case (?pl) {
-        productionLogs.add(id, { pl with shift; date; machineId; quantityKg; efficiencyPercent; operatorName });
+        productionLogsV2.add(id, { pl with shift; date; machineId; lotNumber; quantityKg; efficiencyPercent; operatorName });
       };
     };
   };
 
   public shared ({ caller }) func deleteProductionLog(id : Nat) : async () {
     requireUser(caller);
-    productionLogs.remove(id);
+    productionLogsV2.remove(id);
   };
 
   // ─── Batch Stages ─────────────────────────────────────────────────────────
@@ -1313,7 +1330,7 @@ actor {
           switch (m.runningLotNumber) {
             case (?rln) {
               if (rln == lotNumber) {
-                for ((_, pl) in productionLogs.entries()) {
+                for ((_, pl) in productionLogsV2.entries()) {
                   if (pl.machineId == m.id) { produced += pl.quantityKg };
                 };
               };
@@ -1352,7 +1369,7 @@ actor {
       switch (m.runningLotNumber) {
         case (?rln) {
           if (rln == lotNumber) {
-            for ((_, pl) in productionLogs.entries()) {
+            for ((_, pl) in productionLogsV2.entries()) {
               if (pl.machineId == m.id) { produced += pl.quantityKg };
             };
           };
@@ -1541,7 +1558,7 @@ actor {
     var oeProductionToday : Nat = 0;
     var tfoProductionToday : Nat = 0;
     var ringProductionToday : Nat = 0;
-    for ((_, pl) in productionLogs.entries()) {
+    for ((_, pl) in productionLogsV2.entries()) {
       if (pl.date >= yesterdayStart and pl.date < todayStart) {
         switch (machines.get(pl.machineId)) {
           case (?m) {

@@ -167,6 +167,7 @@ export const ProductionLog = IDL.Record({
   'shift' : Shift,
   'efficiencyPercent' : IDL.Nat,
   'machineId' : IDL.Nat,
+  'lotNumber' : IDL.Text,
   'quantityKg' : IDL.Nat,
 });
 export const ProductionOrder = IDL.Record({
@@ -376,7 +377,7 @@ export const idlService = IDL.Service({
       [],
     ),
   'addProductionLog' : IDL.Func(
-      [Shift, Time, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Text],
+      [Shift, Time, IDL.Nat, IDL.Text, IDL.Nat, IDL.Nat, IDL.Text],
       [IDL.Nat],
       [],
     ),
@@ -593,7 +594,7 @@ export const idlService = IDL.Service({
       [],
     ),
   'updateProductionLog' : IDL.Func(
-      [IDL.Nat, Shift, Time, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Text],
+      [IDL.Nat, Shift, Time, IDL.Nat, IDL.Text, IDL.Nat, IDL.Nat, IDL.Text],
       [],
       [],
     ),
@@ -826,6 +827,7 @@ export const idlFactory = ({ IDL }) => {
     'shift' : Shift,
     'efficiencyPercent' : IDL.Nat,
     'machineId' : IDL.Nat,
+    'lotNumber' : IDL.Text,
     'quantityKg' : IDL.Nat,
   });
   const ProductionOrder = IDL.Record({
@@ -1016,7 +1018,7 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'addProductionLog' : IDL.Func(
-        [Shift, Time, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Text],
+        [Shift, Time, IDL.Nat, IDL.Text, IDL.Nat, IDL.Nat, IDL.Text],
         [IDL.Nat],
         [],
       ),
@@ -1225,7 +1227,7 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'updateProductionLog' : IDL.Func(
-        [IDL.Nat, Shift, Time, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Text],
+        [IDL.Nat, Shift, Time, IDL.Nat, IDL.Text, IDL.Nat, IDL.Nat, IDL.Text],
         [],
         [],
       ),

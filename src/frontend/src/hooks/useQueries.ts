@@ -271,6 +271,7 @@ export function useMachines() {
       return normalizeRecord(result);
     },
     enabled: !!actor,
+    staleTime: 0,
     retry: 2,
   });
 }
@@ -335,6 +336,7 @@ export function useUpdateMachine() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["machines"] });
       qc.invalidateQueries({ queryKey: ["dashboardStats"] });
+      qc.invalidateQueries({ queryKey: ["productionOrderBalance"] });
     },
   });
 }
@@ -571,6 +573,7 @@ export function useAddProductionLog() {
       shift: Shift;
       date: bigint;
       machineId: bigint;
+      lotNumber: string;
       quantityKg: bigint;
       efficiencyPercent: bigint;
       operatorName: string;
@@ -580,6 +583,7 @@ export function useAddProductionLog() {
         args.shift,
         args.date,
         args.machineId,
+        args.lotNumber,
         args.quantityKg,
         args.efficiencyPercent,
         args.operatorName,
@@ -598,6 +602,7 @@ export function useUpdateProductionLog() {
       shift: Shift;
       date: bigint;
       machineId: bigint;
+      lotNumber: string;
       quantityKg: bigint;
       efficiencyPercent: bigint;
       operatorName: string;
@@ -608,6 +613,7 @@ export function useUpdateProductionLog() {
         args.shift,
         args.date,
         args.machineId,
+        args.lotNumber,
         args.quantityKg,
         args.efficiencyPercent,
         args.operatorName,

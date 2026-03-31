@@ -473,6 +473,7 @@ export default function ProductionLogs() {
         shift: form.shift,
         date: dateTs,
         machineId: BigInt(form.machineId),
+        lotNumber: machineRunningLot ?? "",
         quantityKg: BigInt(Math.round(Number(form.quantityKg))),
         efficiencyPercent: BigInt(Math.round(Number(form.efficiencyPercent))),
         operatorName: form.shiftOfficerName,
@@ -521,6 +522,11 @@ export default function ProductionLogs() {
             shift: bulkForm.shift,
             date: dateTs,
             machineId: machine.id,
+            lotNumber:
+              machine.runningLotNumber != null &&
+              machine.runningLotNumber !== ""
+                ? machine.runningLotNumber
+                : "",
             quantityKg: BigInt(Math.round(Number(row.qty))),
             efficiencyPercent: BigInt(Math.round(Number(row.eff || "0"))),
             operatorName: bulkForm.shiftOfficerName,
