@@ -817,13 +817,16 @@ export default function YarnDispatch() {
           setDialogOpen(o);
         }}
       >
-        <DialogContent data-ocid="dispatch.dialog" className="sm:max-w-lg">
+        <DialogContent
+          data-ocid="dispatch.dialog"
+          className="sm:max-w-lg max-h-[90vh] overflow-y-auto"
+        >
           <DialogHeader>
             <DialogTitle>
               {editItem ? "Edit Dispatch Entry" : "New Dispatch Entry"}
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
             {/* Dispatch Number (auto-generated) */}
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">
