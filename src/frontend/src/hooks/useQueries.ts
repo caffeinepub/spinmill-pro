@@ -589,7 +589,10 @@ export function useAddProductionLog() {
         args.operatorName,
       );
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["productionLogs"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["productionLogs"] });
+      qc.invalidateQueries({ queryKey: ["packingBalance"] });
+    },
   });
 }
 
@@ -619,7 +622,10 @@ export function useUpdateProductionLog() {
         args.operatorName,
       );
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["productionLogs"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["productionLogs"] });
+      qc.invalidateQueries({ queryKey: ["packingBalance"] });
+    },
   });
 }
 
@@ -631,7 +637,10 @@ export function useDeleteProductionLog() {
       if (!actor) throw new Error("No actor");
       return fullActor(actor).deleteProductionLog(id);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["productionLogs"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["productionLogs"] });
+      qc.invalidateQueries({ queryKey: ["packingBalance"] });
+    },
   });
 }
 

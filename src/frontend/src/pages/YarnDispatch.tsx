@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,7 @@ import {
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
+  Layers,
   Loader2,
   MapPin,
   Pencil,
@@ -62,10 +64,6 @@ import type {
   DispatchDestination,
   DispatchEntry as DispatchEntryType,
 } from "../types";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-// Destination label map is now dynamic — built from context in the component
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -119,7 +117,6 @@ function LotCombobox({ value, options, onChange }: LotComboboxProps) {
   }
 
   function handleBlur(e: React.FocusEvent) {
-    // Close only when focus leaves the container entirely
     if (!containerRef.current?.contains(e.relatedTarget as Node)) {
       setOpen(false);
     }
@@ -344,6 +341,163 @@ function DispatchBalancePanel({
   );
 }
 
+// ─── Bulk Dispatch Row ────────────────────────────────────────────────────────
+
+interface BulkRowState {
+  destination: string;
+  quantityKg: string;
+  remarks: string;
+}
+
+interface BulkDispatchRowProps {
+  lotNumber: string;
+  rowState: BulkRowState;
+  destinations: { value: string; label: string }[];
+  countLabels: Map<string, string> | undefined;
+  onChange: (updated: Partial<BulkRowState>) => void;
+  index: number;
+}
+
+function BulkDispatchRow({
+  lotNumber,
+  rowState,
+  destinations,
+  countLabels,
+  onChange,
+  index,
+}: BulkDispatchRowProps) {
+  const { data: balance, isLoading } = useDispatchBalance(lotNumber);
+
+  const availableKg = balance ? Number(balance.availableKg) : null;
+  const enteredQty = rowState.quantityKg ? Number(rowState.quantityKg) : 0;
+  const isExceeding =
+    availableKg !== null && enteredQty > 0 && enteredQty > availableKg;
+
+  const countLabel =
+    countLabels?.get(lotNumber) ??
+    (balance ? String(balance.yarnCountNe) : "—");
+
+  return (
+    <TableRow
+      data-ocid={`bulk_dispatch.item.${index + 1}`}
+      className={`border-border/40 transition-colors ${
+        enteredQty > 0 ? "bg-primary/5" : "hover:bg-muted/30"
+      }`}
+    >
+      {/* Lot Number */}
+      <TableCell className="font-mono text-xs font-semibold text-primary whitespace-nowrap">
+        {lotNumber}
+      </TableCell>
+
+      {/* Count */}
+      <TableCell className="whitespace-nowrap">
+        {isLoading ? (
+          <Skeleton className="h-5 w-12" />
+        ) : (
+          <Badge
+            variant="secondary"
+            className="text-xs font-mono bg-primary/10 text-primary border-primary/20"
+          >
+            Ne {countLabel}
+          </Badge>
+        )}
+      </TableCell>
+
+      {/* Unit */}
+      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+        {isLoading ? (
+          <Skeleton className="h-4 w-20" />
+        ) : balance ? (
+          formatUnit(balance.spinningUnit)
+        ) : (
+          "—"
+        )}
+      </TableCell>
+
+      {/* Available kg */}
+      <TableCell className="whitespace-nowrap">
+        {isLoading ? (
+          <Skeleton className="h-5 w-16" />
+        ) : availableKg !== null ? (
+          <span
+            className={`font-mono text-sm font-semibold ${
+              availableKg <= 0
+                ? "text-destructive"
+                : "text-emerald-600 dark:text-emerald-400"
+            }`}
+          >
+            {availableKg} kg
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </TableCell>
+
+      {/* Destination */}
+      <TableCell className="min-w-[160px]">
+        <Select
+          value={rowState.destination || "none"}
+          onValueChange={(v) =>
+            onChange({ destination: v === "none" ? "" : v })
+          }
+        >
+          <SelectTrigger
+            data-ocid={`bulk_dispatch.select.${index + 1}`}
+            className="h-8 text-xs"
+          >
+            <SelectValue placeholder="Select destination..." />
+          </SelectTrigger>
+          <SelectContent>
+            {destinations.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </TableCell>
+
+      {/* Qty to Dispatch */}
+      <TableCell className="min-w-[110px]">
+        <div className="relative">
+          <Input
+            type="number"
+            min="0"
+            step="0.01"
+            data-ocid={`bulk_dispatch.input.${index + 1}`}
+            value={rowState.quantityKg}
+            onChange={(e) => onChange({ quantityKg: e.target.value })}
+            placeholder="Leave blank to skip"
+            disabled={availableKg !== null && availableKg <= 0}
+            className={`h-8 text-xs pr-7 ${
+              isExceeding ? "border-amber-400 focus-visible:ring-amber-400" : ""
+            }`}
+          />
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">
+            kg
+          </span>
+        </div>
+        {isExceeding && (
+          <p className="text-[10px] text-amber-600 mt-0.5">
+            Max {availableKg} kg
+          </p>
+        )}
+      </TableCell>
+
+      {/* Remarks */}
+      <TableCell className="min-w-[140px]">
+        <Input
+          type="text"
+          placeholder="Optional remarks"
+          value={rowState.remarks}
+          onChange={(e) => onChange({ remarks: e.target.value })}
+          className="h-8 text-xs"
+        />
+      </TableCell>
+    </TableRow>
+  );
+}
+
 // ─── Default form state ───────────────────────────────────────────────────────
 
 const defaultForm = {
@@ -362,7 +516,6 @@ export default function YarnDispatch() {
   const isLoggedIn = !!identity;
   const { destinations } = useDropdownOptionsContext();
 
-  // Build label map from context options
   const destinationLabelMap = Object.fromEntries(
     destinations.map((d) => [d.value, d.label]),
   );
@@ -382,16 +535,21 @@ export default function YarnDispatch() {
   const [form, setForm] = useState(defaultForm);
   const [nextDispatchNumber, setNextDispatchNumber] = useState<string>("");
 
+  // Bulk dispatch state
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkDate, setBulkDate] = useState(
+    new Date().toISOString().substring(0, 10),
+  );
+  const [bulkRows, setBulkRows] = useState<Record<string, BulkRowState>>({});
+  const [bulkSaving, setBulkSaving] = useState(false);
+
   // Filter state
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
   const [filterLotSearch, setFilterLotSearch] = useState("");
 
-  // Balance for the selected lot
   const { data: balance } = useDispatchBalance(form.lotNumber || null);
 
-  // Lot numbers from packing entries, filtered to only those whose
-  // production order status is "In Progress"
   const inProgressLotNumbers = new Set(
     productionOrders
       .filter((po) => {
@@ -405,7 +563,6 @@ export default function YarnDispatch() {
       .map((po) => po.lotNumber),
   );
 
-  // Lot numbers from packing entries (in progress orders) + opening stock lots
   const openingStockLotNumbers = yarnOpeningStockEntries
     .map((os) => os.lotNumber)
     .filter(Boolean);
@@ -419,7 +576,6 @@ export default function YarnDispatch() {
     ]),
   ).sort();
 
-  // A lot is "selected" when the typed value exactly matches a known lot number
   const isLotSelected = lotNumbers.includes(form.lotNumber);
 
   const enteredQty = form.quantityKg ? Number(form.quantityKg) : 0;
@@ -436,7 +592,6 @@ export default function YarnDispatch() {
     isZeroBalance ||
     (balance === null && form.lotNumber !== "");
 
-  // Sort entries newest first
   const sortedEntries = [...entries].sort(
     (a, b) => Number(b.id) - Number(a.id),
   );
@@ -472,6 +627,7 @@ export default function YarnDispatch() {
         .slice(0, LATEST_COUNT_DISPATCH);
   const isShowingLimitedDispatch =
     !hasActiveFilters && filteredEntries.length > LATEST_COUNT_DISPATCH;
+
   function clearDispatchFilters() {
     setFilterDateFrom("");
     setFilterDateTo("");
@@ -507,12 +663,85 @@ export default function YarnDispatch() {
     setDialogOpen(true);
   }
 
+  function openBulkDispatch() {
+    const initialRows: Record<string, BulkRowState> = {};
+    for (const lot of lotNumbers) {
+      initialRows[lot] = { destination: "", quantityKg: "", remarks: "" };
+    }
+    setBulkRows(initialRows);
+    setBulkDate(new Date().toISOString().substring(0, 10));
+    setBulkDialogOpen(true);
+  }
+
+  function updateBulkRow(lot: string, updated: Partial<BulkRowState>) {
+    setBulkRows((prev) => ({
+      ...prev,
+      [lot]: { ...prev[lot], ...updated },
+    }));
+  }
+
   async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
     try {
       return await fn();
     } catch {
       await new Promise((resolve) => setTimeout(resolve, 1500));
       return await fn();
+    }
+  }
+
+  async function handleBulkSave() {
+    const dispatchDateTs = BigInt(new Date(bulkDate).getTime() * 1_000_000);
+    const rowsToSave = Object.entries(bulkRows).filter(
+      ([, row]) => row.quantityKg !== "" && Number(row.quantityKg) > 0,
+    );
+
+    if (rowsToSave.length === 0) {
+      toast.error("No quantities entered. Fill at least one row to dispatch.");
+      return;
+    }
+
+    // Validate all rows before saving
+    for (const [lot, row] of rowsToSave) {
+      if (!row.destination) {
+        toast.error(
+          `Please select a destination for lot ${lot} before saving.`,
+        );
+        return;
+      }
+    }
+
+    setBulkSaving(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const [lot, row] of rowsToSave) {
+      try {
+        await withRetry(() =>
+          createMutation.mutateAsync({
+            lotNumber: lot,
+            destination: row.destination as DispatchDestination,
+            quantityKg: BigInt(Math.round(Number(row.quantityKg))),
+            dispatchDate: dispatchDateTs,
+            remarks: row.remarks,
+          }),
+        );
+        successCount++;
+      } catch (err) {
+        errorCount++;
+        const msg = err instanceof Error ? err.message : String(err);
+        toast.error(`Lot ${lot}: ${msg || "Failed to save"}`);
+      }
+    }
+
+    setBulkSaving(false);
+
+    if (successCount > 0) {
+      toast.success(
+        `${successCount} dispatch entr${successCount === 1 ? "y" : "ies"} saved successfully`,
+      );
+    }
+    if (errorCount === 0) {
+      setBulkDialogOpen(false);
     }
   }
 
@@ -585,20 +814,36 @@ export default function YarnDispatch() {
 
   const isPending = createMutation.isPending;
 
+  // Count bulk rows with qty filled
+  const bulkFilledCount = Object.values(bulkRows).filter(
+    (r) => r.quantityKg !== "" && Number(r.quantityKg) > 0,
+  ).length;
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <PageHeader
         title="Yarn Dispatch"
         description="Record yarn dispatch entries by lot number — inventory deducted automatically"
         action={
-          <Button
-            data-ocid="dispatch.primary_button"
-            onClick={openAdd}
-            className="gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            New Dispatch
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              data-ocid="dispatch.bulk_open_modal_button"
+              variant="outline"
+              onClick={openBulkDispatch}
+              className="gap-2"
+            >
+              <Layers className="w-4 h-4" />
+              Bulk Dispatch
+            </Button>
+            <Button
+              data-ocid="dispatch.primary_button"
+              onClick={openAdd}
+              className="gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              New Dispatch
+            </Button>
+          </div>
         }
       />
 
@@ -809,7 +1054,164 @@ export default function YarnDispatch() {
         )}
       </div>
 
-      {/* New Dispatch Dialog */}
+      {/* ── Bulk Dispatch Dialog ─────────────────────────────────────────────── */}
+      <Dialog
+        open={bulkDialogOpen}
+        onOpenChange={(o) => {
+          if (!bulkSaving) setBulkDialogOpen(o);
+        }}
+      >
+        <DialogContent
+          data-ocid="bulk_dispatch.dialog"
+          className="w-[95vw] max-w-[95vw] h-[90vh] flex flex-col p-0 gap-0"
+        >
+          {/* Header */}
+          <DialogHeader className="px-6 pt-5 pb-4 border-b border-border/60 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-lg font-semibold flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-primary" />
+                  Bulk Dispatch Entry
+                </DialogTitle>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Enter dispatch quantities for multiple lots at once. Rows with
+                  blank quantity will be skipped.
+                </p>
+              </div>
+            </div>
+
+            {/* Date row */}
+            <div className="flex items-center gap-4 mt-3">
+              <div className="flex items-center gap-2">
+                <Label
+                  htmlFor="bulk-date"
+                  className="text-sm font-medium whitespace-nowrap"
+                >
+                  Dispatch Date
+                </Label>
+                <Input
+                  id="bulk-date"
+                  type="date"
+                  data-ocid="bulk_dispatch.input"
+                  value={bulkDate}
+                  onChange={(e) => setBulkDate(e.target.value)}
+                  className="w-44 h-8 text-sm"
+                  disabled={bulkSaving}
+                />
+              </div>
+              {bulkFilledCount > 0 && (
+                <span className="text-xs text-primary font-medium bg-primary/10 rounded-full px-2.5 py-0.5">
+                  {bulkFilledCount} lot{bulkFilledCount !== 1 ? "s" : ""} to
+                  dispatch
+                </span>
+              )}
+            </div>
+          </DialogHeader>
+
+          {/* Table */}
+          <ScrollArea className="flex-1 min-h-0">
+            {lotNumbers.length === 0 ? (
+              <div
+                data-ocid="bulk_dispatch.empty_state"
+                className="flex flex-col items-center justify-center h-48 gap-3 text-muted-foreground"
+              >
+                <Truck className="w-8 h-8" />
+                <p className="text-sm">
+                  No active lots available for dispatch.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-border/60 hover:bg-transparent sticky top-0 bg-background z-10">
+                      <TableHead className="font-semibold text-xs uppercase tracking-wider whitespace-nowrap">
+                        Lot No.
+                      </TableHead>
+                      <TableHead className="font-semibold text-xs uppercase tracking-wider whitespace-nowrap">
+                        Count (Ne)
+                      </TableHead>
+                      <TableHead className="font-semibold text-xs uppercase tracking-wider whitespace-nowrap">
+                        Unit
+                      </TableHead>
+                      <TableHead className="font-semibold text-xs uppercase tracking-wider whitespace-nowrap">
+                        Available (kg)
+                      </TableHead>
+                      <TableHead className="font-semibold text-xs uppercase tracking-wider whitespace-nowrap">
+                        Destination
+                      </TableHead>
+                      <TableHead className="font-semibold text-xs uppercase tracking-wider whitespace-nowrap">
+                        Qty to Dispatch
+                      </TableHead>
+                      <TableHead className="font-semibold text-xs uppercase tracking-wider whitespace-nowrap">
+                        Remarks
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {lotNumbers.map((lot, idx) => (
+                      <BulkDispatchRow
+                        key={lot}
+                        lotNumber={lot}
+                        rowState={
+                          bulkRows[lot] ?? {
+                            destination: "",
+                            quantityKg: "",
+                            remarks: "",
+                          }
+                        }
+                        destinations={destinations}
+                        countLabels={countLabels}
+                        onChange={(updated) => updateBulkRow(lot, updated)}
+                        index={idx}
+                      />
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </ScrollArea>
+
+          {/* Footer */}
+          <DialogFooter className="px-6 py-4 border-t border-border/60 flex-shrink-0 flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              {lotNumbers.length} lot{lotNumbers.length !== 1 ? "s" : ""}{" "}
+              available · Each row has its own destination
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                data-ocid="bulk_dispatch.cancel_button"
+                onClick={() => setBulkDialogOpen(false)}
+                disabled={bulkSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                data-ocid="bulk_dispatch.submit_button"
+                onClick={handleBulkSave}
+                disabled={bulkSaving || bulkFilledCount === 0}
+                className="gap-2"
+              >
+                {bulkSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  <>
+                    <Truck className="w-4 h-4" />
+                    Save{bulkFilledCount > 0 ? ` ${bulkFilledCount}` : ""}{" "}
+                    Dispatch{bulkFilledCount !== 1 ? "es" : ""}
+                  </>
+                )}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New / Edit Dispatch Dialog */}
       <Dialog
         open={dialogOpen}
         onOpenChange={(o) => {
@@ -866,7 +1268,7 @@ export default function YarnDispatch() {
               />
             </div>
 
-            {/* Balance Panel — shown when lot exactly matches a known lot number */}
+            {/* Balance Panel */}
             {isLotSelected && (
               <DispatchBalancePanel
                 lotNumber={form.lotNumber}
