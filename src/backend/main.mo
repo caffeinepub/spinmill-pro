@@ -1324,19 +1324,10 @@ actor {
     switch (order) {
       case (null) { null };
       case (?o) {
-        // Total produced for this lot (sum production logs for machines running this lot)
+        // Total produced for this lot (sum production logs by stored lotNumber)
         var produced : Nat = 0;
-        for ((_, m) in machines.entries()) {
-          switch (m.runningLotNumber) {
-            case (?rln) {
-              if (rln == lotNumber) {
-                for ((_, pl) in productionLogsV2.entries()) {
-                  if (pl.machineId == m.id) { produced += pl.quantityKg };
-                };
-              };
-            };
-            case (null) {};
-          };
+        for ((_, pl) in productionLogsV2.entries()) {
+          if (pl.lotNumber == lotNumber) { produced += pl.quantityKg };
         };
         // Also count opening stock yarn for this lot
         for ((_, yr) in yarnOpeningStock.entries()) {
@@ -1363,19 +1354,10 @@ actor {
       case (null) { Runtime.trap("No production order found for lot " # lotNumber) };
       case (?o) { o };
     };
-    // Calculate available
+    // Calculate available (sum production logs by stored lotNumber)
     var produced : Nat = 0;
-    for ((_, m) in machines.entries()) {
-      switch (m.runningLotNumber) {
-        case (?rln) {
-          if (rln == lotNumber) {
-            for ((_, pl) in productionLogsV2.entries()) {
-              if (pl.machineId == m.id) { produced += pl.quantityKg };
-            };
-          };
-        };
-        case (null) {};
-      };
+    for ((_, pl) in productionLogsV2.entries()) {
+      if (pl.lotNumber == lotNumber) { produced += pl.quantityKg };
     };
     for ((_, yr) in yarnOpeningStock.entries()) {
       if (yr.lotNumber == lotNumber) { produced += yr.weightKg };
