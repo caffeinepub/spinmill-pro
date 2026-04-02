@@ -135,6 +135,7 @@ export interface PackingBalance {
   'totalPackedKg' : bigint,
   'lotNumber' : string,
   'spinningUnit' : SpinningUnit,
+  'producedKg' : bigint,
   'availableKg' : bigint,
   'endUse' : EndUse,
 }

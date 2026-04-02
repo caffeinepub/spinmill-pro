@@ -139,6 +139,7 @@ export interface PackingBalance {
     totalPackedKg: bigint;
     lotNumber: string;
     spinningUnit: SpinningUnit;
+    producedKg: bigint;
     availableKg: bigint;
     endUse: EndUse;
 }
@@ -1942,6 +1943,7 @@ function from_candid_record_n104(_uploadFile: (file: ExternalBlob) => Promise<Ui
     totalPackedKg: bigint;
     lotNumber: string;
     spinningUnit: _SpinningUnit;
+    producedKg: bigint;
     availableKg: bigint;
     endUse: _EndUse;
 }): {
@@ -1950,6 +1952,7 @@ function from_candid_record_n104(_uploadFile: (file: ExternalBlob) => Promise<Ui
     totalPackedKg: bigint;
     lotNumber: string;
     spinningUnit: SpinningUnit;
+    producedKg: bigint;
     availableKg: bigint;
     endUse: EndUse;
 } {
@@ -1959,6 +1962,7 @@ function from_candid_record_n104(_uploadFile: (file: ExternalBlob) => Promise<Ui
         totalPackedKg: value.totalPackedKg,
         lotNumber: value.lotNumber,
         spinningUnit: from_candid_SpinningUnit_n37(_uploadFile, _downloadFile, value.spinningUnit),
+        producedKg: value.producedKg,
         availableKg: value.availableKg,
         endUse: from_candid_EndUse_n39(_uploadFile, _downloadFile, value.endUse)
     };

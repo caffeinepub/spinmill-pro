@@ -196,8 +196,28 @@ function BalancePanel({
             </div>
           </div>
 
-          {/* Balance row */}
+          {/* Produced / Packed / Available rows */}
           <div className="flex items-center justify-between pt-2 border-t border-border/40">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Produced Kg
+            </p>
+            <p className="font-semibold font-mono text-sm text-blue-600 dark:text-blue-400">
+              {Number(balance.producedKg)} kg
+            </p>
+          </div>
+
+          {/* Total packed */}
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Total Packed
+            </p>
+            <p className="font-mono text-sm text-muted-foreground">
+              {Number(balance.totalPackedKg)} kg
+            </p>
+          </div>
+
+          {/* Balance row */}
+          <div className="flex items-center justify-between">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
               Available Balance
             </p>
@@ -212,16 +232,6 @@ function BalancePanel({
             </p>
           </div>
 
-          {/* Total packed */}
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Total Packed
-            </p>
-            <p className="font-mono text-sm text-muted-foreground">
-              {Number(balance.totalPackedKg)} kg
-            </p>
-          </div>
-
           {/* Warning states */}
           {isZeroBalance && (
             <div
@@ -230,8 +240,9 @@ function BalancePanel({
             >
               <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 text-destructive mt-0.5" />
               <p className="text-xs text-destructive">
-                No available yarn balance for this lot. No further packing
-                entries can be added.
+                {Number(balance.producedKg) === 0
+                  ? "No production logs found for this lot. Please enter production quantity in the Production Entry section first."
+                  : "All produced quantity has already been packed. No further packing entries can be added."}
               </p>
             </div>
           )}
@@ -331,6 +342,15 @@ function BulkLotRow({
         {isLoading ? (
           <Skeleton className="h-4 w-16" />
         ) : (
+          <span className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400">
+            {balance ? `${Number(balance.producedKg)} kg` : "—"}
+          </span>
+        )}
+      </TableCell>
+      <TableCell>
+        {isLoading ? (
+          <Skeleton className="h-4 w-16" />
+        ) : (
           <span
             className={`font-mono text-sm font-semibold ${
               isZeroBalance
@@ -363,7 +383,9 @@ function BulkLotRow({
           )}
           {isZeroBalance && (
             <span className="text-[10px] text-destructive">
-              No balance available
+              {balance && Number(balance.producedKg) === 0
+                ? "No production logged"
+                : "All packed"}
             </span>
           )}
         </div>
@@ -1136,6 +1158,9 @@ export default function PackingEntryPage() {
                         </TableHead>
                         <TableHead className="font-semibold text-xs uppercase tracking-wider">
                           End Use
+                        </TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">
+                          Produced Kg
                         </TableHead>
                         <TableHead className="font-semibold text-xs uppercase tracking-wider">
                           Available Balance

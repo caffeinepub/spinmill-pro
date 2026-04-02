@@ -287,6 +287,7 @@ actor {
     spinningUnit : SpinningUnit;
     productType : ProductType;
     endUse : EndUse;
+    producedKg : Nat;
     availableKg : Nat;
     totalPackedKg : Nat;
   };
@@ -1324,10 +1325,32 @@ actor {
     switch (order) {
       case (null) { null };
       case (?o) {
-        // Total produced for this lot (sum production logs by stored lotNumber)
+        // Total produced for this lot:
+        // 1. New logs that store lotNumber directly
+        // 2. Legacy logs (lotNumber == "") from machines currently assigned to this lot
         var produced : Nat = 0;
         for ((_, pl) in productionLogsV2.entries()) {
-          if (pl.lotNumber == lotNumber) { produced += pl.quantityKg };
+          if (pl.lotNumber == lotNumber) {
+            produced += pl.quantityKg;
+          } else if (pl.lotNumber == "") {
+            // Legacy log: check if the machine is currently assigned to this lot
+            var machineMatchesLot = false;
+            for ((_, m) in machines.entries()) {
+              if (m.id == pl.machineId) {
+                switch (m.runningLotNumber) {
+                  case (?rln) { if (rln == lotNumber) { machineMatchesLot := true } };
+                  case (null) {
+                    // Also match by currentOrderId in case runningLotNumber was not set
+                    switch (m.currentOrderId) {
+                      case (?oid) { if (oid == o.id) { machineMatchesLot := true } };
+                      case (null) {};
+                    };
+                  };
+                };
+              };
+            };
+            if (machineMatchesLot) { produced += pl.quantityKg };
+          };
         };
         // Also count opening stock yarn for this lot
         for ((_, yr) in yarnOpeningStock.entries()) {
@@ -1338,7 +1361,7 @@ actor {
           if (pe.lotNumber == lotNumber) { packed += pe.quantityKg };
         };
         let available : Nat = if (produced > packed) { produced - packed } else { 0 };
-        ?{ lotNumber; yarnCountNe = o.yarnCountNe; spinningUnit = o.spinningUnit; productType = o.productType; endUse = o.endUse; availableKg = available; totalPackedKg = packed };
+        ?{ lotNumber; yarnCountNe = o.yarnCountNe; spinningUnit = o.spinningUnit; productType = o.productType; endUse = o.endUse; producedKg = produced; availableKg = available; totalPackedKg = packed };
       };
     };
   };
@@ -1354,10 +1377,28 @@ actor {
       case (null) { Runtime.trap("No production order found for lot " # lotNumber) };
       case (?o) { o };
     };
-    // Calculate available (sum production logs by stored lotNumber)
+    // Calculate available (sum production logs by stored lotNumber + legacy fallback)
     var produced : Nat = 0;
     for ((_, pl) in productionLogsV2.entries()) {
-      if (pl.lotNumber == lotNumber) { produced += pl.quantityKg };
+      if (pl.lotNumber == lotNumber) {
+        produced += pl.quantityKg;
+      } else if (pl.lotNumber == "") {
+        var machineMatchesLot2 = false;
+        for ((_, m) in machines.entries()) {
+          if (m.id == pl.machineId) {
+            switch (m.runningLotNumber) {
+              case (?rln) { if (rln == lotNumber) { machineMatchesLot2 := true } };
+              case (null) {
+                switch (m.currentOrderId) {
+                  case (?oid) { if (oid == o.id) { machineMatchesLot2 := true } };
+                  case (null) {};
+                };
+              };
+            };
+          };
+        };
+        if (machineMatchesLot2) { produced += pl.quantityKg };
+      };
     };
     for ((_, yr) in yarnOpeningStock.entries()) {
       if (yr.lotNumber == lotNumber) { produced += yr.weightKg };
